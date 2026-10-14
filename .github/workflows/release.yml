@@ -234,7 +234,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.tag }}
-          name: Kontur Code ${{ needs.build.outputs.tag }}
+          name: Aqvenor ${{ needs.build.outputs.tag }}
           prerelease: true
           # Underscore, not hyphen. The action silently warns and drops an
           # unrecognised input, which would have published the release with an

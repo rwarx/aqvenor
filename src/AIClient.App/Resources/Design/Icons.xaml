@@ -1,10 +1,10 @@
 ﻿<!--
-    Kontur Code design system - icon drawings.
+    Aqvenor design system - icon drawings.
 
     The set is Iconsax (Linear variant, by Vuesax - free license), drawn on one 24x24
     grid with 1.5px strokes and round caps and joins: the same shared grid the
     morphicons library builds its rotations on, which is why pairs of these icons can
-    turn into each other. Geometry resources are frozen StreamGeometries; KonturIcon
+    turn into each other. Geometry resources are frozen StreamGeometries; AqvenorIcon
     resolves "Icon.<Kind>" from this dictionary, MorphIcon folds one kind into another.
 
     Conventions:

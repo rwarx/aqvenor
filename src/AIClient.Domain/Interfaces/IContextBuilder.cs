@@ -34,6 +34,13 @@ public sealed record ContextBuildRequest
     public int ReservedOutputTokens { get; init; } = 1024;
 
     /// <summary>
+    /// Turns kept when <see cref="ContextWindow"/> is unknown and trimming is skipped.
+    /// Without it a model whose limit nobody reported would be sent the whole
+    /// unbounded history; with it the oldest turns are dropped up front instead.
+    /// </summary>
+    public int MaxHistoryTurns { get; init; } = 100;
+
+    /// <summary>
     /// Stop before this message id, exclusive. Used by Regenerate and by Edit, which both
     /// need the history as it stood before a given turn.
     /// </summary>

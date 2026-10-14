@@ -6,6 +6,7 @@ using AIClient.Infrastructure.Providers;
 using AIClient.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Tests.Support;
 
@@ -104,6 +105,7 @@ public sealed class TestDatabase : IDbContextFactory<AIClientDbContext>, IAsyncD
                     new InvalidOperationException("No HTTP response was scripted for this test."))),
             secureStorage,
             NullLoggerFactory.Instance,
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<CustomProviderStore>.Instance);
 
     public ValueTask DisposeAsync()

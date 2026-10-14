@@ -49,6 +49,9 @@ public sealed partial class GraphOutlineViewModel : ObservableObject
 
     partial void OnFilterChanged(string value) => Rebuild();
 
+    /// <summary>Rebuilds the kind-group titles after a language switch.</summary>
+    public void OnLanguageChanged() => Rebuild();
+
     private void OnSnapshotChanged(object? sender, GraphSnapshotChangedEventArgs e) => UiThread.Post(Rebuild);
 
     [RelayCommand]
@@ -108,7 +111,8 @@ public sealed class OutlineGroupViewModel
 
     public IconKind Icon { get; }
 
-    public string Title => Kind.ToString().ToLowerInvariant();
+    /// <summary>The group's title in the interface language, never the enum name.</summary>
+    public string Title => GraphWords.Kind(Kind);
 
     public ObservableCollection<OutlineNodeViewModel> Nodes { get; } = [];
 

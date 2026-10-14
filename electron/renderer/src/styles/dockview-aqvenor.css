@@ -1,0 +1,90 @@
+/* ============================================================
+   Dockview → Aqvenor theme bridge.
+   dockview-theme-dark provides every --dv-* fallback; this class
+   (applied alongside it, imported after) overrides the visually
+   significant ones from the Aqvenor --aq-* tokens, which already
+   flip for light mode under .light — so the dock matches the app
+   in both themes without a second block.
+   ============================================================ */
+
+.dockview-theme-aqvenor {
+  /* group (panel body) + tab strip */
+  --dv-group-view-background-color: var(--aq-surface-1);
+  --dv-tabs-and-actions-container-background-color: var(--aq-surface-sunken);
+  --dv-tabs-and-actions-container-height: 34px;
+  --dv-tabs-and-actions-container-font-size: 12.5px;
+  --dv-tab-font-size: 12.5px;
+
+  /* tabs: active group */
+  --dv-activegroup-visiblepanel-tab-background-color: var(--aq-surface-1);
+  --dv-activegroup-visiblepanel-tab-color: var(--aq-fg-1);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--aq-surface-sunken);
+  --dv-activegroup-hiddenpanel-tab-color: var(--aq-fg-3);
+  /* tabs: inactive group */
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--aq-surface-2);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--aq-fg-2);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--aq-surface-sunken);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--aq-fg-3);
+
+  --dv-tab-divider-color: var(--aq-line-faint);
+  --dv-separator-border: var(--aq-line);
+  --dv-paneview-header-border-color: var(--aq-line);
+  --dv-paneview-active-outline-color: var(--aq-accent);
+
+  /* sashes (split dividers) */
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--aq-accent-soft);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0s;
+  --dv-transition-duration: 0.1s;
+
+  /* drag + drop targets */
+  --dv-drag-over-background-color: var(--aq-accent-soft);
+  --dv-drag-over-border-color: var(--aq-accent-border);
+  --dv-drag-over-border: 1px dashed var(--aq-accent-border);
+  --dv-dnd-compass-color: var(--aq-line-strong);
+  --dv-dnd-compass-cell-color: var(--aq-surface-3);
+  --dv-dnd-compass-active-cell-color: var(--aq-accent-soft);
+  --dv-dnd-compass-edge-cell-color: var(--aq-surface-2);
+  --dv-edge-dock-indicator-color: var(--aq-accent-border);
+  --dv-smart-guides-color: var(--aq-accent-border);
+  --dv-smart-guides-preview-color: var(--aq-accent-soft);
+
+  /* floating + popout groups */
+  --dv-floating-border: 1px solid var(--aq-line-strong);
+  --dv-floating-group-border: 1px solid var(--aq-line-strong);
+  --dv-floating-group-dragging-opacity: 0.7;
+  --dv-floating-box-shadow: 0 12px 32px -8px var(--aq-scrim);
+  --dv-floating-titlebar-background-color: var(--aq-surface-2);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--aq-line-faint);
+  --dv-floating-titlebar-height: 30px;
+
+  /* chrome bits */
+  --dv-icon-hover-background-color: var(--aq-surface-hover);
+  --dv-scrollbar-background-color: var(--aq-surface-3);
+  --dv-tabs-container-scrollbar-color: var(--aq-line-strong);
+  --dv-context-menu-background-color: var(--aq-surface-3);
+  --dv-context-menu-color: var(--aq-fg-1);
+  --dv-tab-group-color: var(--aq-accent);
+
+  /* radii + spacing */
+  --dv-border-radius: 4px;
+  --dv-tab-border-radius: 4px;
+  --dv-sash-border-radius: 2px;
+  --dv-dropdown-border-radius: 6px;
+  --dv-tab-group-chip-border-radius: 3px;
+}
+
+/* let the dock fill its slot */
+.aq-dock {
+  width: 100%;
+  height: 100%;
+}
+
+/* No tab strip, ever: surfaces open from the sidebar (click = open/focus,
+   Alt+click or drag = open beside), and each panel carries its own
+   hover-close. Same-group stacking stays reachable because every surface
+   has a sidebar entry that focuses it. */
+.aq-dock .dv-tabs-and-actions-container {
+  display: none;
+}

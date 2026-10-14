@@ -101,7 +101,7 @@ public sealed class SidecarTokenHandler(
         }
 
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.Name, "kontur-code")],
+            [new Claim(ClaimTypes.Name, "aqvenor")],
             SchemeName);
 
         return Task.FromResult(
@@ -112,7 +112,7 @@ public sealed class SidecarTokenHandler(
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         Response.StatusCode = StatusCodes.Status401Unauthorized;
-        Response.Headers.WWWAuthenticate = $"{SchemeName} realm=\"kontur-code-sidecar\"";
+        Response.Headers.WWWAuthenticate = $"{SchemeName} realm=\"aqvenor-sidecar\"";
         return Task.CompletedTask;
     }
 }

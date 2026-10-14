@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**먼저 읽어주세요:** Kontur Code는 **사용자의 파일에 쓰기하고 사용자 컴퓨터에서 프로그램을 실행할 수 있는 개발 도구입니다.** 이것은 버그가 아니라 제품 그 자체입니다. 아래에서 설명하는 에이전트의 봉쇄와 알려진 격차들은 모두 [SECURITY.md](SECURITY.md)에 정리되어 있습니다. 소중한 어떤 것에 이 도구를 겨냥하기 전에 먼저 그것을 읽으세요.
+**먼저 읽어주세요:** Aqvenor는 **사용자의 파일에 쓰기하고 사용자 컴퓨터에서 프로그램을 실행할 수 있는 개발 도구입니다.** 이것은 버그가 아니라 제품 그 자체입니다. 아래에서 설명하는 에이전트의 봉쇄와 알려진 격차들은 모두 [SECURITY.md](SECURITY.md)에 정리되어 있습니다. 소중한 어떤 것에 이 도구를 겨냥하기 전에 먼저 그것을 읽으세요.
 
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) ·
 [Français](README.fr.md) · [Português (Brasil)](README.pt-BR.md) · [Italiano](README.it.md) ·
@@ -146,7 +146,7 @@ GDPR, 러시아 152-FZ, CCPA/CPRA를 기준으로 삼아 쓴 세부는 모두 [P
 
 ## 설치
 
-설치 파일은 [릴리스 페이지](https://github.com/rwarx/kontur-code/releases)에서 받으세요. 사용자 단위 NSIS 설치이며 관리자 권한이 필요 없습니다.
+설치 파일은 [릴리스 페이지](https://github.com/rwarx/aqvenor/releases)에서 받으세요. 사용자 단위 NSIS 설치이며 관리자 권한이 필요 없습니다.
 
 첫 릴리스는 **알파**입니다. 형태가 충분히 굳어 기반 위에 구축할 수 있게 되었기 때문에 공개한 것이지, 무인 운영에 쓸 준비가 되었기 때문이 아닙니다.
 
@@ -154,8 +154,8 @@ GDPR, 러시아 152-FZ, CCPA/CPRA를 기준으로 삼아 쓴 세부는 모두 [P
 <summary>직접 빌드하기</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # 사이드카는 Electron이 찾아가는 위치 옆에 게시되어야 합니다
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

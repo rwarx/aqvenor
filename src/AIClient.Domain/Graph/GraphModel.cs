@@ -122,6 +122,14 @@ public sealed class GraphModel
 
                     break;
 
+                case SetNodeStatus status:
+                    if (TryApplySetNodeStatus(status, rejected))
+                    {
+                        applied.Add(status);
+                    }
+
+                    break;
+
                 case RemoveNode remove:
                     // Always applied: removal is idempotent by design.
                     TryRemoveNode(remove.NodeId);
@@ -317,6 +325,26 @@ public sealed class GraphModel
         }
 
         _nodes[change.NodeId] = node with { X = change.X, Y = change.Y };
+        return true;
+    }
+
+    private bool TryApplySetNodeStatus(SetNodeStatus change, List<string> rejected)
+    {
+        if (string.IsNullOrWhiteSpace(change.NodeId))
+        {
+            rejected.Add("A node change needs a node id.");
+            return false;
+        }
+
+        if (!_nodes.TryGetValue(change.NodeId, out var node))
+        {
+            rejected.Add($"Node '{change.NodeId}' does not exist.");
+            return false;
+        }
+
+        // No same-status guard: re-marking a node is an idempotent no-op the caller need not
+        // reason about, unlike UpdateNode where "nothing to change" usually means a mistaken call.
+        _nodes[change.NodeId] = node with { Status = change.Status };
         return true;
     }
 

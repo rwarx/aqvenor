@@ -155,7 +155,7 @@ public sealed class ExternalFileServiceTests : IAsyncLifetime
         }
 
         var result = await _service.WriteAsync(
-            Path.Combine(system, "kontur-code-should-not-exist.txt"),
+            Path.Combine(system, "aqvenor-should-not-exist.txt"),
             "x",
             Token);
 
@@ -175,7 +175,7 @@ public sealed class ExternalFileServiceTests : IAsyncLifetime
         }
 
         var result = await _service.WriteAsync(
-            Path.Combine(programData, "kontur-code-should-not-exist.txt"),
+            Path.Combine(programData, "aqvenor-should-not-exist.txt"),
             "x",
             Token);
 
@@ -196,7 +196,7 @@ public sealed class ExternalFileServiceTests : IAsyncLifetime
 
         // Only the refusal path is under test; whether such a file exists is not this test's business.
         var result = await _service.ReadAsync(
-            Path.Combine(system, "kontur-code-absent-probe.txt"),
+            Path.Combine(system, "aqvenor-absent-probe.txt"),
             cancellationToken: Token);
 
         Assert.DoesNotContain("operating-system folder", result.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);

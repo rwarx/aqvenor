@@ -156,4 +156,14 @@ public sealed record GraphNode
     /// without either knowing about the other.
     /// </remarks>
     public int? Metric { get; init; }
+
+    /// <summary>
+    /// How the work this node stands for is going — set by the agent's <c>set_node_status</c>.
+    /// </summary>
+    /// <remarks>
+    /// Progress, not existence: <see cref="GraphNodeState.None"/> for an ordinary node, the rest
+    /// for a task/step/run the agent is tracking. Drives a badge in the presentation layer and
+    /// nothing structural, the same way <see cref="Kind"/> drives colour.
+    /// </remarks>
+    public GraphNodeState Status { get; init; } = GraphNodeState.None;
 }

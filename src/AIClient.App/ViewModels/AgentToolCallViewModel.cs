@@ -31,8 +31,6 @@ public sealed partial class AgentToolCallViewModel : ObservableObject
     /// </remarks>
     private const int MaxBodyLines = 200;
 
-    private const string BodyTruncationNotice = "... the rest of this result is not shown.";
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsWaiting))]
     [NotifyPropertyChangedFor(nameof(IsRunning))]
@@ -152,7 +150,7 @@ public sealed partial class AgentToolCallViewModel : ObservableObject
 
         var card = new AgentToolCallViewModel(
             row.ToolCallId ?? row.Id.ToString(),
-            row.ToolName is { Length: > 0 } name ? name : "tool",
+            row.ToolName is { Length: > 0 } name ? name : Services.Localization.T("S.Tool.Name.Fallback"),
             risk: null)
         {
             State = row.ToolSucceeded == false ? AgentToolCallState.Failed : AgentToolCallState.Succeeded,
@@ -231,7 +229,7 @@ public sealed partial class AgentToolCallViewModel : ObservableObject
 
         return lines.Length <= MaxBodyLines
             ? normalised
-            : string.Join('\n', lines.Take(MaxBodyLines).Append(BodyTruncationNotice));
+            : string.Join('\n', lines.Take(MaxBodyLines).Append(Services.Localization.T("S.Tool.Body.Truncated")));
     }
 }
 

@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**请先阅读：** Kontur Code是一个**能写入你的文件、并在你的机器上运行程序的开发工具。** 这就是产品本身，而不是缺陷。下面关于智能体隔离范围的一切——以及所有已知缺口——都写在
+**请先阅读：** Aqvenor是一个**能写入你的文件、并在你的机器上运行程序的开发工具。** 这就是产品本身，而不是缺陷。下面关于智能体隔离范围的一切——以及所有已知缺口——都写在
 [SECURITY.md](SECURITY.md)里。在你把它指向任何你在意的东西之前，请先读那份文档。
 
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) ·
@@ -149,7 +149,7 @@ CodeMirror 6，支持十种语言语法，对选中内容就地做AI修改，并
 
 ## 安装
 
-从[发布页](https://github.com/rwarx/kontur-code/releases)下载安装包。这是按用户安装的NSIS安装——不需要管理员权限。
+从[发布页](https://github.com/rwarx/aqvenor/releases)下载安装包。这是按用户安装的NSIS安装——不需要管理员权限。
 
 第一个版本是**alpha**。发布它是因为形态已经稳定到可以据此开发，而不是因为它已经可以无人值守地使用。
 
@@ -157,8 +157,8 @@ CodeMirror 6，支持十种语言语法，对选中内容就地做AI修改，并
 <summary>自己动手构建</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # sidecar必须发布到Electron会去找它的那个位置
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

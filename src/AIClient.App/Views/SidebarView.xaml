@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              xmlns:conv="clr-namespace:AIClient.App.Converters"
              xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -37,7 +37,7 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <kontur:KonturIcon Kind="{Binding Icon}" Width="15" Height="15"
+                <aqvenor:AqvenorIcon Kind="{Binding Icon}" Width="15" Height="15"
                                    Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Type.Caption}" Margin="10,0,0,0"
                            VerticalAlignment="Center"
@@ -77,10 +77,10 @@
                 <TextBlock Text="{DynamicResource S.Sidebar.Section.Workspace}" Style="{StaticResource Type.Section}" Margin="9,0,0,0"
                            VerticalAlignment="Center" />
             </StackPanel>
-            <Button Grid.Column="1" Style="{StaticResource KcButtonTool}" Width="24" Height="24"
+            <Button Grid.Column="1" Style="{StaticResource AqButtonTool}" Width="24" Height="24"
                     Command="{Binding ToggleSidebarCommand}"
                     ToolTip="{DynamicResource S.Sidebar.Hide.ToolTip}">
-                <kontur:KonturIcon Kind="CollapsePanel" Width="13" Height="13" />
+                <aqvenor:AqvenorIcon Kind="CollapsePanel" Width="13" Height="13" />
             </Button>
         </Grid>
 
@@ -89,7 +89,7 @@
                 Padding="10,7" MinHeight="34"
                 Command="{Binding NewChatCommand}" ToolTip="{DynamicResource S.Sidebar.NewChat.ToolTip}">
             <Button.Style>
-                <Style TargetType="Button" BasedOn="{StaticResource KcButtonPrimary}">
+                <Style TargetType="Button" BasedOn="{StaticResource AqButtonPrimary}">
                     <Setter Property="HorizontalContentAlignment" Value="Left" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
@@ -99,7 +99,7 @@
                 </Style>
             </Button.Style>
             <StackPanel Orientation="Horizontal">
-                <kontur:KonturIcon Kind="Plus" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Kind="Plus" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.TextOnAccent}" />
                 <TextBlock Text="{DynamicResource S.Sidebar.NewChat}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"
                            Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -108,7 +108,7 @@
 
         <!-- Mode navigation. -->
         <ListBox x:Name="NavList" Grid.Row="2" Margin="6,0"
-                 ItemContainerStyle="{StaticResource KcNavItem}"
+                 ItemContainerStyle="{StaticResource AqNavItem}"
                  ItemTemplate="{StaticResource NavItemTemplate}"
                  SelectionChanged="OnNavSelected"
                  KeyboardNavigation.DirectionalNavigation="Contained" />
@@ -122,7 +122,7 @@
                     Command="{Binding Workspace.OpenWorkspaceCommand}"
                     ToolTip="{Binding Workspace.WorkspaceRoot, FallbackValue={loc:Loc S.Sidebar.OpenFolder.Fallback}}">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+                    <Style TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
                         <Setter Property="HorizontalContentAlignment" Value="Left" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
@@ -132,7 +132,7 @@
                     </Style>
                 </Button.Style>
                 <StackPanel Orientation="Horizontal">
-                    <kontur:KonturIcon Kind="Open" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="Open" Width="14" Height="14" />
                     <TextBlock Text="{DynamicResource S.Sidebar.OpenFolder}" Style="{StaticResource Type.Caption}" Margin="9,0,0,0"
                                VerticalAlignment="Center"
                                Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -142,7 +142,7 @@
                     Command="{Binding Workspace.RefreshGraphCommand}"
                     ToolTip="{DynamicResource S.Sidebar.Refresh.ToolTip}">
                 <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+                    <Style TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
                         <Setter Property="HorizontalContentAlignment" Value="Left" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
@@ -152,7 +152,7 @@
                     </Style>
                 </Button.Style>
                 <StackPanel Orientation="Horizontal">
-                    <kontur:KonturIcon Kind="Refresh" Width="14" Height="14"
+                    <aqvenor:AqvenorIcon Kind="Refresh" Width="14" Height="14"
                                        Foreground="{DynamicResource Brush.AccentText}" />
                     <TextBlock Text="{DynamicResource S.Sidebar.RefreshGraph}" Style="{StaticResource Type.Caption}" Margin="9,0,0,0"
                                VerticalAlignment="Center"
@@ -176,7 +176,7 @@
                        Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
 
             <TextBox x:Name="SearchBox" Grid.Row="1" Margin="10,0,10,6" MinHeight="28"
-                     Style="{StaticResource KcInputPlaceholder}"
+                     Style="{StaticResource AqInputPlaceholder}"
                      VerticalContentAlignment="Center"
                      Tag="{DynamicResource S.Sidebar.Search.Placeholder}"
                      Text="{Binding Sessions.SearchQuery, UpdateSourceTrigger=PropertyChanged}"
@@ -207,7 +207,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <kontur:KonturIcon Grid.Column="0" Kind="Pin" Width="11" Height="11"
+                            <aqvenor:AqvenorIcon Grid.Column="0" Kind="Pin" Width="11" Height="11"
                                                Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibility}}"
                                                Foreground="{DynamicResource Brush.Warning}"
                                                Margin="0,0,6,0" VerticalAlignment="Center" />
@@ -262,21 +262,21 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding ShowSettingsCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding ShowSettingsCommand}"
                         ToolTip="{DynamicResource S.Sidebar.Settings.ToolTip}">
-                    <kontur:KonturIcon Kind="Settings" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="Settings" Width="14" Height="14" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding ToggleThemeCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding ToggleThemeCommand}"
                         ToolTip="{DynamicResource S.Sidebar.Theme.ToolTip}">
                     <!-- Sun in dark mode (click buys light), moon in light mode. The 90°
                          turn between them is the morphicon-congruent pair. -->
-                    <kontur:MorphIcon First="Sun" Second="Moon"
+                    <aqvenor:MorphIcon First="Sun" Second="Moon"
                                       IsSecond="{Binding IsDarkTheme, Mode=OneWay}"
                                       Width="14" Height="14" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding ToggleCommandPaletteCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding ToggleCommandPaletteCommand}"
                         ToolTip="{DynamicResource S.Sidebar.Palette.ToolTip}">
-                    <kontur:KonturIcon Kind="Command" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="Command" Width="14" Height="14" />
                 </Button>
             </StackPanel>
         </Border>

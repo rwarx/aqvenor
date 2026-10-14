@@ -10,6 +10,7 @@ using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
 using AIClient.Infrastructure.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Infrastructure.Providers.OpenAiCompatible;
 
@@ -45,14 +46,17 @@ public abstract class OpenAiCompatibleProvider : IAIProvider
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISecureStorage _secureStorage;
+    private readonly TimeSpan _requestTimeout;
 
     protected OpenAiCompatibleProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger logger)
     {
         _httpClientFactory = httpClientFactory;
         _secureStorage = secureStorage;
+        _requestTimeout = TimeSpan.FromSeconds(Math.Max(1, endpoints.Value.RequestTimeoutSeconds));
         Logger = logger;
     }
 
@@ -87,9 +91,16 @@ public abstract class OpenAiCompatibleProvider : IAIProvider
 
         var client = _httpClientFactory.CreateClient(HttpClientName);
 
+        // The named client's own timeout outlasts a slow model on purpose; catalogue and
+        // connection-test calls get the shorter request timeout instead, through a linked
+        // token. A timeout here must read as a timeout downstream, not as the user
+        // pressing Stop, so it is classified before the generic exception mapping runs.
+        using var timeout = new CancellationTokenSource(_requestTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+
         try
         {
-            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await client.SendAsync(request, linked.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -111,6 +122,17 @@ public abstract class OpenAiCompatibleProvider : IAIProvider
                 AIErrorKind.Unknown,
                 $"{DisplayName} returned a model list that could not be read.",
                 $"{ex.GetType().Name}: {ex.Message}",
+                Id,
+                ex);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The linked request timeout above fired while the caller did not cancel:
+            // a slow catalogue endpoint, not a user pressing Stop.
+            throw new AIProviderException(
+                AIErrorKind.Timeout,
+                $"The request to {DisplayName} timed out.",
+                ex.Message,
                 Id,
                 ex);
         }

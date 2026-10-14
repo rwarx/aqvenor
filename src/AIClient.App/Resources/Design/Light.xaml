@@ -1,5 +1,5 @@
 <!--
-    Kontur Code design system — the light palette.
+    Aqvenor design system — the light palette.
 
     The same semantic token keys as Design/Colors.xaml, re-defined with light values.
     AppThemeService merges this dictionary last when the effective theme is Light, so these

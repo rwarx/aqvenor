@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**最初に読んでください：** Kontur Codeは**あなたのファイルを書き換え、あなたのマシン上でプログラムを実行できる開発ツールです。** これは产品规格であって不具合ではありません。以下に記すエージェントの封じ込めと、既知の欠陥はすべて[SECURITY.md](SECURITY.md)にまとめてあります。大切なものにこのツールを向ける前に、先にそれを読んでください。
+**最初に読んでください：** Aqvenorは**あなたのファイルを書き換え、あなたのマシン上でプログラムを実行できる開発ツールです。** これは产品规格であって不具合ではありません。以下に記すエージェントの封じ込めと、既知の欠陥はすべて[SECURITY.md](SECURITY.md)にまとめてあります。大切なものにこのツールを向ける前に、先にそれを読んでください。
 
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) ·
 [Français](README.fr.md) · [Português (Brasil)](README.pt-BR.md) · [Italiano](README.it.md) ·
@@ -146,7 +146,7 @@ GDPR、ロシアの152-FZ、CCPA/CPRAに沿って書かれた詳細のすべて�
 
 ## インストール
 
-インストーラーは[リリースページ](https://github.com/rwarx/kontur-code/releases)からダウンロードしてください。ユーザー単位のNSISインストールで、管理者権限は不要です。
+インストーラーは[リリースページ](https://github.com/rwarx/aqvenor/releases)からダウンロードしてください。ユーザー単位のNSISインストールで、管理者権限は不要です。
 
 最初のリリースは**alpha版**です。紙面の形が整い、基盤として構築するには十分になったので公開しています。无人運用に使える状態だからではありません。
 
@@ -154,8 +154,8 @@ GDPR、ロシアの152-FZ、CCPA/CPRAに沿って書かれた詳細のすべて�
 <summary>自分でビルドする</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # サイドカーはElectronが探しに行く場所に配置する必要があります
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

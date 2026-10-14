@@ -141,25 +141,25 @@ public partial class CanvasView : UserControl
         var menu = new ContextMenu();
 
         // Node items.
-        var inspect = new MenuItem { Header = "Inspect", Icon = KonturIcon(IconKind.Node) };
+        var inspect = new MenuItem { Header = "Inspect", Icon = AqvenorIcon(IconKind.Node) };
         inspect.Click += OnInspectClicked;
 
-        var open = new MenuItem { Header = "Open file", Icon = KonturIcon(IconKind.Open), InputGestureText = "Enter" };
+        var open = new MenuItem { Header = "Open file", Icon = AqvenorIcon(IconKind.Open), InputGestureText = "Enter" };
         open.Click += OnOpenClicked;
 
-        var askAi = new MenuItem { Header = "Ask AI about this", Icon = KonturIcon(IconKind.Sparkle), InputGestureText = "Ctrl+I" };
+        var askAi = new MenuItem { Header = "Ask AI about this", Icon = AqvenorIcon(IconKind.Sparkle), InputGestureText = "Ctrl+I" };
         askAi.Click += OnAskAiClicked;
 
-        var remove = new MenuItem { Header = "Remove from canvas", Icon = KonturIcon(IconKind.Trash), InputGestureText = "Del" };
+        var remove = new MenuItem { Header = "Remove from canvas", Icon = AqvenorIcon(IconKind.Trash), InputGestureText = "Del" };
         remove.Click += OnRemoveClicked;
 
         var separator = new Separator();
 
         // Background items.
-        var fit = new MenuItem { Header = "Fit to view", Icon = KonturIcon(IconKind.Fit) };
+        var fit = new MenuItem { Header = "Fit to view", Icon = AqvenorIcon(IconKind.Fit) };
         fit.Click += (_, _) => OnFitRequested(this, EventArgs.Empty);
 
-        var refresh = new MenuItem { Header = "Refresh workspace graph", Icon = KonturIcon(IconKind.Refresh) };
+        var refresh = new MenuItem { Header = "Refresh workspace graph", Icon = AqvenorIcon(IconKind.Refresh) };
         refresh.Click += OnRefreshClicked;
 
         menu.Items.Add(inspect);
@@ -175,7 +175,7 @@ public partial class CanvasView : UserControl
         return menu;
     }
 
-    private static KonturIcon KonturIcon(IconKind kind) => new() { Kind = kind, IsHitTestVisible = false };
+    private static AqvenorIcon AqvenorIcon(IconKind kind) => new() { Kind = kind, IsHitTestVisible = false };
 
     private void OnMenuOpened(object sender, RoutedEventArgs e)
     {

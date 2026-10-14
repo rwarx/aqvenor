@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
               xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -31,7 +31,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <kontur:KonturIcon Grid.Column="0" Kind="Tasks" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Grid.Column="0" Kind="Tasks" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.AccentText}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource S.Palette.ShowTasks}" Style="{StaticResource Type.Section}"
                            Margin="9,0,0,0" VerticalAlignment="Center" />
@@ -126,7 +126,7 @@
         <!-- Empty: the agent is idle, and the surface says so without pretending otherwise. -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,30"
                     Visibility="{Binding HasRows, Converter={StaticResource InverseBoolToVisibility}}">
-            <kontur:KonturIcon Kind="Bot" Width="34" Height="34" GlyphThickness="1.65"
+            <aqvenor:AqvenorIcon Kind="Bot" Width="34" Height="34" GlyphThickness="1.65"
                                Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
             <TextBlock Text="{DynamicResource S.Tasks.Empty.Title}" Style="{StaticResource Type.Section}"
                        HorizontalAlignment="Center" Margin="0,10,0,0" />

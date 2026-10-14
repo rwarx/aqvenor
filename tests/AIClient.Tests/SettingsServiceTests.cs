@@ -337,6 +337,57 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Equal(1500, second.Current.Canvas.MaxVisibleNodes);
     }
 
+    [Fact]
+    public async Task An_out_of_range_save_is_clamped_before_it_is_persisted()
+    {
+        // The HTTP surface has no UI in front of it, so the service - not the
+        // view model - owns the bounds. Garbage in must come back clamped.
+        var service = _db.Settings();
+        await service.LoadAsync();
+
+        await service.UpdateAsync<AgentSettings>(a =>
+        {
+            a.MaxSteps = 500;
+            a.CommandTimeoutSeconds = -5;
+        });
+        await service.UpdateAsync<ChatSettings>(c => c.Temperature = 5);
+
+        var reloaded = _db.Settings();
+        await reloaded.LoadAsync();
+
+        Assert.Equal(100, reloaded.Current.Agent.MaxSteps);
+        Assert.Equal(5, reloaded.Current.Agent.CommandTimeoutSeconds);
+        Assert.Equal(2, reloaded.Current.Chat.Temperature);
+    }
+
+    [Fact]
+    public async Task Reset_returns_one_section_to_defaults_and_leaves_the_rest()
+    {
+        var service = _db.Settings();
+        await service.LoadAsync();
+
+        await service.UpdateAsync<AgentSettings>(a => a.MaxSteps = 40);
+        await service.UpdateAsync<AppearanceSettings>(a => a.Theme = ThemeMode.Dark);
+
+        await service.ResetAsync<AgentSettings>();
+
+        var reloaded = _db.Settings();
+        await reloaded.LoadAsync();
+
+        Assert.Equal(25, reloaded.Current.Agent.MaxSteps);
+        Assert.Equal(ThemeMode.Dark, reloaded.Current.Appearance.Theme);
+    }
+
+    [Fact]
+    public async Task Resetting_a_type_that_is_not_a_section_is_a_programming_error()
+    {
+        var service = _db.Settings();
+        await service.LoadAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.ResetAsync<AppSettings>());
+    }
+
     private async Task WriteRawAsync(string key, string value)
     {
         await using var db = _db.CreateDbContext();

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              xmlns:loc="clr-namespace:AIClient.App.Markup"
              mc:Ignorable="d"
@@ -38,14 +38,14 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <kontur:KonturIcon Grid.Column="0" Kind="Files" Width="14" Height="14"
+                    <aqvenor:AqvenorIcon Grid.Column="0" Kind="Files" Width="14" Height="14"
                                        Foreground="{DynamicResource Brush.AccentText}" />
                     <TextBlock Grid.Column="1" Text="{Binding RootName, FallbackValue={loc:Loc S.Nav.Files}}"
                                Style="{StaticResource Type.Section}" Margin="9,0,0,0" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="2" Style="{StaticResource KcButtonTool}" Width="24" Height="24"
+                    <Button Grid.Column="2" Style="{StaticResource AqButtonTool}" Width="24" Height="24"
                             Command="{Binding RefreshCommand}" ToolTip="{DynamicResource S.Common.Refresh}">
-                        <kontur:KonturIcon Kind="Refresh" Width="13" Height="13" />
+                        <aqvenor:AqvenorIcon Kind="Refresh" Width="13" Height="13" />
                     </Button>
                 </Grid>
             </Border>
@@ -101,10 +101,10 @@
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                         <StackPanel Orientation="Horizontal" MinHeight="24">
-                            <kontur:KonturIcon Kind="{Binding Kind}" Width="14" Height="14" />
+                            <aqvenor:AqvenorIcon Kind="{Binding Kind}" Width="14" Height="14" />
                             <TextBlock Text="{Binding Name}" Style="{StaticResource Type.Caption}"
                                        Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            <kontur:KonturIcon Kind="Refresh" Width="10" Height="10" GlyphThickness="3.3"
+                            <aqvenor:AqvenorIcon Kind="Refresh" Width="10" Height="10" GlyphThickness="3.3"
                                                Foreground="{DynamicResource Brush.AccentText}"
                                                Margin="6,0,0,0" VerticalAlignment="Center"
                                                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
@@ -114,7 +114,7 @@
             </TreeView>
         </Grid>
 
-        <GridSplitter Grid.Column="1" Style="{StaticResource KcSplitV}" />
+        <GridSplitter Grid.Column="1" Style="{StaticResource AqSplitV}" />
 
         <!-- Details. -->
         <Border Grid.Column="2" Background="{DynamicResource Brush.Surface0}">
@@ -128,7 +128,7 @@
                         Background="{DynamicResource Brush.Surface1}" Padding="14,8">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="{Binding SelectedEntry.Kind, TargetNullValue=File}"
+                            <aqvenor:AqvenorIcon Kind="{Binding SelectedEntry.Kind, TargetNullValue=File}"
                                                Width="16" Height="16"
                                                Foreground="{DynamicResource Brush.AccentText}" />
                             <TextBlock Text="{Binding SelectedEntry.Name, TargetNullValue='—'}"
@@ -144,11 +144,11 @@
                     <!-- Selected file: open it; selected folder: expand it. -->
                     <StackPanel VerticalAlignment="Top"
                                 Visibility="{Binding SelectedEntry, Converter={StaticResource NullToVisibility}}">
-                        <Button Style="{StaticResource KcButtonPrimary}" Padding="14,8" MinWidth="140"
+                        <Button Style="{StaticResource AqButtonPrimary}" Padding="14,8" MinWidth="140"
                                 Command="{Binding SelectedEntry.OpenCommand}"
                                 Visibility="{Binding SelectedEntry.IsDirectory, Converter={StaticResource InverseBoolToVisibility}}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Open" Width="13" Height="13"
+                                <aqvenor:AqvenorIcon Kind="Open" Width="13" Height="13"
                                                    Foreground="{DynamicResource Brush.TextOnAccent}" />
                                 <TextBlock Text="{DynamicResource S.Inspector.OpenInCode}" FontWeight="SemiBold" Margin="8,0,0,0" />
                             </StackPanel>

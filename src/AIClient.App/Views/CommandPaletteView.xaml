@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:motion="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -51,12 +51,12 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <kontur:KonturIcon Grid.Column="0" Kind="Search" Width="15" Height="15"
+                        <aqvenor:AqvenorIcon Grid.Column="0" Kind="Search" Width="15" Height="15"
                                            Foreground="{DynamicResource Brush.TextMuted}"
                                            VerticalAlignment="Center" Margin="8,0,0,0" />
                         <TextBox Grid.Column="1"
                                  x:Name="QueryBox"
-                                 Style="{StaticResource KcInputBare}"
+                                 Style="{StaticResource AqInputBare}"
                                  FontSize="15"
                                  Padding="9,2"
                                  MinHeight="30"

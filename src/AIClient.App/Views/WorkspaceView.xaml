@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
               xmlns:views="clr-namespace:AIClient.App.Views"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -45,17 +45,17 @@
         <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                 Background="{DynamicResource Brush.Surface1}">
             <Grid Margin="8,0,8,0">
-                <ListBox x:Name="ModeTabs" Style="{StaticResource KcTabs}"
-                         ItemContainerStyle="{StaticResource KcTab}"
+                <ListBox x:Name="ModeTabs" Style="{StaticResource AqTabs}"
+                         ItemContainerStyle="{StaticResource AqTab}"
                          SelectionChanged="OnModeTabSelected"
                          Visibility="{Binding Workspace.IsSpatialMode, Converter={StaticResource BoolToVisibility}}" />
 
                 <!-- Page header for Models / Tasks / Settings. -->
                 <StackPanel Orientation="Horizontal" Visibility="{Binding Workspace.IsSpatialMode, Converter={StaticResource InverseBoolToVisibility}}">
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,5" Margin="0,4,4,4"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,5" Margin="0,4,4,4"
                             Click="OnBackToCanvas" ToolTip="{DynamicResource S.Workspace.BackToCanvas}">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="ChevronLeft" Width="12" Height="12" />
+                            <aqvenor:AqvenorIcon Kind="ChevronLeft" Width="12" Height="12" />
                             <TextBlock Text="{DynamicResource S.Workspace.BackLabel}" Style="{StaticResource Type.Caption}" Margin="6,0,0,0"
                                        VerticalAlignment="Center" />
                         </StackPanel>

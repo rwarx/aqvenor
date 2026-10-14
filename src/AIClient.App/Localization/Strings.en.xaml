@@ -10,7 +10,7 @@
     -->
 
     <!-- ===== Common ===== -->
-    <sys:String x:Key="S.App.Name">Kontur Code</sys:String>
+    <sys:String x:Key="S.App.Name">Aqvenor</sys:String>
     <sys:String x:Key="S.Chat.CopyCode">Copy</sys:String>
     <sys:String x:Key="S.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="S.Common.Save">Save</sys:String>
@@ -21,6 +21,7 @@
     <sys:String x:Key="S.Common.Copy">Copy</sys:String>
     <sys:String x:Key="S.Common.Retry">Retry</sys:String>
     <sys:String x:Key="S.Common.Back">Back</sys:String>
+    <sys:String x:Key="S.Common.Free">Free</sys:String>
     <sys:String x:Key="S.Common.TechnicalDetails">Technical details</sys:String>
 
     <!-- ===== Languages (always shown in their own name) ===== -->
@@ -73,6 +74,7 @@
     <sys:String x:Key="S.Chat.SaveResend">Save &amp; resend</sys:String>
     <sys:String x:Key="S.Chat.Thinking">Thinking…</sys:String>
     <sys:String x:Key="S.Chat.Reasoning">Reasoning</sys:String>
+    <sys:String x:Key="S.Chat.AssistantName">assistant</sys:String>
     <sys:String x:Key="S.Chat.Failed.Title">Request failed</sys:String>
     <sys:String x:Key="S.Chat.Stopped">Generation stopped.</sys:String>
     <sys:String x:Key="S.Chat.Copy.ToolTip">Copy message</sys:String>
@@ -89,6 +91,7 @@
     <sys:String x:Key="S.Chat.Voice.Unavailable">Speech recognition is not available on this system.</sys:String>
     <sys:String x:Key="S.Chat.Voice.Failed">Dictation failed: {0}</sys:String>
     <sys:String x:Key="S.Chat.ShowResult.ToolTip">Show what this returned</sys:String>
+    <sys:String x:Key="S.Tool.Risk.Read">read files</sys:String>
     <sys:String x:Key="S.Tool.Risk.Write">changed files</sys:String>
     <sys:String x:Key="S.Tool.Risk.Execute">ran a program</sys:String>
 
@@ -100,6 +103,12 @@
     <sys:String x:Key="S.Tool.Interrupted">Interrupted</sys:String>
     <sys:String x:Key="S.Tool.Failed">Failed</sys:String>
     <sys:String x:Key="S.Tool.Body.Truncated">... the rest of this result is not shown.</sys:String>
+    <sys:String x:Key="S.Tool.Name.Fallback">tool</sys:String>
+    <sys:String x:Key="S.Usage.In">in</sys:String>
+    <sys:String x:Key="S.Usage.Out">out</sys:String>
+    <sys:String x:Key="S.Time.JustNow">just now</sys:String>
+    <sys:String x:Key="S.Time.MinutesAgo">{0}m ago</sys:String>
+    <sys:String x:Key="S.Time.Yesterday">Yesterday</sys:String>
 
     <!-- ===== Agent button and menu ===== -->
     <sys:String x:Key="S.Agent.Label">Agent</sys:String>
@@ -242,7 +251,6 @@
     <sys:String x:Key="S.Settings.Chat.AutoScroll">Follow the answer as it streams</sys:String>
     <sys:String x:Key="S.Settings.Chat.ShowUsage">Show token usage and generation time</sys:String>
     <sys:String x:Key="S.Settings.Chat.History">History messages per request</sys:String>
-    <sys:String x:Key="S.Settings.Chat.Timeout">Request timeout (seconds)</sys:String>
 
     <sys:String x:Key="S.Settings.Agent.Workspace">Workspace folder</sys:String>
     <sys:String x:Key="S.Settings.Agent.Workspace.None">No folder open. The agent cannot read or change anything until one is.</sys:String>
@@ -269,6 +277,16 @@
     <sys:String x:Key="S.Settings.Programs.Dropped">Left out, because a program is named without a path, a space or an argument: {0}</sys:String>
     <sys:String x:Key="S.Settings.Programs.Empty">Nothing is allowed, so every command will be refused. Add the programs this project is built and tested with.</sys:String>
 
+    <sys:String x:Key="S.Settings.Network">Network</sys:String>
+    <sys:String x:Key="S.Settings.Network.Allow">Allow fetching web pages</sys:String>
+    <sys:String x:Key="S.Settings.Network.Allow.Hint">Let the agent fetch web pages. Off by default; every fetch needs approval. Only this screen changes it - the local API refuses the name.</sys:String>
+    <sys:String x:Key="S.Settings.Network.Timeout">Fetch timeout (seconds)</sys:String>
+    <sys:String x:Key="S.Settings.Network.MaxResponse">Response limit (characters)</sys:String>
+
+    <sys:String x:Key="S.Settings.External">Files outside the project</sys:String>
+    <sys:String x:Key="S.Settings.External.Allow">Allow files outside the project</sys:String>
+    <sys:String x:Key="S.Settings.External.Allow.Hint">Let the agent read and change files outside the open folder. Off by default; reads are asked once per run, every write is asked. Only this screen changes it - the local API refuses the name.</sys:String>
+
     <sys:String x:Key="S.Settings.Storage.MaxAttachment">Max attachment size (KB)</sys:String>
     <sys:String x:Key="S.Settings.Storage.LogLevel">Minimum log level</sys:String>
     <sys:String x:Key="S.Settings.Storage.KeepLogs">Keep logs for (days)</sys:String>
@@ -289,7 +307,7 @@
 
     <!-- ===== First run ===== -->
     <sys:String x:Key="S.FirstRun.Step">Step {0} of 3</sys:String>
-    <sys:String x:Key="S.FirstRun.Welcome.Title">Welcome to AI Client</sys:String>
+    <sys:String x:Key="S.FirstRun.Welcome.Title">Welcome to Aqvenor</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Intro">A desktop client for working with AI models. Bring your own API key from a provider you already use — conversations and settings stay on this machine.</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.Title">What you get</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.1">• Streaming answers with Markdown and syntax highlighting</sys:String>
@@ -361,7 +379,7 @@
     <sys:String x:Key="S.Canvas.Reindex.ToolTip">Walk the project folder again and update the graph</sys:String>
     <sys:String x:Key="S.Canvas.Folder">Folder…</sys:String>
     <sys:String x:Key="S.Canvas.Folder.ToolTip">Choose the project folder to project onto the canvas</sys:String>
-    <sys:String x:Key="S.Canvas.Ask">Ask Kontur AI…</sys:String>
+    <sys:String x:Key="S.Canvas.Ask">Ask AI…</sys:String>
     <sys:String x:Key="S.Canvas.Action.Analyze">Analyze</sys:String>
     <sys:String x:Key="S.Canvas.Action.Explain">Explain</sys:String>
     <sys:String x:Key="S.Canvas.Action.Refactor">Refactor</sys:String>
@@ -369,7 +387,7 @@
     <sys:String x:Key="S.Canvas.Action.GenerateTests">Generate tests</sys:String>
     <sys:String x:Key="S.Canvas.AutoLayout">Auto Layout</sys:String>
     <sys:String x:Key="S.Canvas.AutoLayout.ToolTip">Tidy the cards nobody has arranged by hand</sys:String>
-    <sys:String x:Key="S.Canvas.Empty.Title">Kontur Code</sys:String>
+    <sys:String x:Key="S.Canvas.Empty.Title">Aqvenor</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Graph">Your project has no knowledge graph yet.</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Index">Index Workspace</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Note">The graph will be generated from your project structure.</sys:String>
@@ -455,7 +473,7 @@
     <sys:String x:Key="S.Main.GoBack.ToolTip">Go back (Alt+Left)</sys:String>
     <sys:String x:Key="S.Main.GoForward.ToolTip">Go forward (Alt+Right)</sys:String>
     <sys:String x:Key="S.Main.Palette.ToolTip">Search and commands (Ctrl+Shift+P)</sys:String>
-    <sys:String x:Key="S.Main.Search.Placeholder">Search Kontur Code</sys:String>
+    <sys:String x:Key="S.Main.Search.Placeholder">Search Aqvenor</sys:String>
     <sys:String x:Key="S.Main.Inspector">Inspector</sys:String>
     <sys:String x:Key="S.Main.Inspector.ToolTip">Show or hide Inspector (Ctrl+Alt+I)</sys:String>
     <sys:String x:Key="S.Main.Workspace.OpenFallback">Open a workspace folder</sys:String>
@@ -656,6 +674,7 @@
     <sys:String x:Key="S.Tasks.Kind.Plan">Agent · plan</sys:String>
     <sys:String x:Key="S.Tasks.Kind.Agent">Agent</sys:String>
     <sys:String x:Key="S.Tasks.WaitingForYou">Waiting for you</sys:String>
+    <sys:String x:Key="S.Tasks.Streaming">Writing</sys:String>
     <sys:String x:Key="S.Trajectory.Empty.Title">Nothing ran yet</sys:String>
     <sys:String x:Key="S.Trajectory.Empty.Hint">Messages, tool calls and graph steps will appear here in order.</sys:String>
     <sys:String x:Key="S.Trajectory.Export">Export</sys:String>

@@ -96,9 +96,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private int _maxHistoryMessages;
 
     [ObservableProperty]
-    private int _requestTimeoutSeconds;
-
-    [ObservableProperty]
     private int _maxAttachmentKilobytes;
 
     [ObservableProperty]
@@ -164,6 +161,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private int _maxCommandOutputCharacters;
+
+    /// <summary>Whether the agent may fetch web pages. The only place this is changed.</summary>
+    [ObservableProperty]
+    private bool _allowNetwork;
+
+    [ObservableProperty]
+    private int _fetchTimeoutSeconds;
+
+    [ObservableProperty]
+    private int _maxFetchResponseCharacters;
+
+    /// <summary>Whether the agent may reach files outside the open folder. The only place this is changed.</summary>
+    [ObservableProperty]
+    private bool _allowExternalFiles;
 
     // Custom provider form. Two inputs and an add button: a custom provider is a name
     // and a base URL that speaks the OpenAI wire protocol, nothing else.
@@ -288,7 +299,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             AutoScroll = current.Chat.AutoScroll;
             ShowTokenUsage = current.Chat.ShowTokenUsage;
             MaxHistoryMessages = current.Chat.MaxHistoryMessages;
-            RequestTimeoutSeconds = current.Chat.RequestTimeoutSeconds;
 
             MaxAttachmentKilobytes = (int)(current.Storage.MaxAttachmentBytes / 1024);
             MinimumLogLevel = current.Storage.MinimumLogLevel;
@@ -304,6 +314,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             AllowedCommands = string.Join(", ", current.Agent.AllowedCommands);
             CommandTimeoutSeconds = current.Agent.CommandTimeoutSeconds;
             MaxCommandOutputCharacters = current.Agent.MaxCommandOutputCharacters;
+            AllowNetwork = current.Agent.AllowNetwork;
+            FetchTimeoutSeconds = current.Agent.FetchTimeoutSeconds;
+            MaxFetchResponseCharacters = current.Agent.MaxFetchResponseCharacters;
+            AllowExternalFiles = current.Agent.AllowExternalFiles;
 
             // Asked of the workspace, which has already re-checked the stored folder against the
             // disk: it may have been deleted or moved since it was chosen.
@@ -566,9 +580,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnMaxHistoryMessagesChanged(int value) =>
         Save<ChatSettings>(c => c.MaxHistoryMessages = Math.Clamp(value, 2, 1000));
 
-    partial void OnRequestTimeoutSecondsChanged(int value) =>
-        Save<ChatSettings>(c => c.RequestTimeoutSeconds = Math.Clamp(value, 10, 3600));
-
     partial void OnMaxAttachmentKilobytesChanged(int value) =>
         Save<StorageSettings>(s => s.MaxAttachmentBytes = Math.Clamp(value, 1, 10240) * 1024L);
 
@@ -613,6 +624,18 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnMaxCommandOutputCharactersChanged(int value) =>
         Save<AgentSettings>(a => a.MaxCommandOutputCharacters = Math.Clamp(value, 1_000, 200_000));
+
+    partial void OnAllowNetworkChanged(bool value) =>
+        Save<AgentSettings>(a => a.AllowNetwork = value);
+
+    partial void OnFetchTimeoutSecondsChanged(int value) =>
+        Save<AgentSettings>(a => a.FetchTimeoutSeconds = Math.Clamp(value, 5, 300));
+
+    partial void OnMaxFetchResponseCharactersChanged(int value) =>
+        Save<AgentSettings>(a => a.MaxFetchResponseCharacters = Math.Clamp(value, 1_000, 200_000));
+
+    partial void OnAllowExternalFilesChanged(bool value) =>
+        Save<AgentSettings>(a => a.AllowExternalFiles = value);
 
     /// <summary>
     /// What is wrong with the allowlist as typed, or null when nothing is.

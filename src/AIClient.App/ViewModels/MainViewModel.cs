@@ -535,7 +535,15 @@ public sealed partial class MainViewModel : ObservableObject
     private void OnWorkspaceAskAi(object? sender, string prompt)
     {
         var focus = Workspace.Canvas.Controller.SelectedNodeIds;
-        var context = _graphContext.BuildContext(focus.Count > 0 ? focus : null);
+        var canvas = _settings.Current.Canvas;
+
+        // The share scales the default selection budget (40 nodes at the 0.4 default):
+        // a full share roughly doubles it, a minimal share shrinks the block to titles.
+        // The absolute cap inside the context source still applies on top.
+        var context = _graphContext.BuildContext(
+            focus.Count > 0 ? focus : null,
+            hops: canvas.ContextDepth,
+            maxNodes: Math.Max(1, (int)(100 * canvas.MaxContextShare)));
 
         Chat.Draft = context is null
             ? prompt

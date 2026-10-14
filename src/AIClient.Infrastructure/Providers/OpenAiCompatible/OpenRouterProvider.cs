@@ -2,6 +2,7 @@ using System.Text.Json;
 using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Infrastructure.Providers.OpenAiCompatible;
 
@@ -24,8 +25,9 @@ public sealed class OpenRouterProvider : OpenAiCompatibleProvider
     public OpenRouterProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<OpenRouterProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 
@@ -43,8 +45,8 @@ public sealed class OpenRouterProvider : OpenAiCompatibleProvider
     /// </summary>
     protected override void ConfigureRequest(HttpRequestMessage request)
     {
-        request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/rwarx/kontur-code");
-        request.Headers.TryAddWithoutValidation("X-Title", "Kontur Code");
+        request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/rwarx/aqvenor");
+        request.Headers.TryAddWithoutValidation("X-Title", "Aqvenor");
     }
 
     protected override IReadOnlyList<AIModelDescriptor> ParseModels(JsonDocument document)

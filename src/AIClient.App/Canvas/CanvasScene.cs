@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using AIClient.App.Services;
 using AIClient.Domain.Graph;
 
 namespace AIClient.App.Canvas;
@@ -417,7 +418,7 @@ public sealed class CanvasScene
 
         var title = Text(FitText(node.Title, textWidth), palette.NodeTitleFace, TitleFontSize, palette.NodeTitle);
 
-        var meta = node.Subtitle ?? node.Kind.ToString().ToLowerInvariant();
+        var meta = node.Subtitle ?? GraphWords.Kind(node.Kind);
         var subtitle = string.IsNullOrEmpty(meta)
             ? null
             : Text(FitText(meta, textWidth), palette.NodeMetaFace, MetaFontSize, palette.NodeMeta);
@@ -548,17 +549,8 @@ public sealed class CanvasScene
         context.DrawText(text, new Point(topLeft.X + ((EdgeLabelWidth - text.WidthIncludingTrailingWhitespace) / 2), topLeft.Y + 1));
     }
 
-    /// <summary>The relationship in a form worth showing a person.</summary>
-    private static string EdgeKindLabel(GraphEdgeKind kind) => kind switch
-    {
-        GraphEdgeKind.Contains => "Contains",
-        GraphEdgeKind.Depends => "Depends On",
-        GraphEdgeKind.Calls => "Calls",
-        GraphEdgeKind.Implements => "Implements",
-        GraphEdgeKind.Relates => "Relates To",
-        GraphEdgeKind.Plans => "Plans",
-        _ => kind.ToString(),
-    };
+    /// <summary>The relationship in the interface language, via the string table.</summary>
+    private static string EdgeKindLabel(GraphEdgeKind kind) => GraphWords.Edge(kind);
 
     // ---------------------------------------------------------- hit testing
 

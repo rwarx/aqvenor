@@ -4,6 +4,7 @@ using AIClient.Application.DTOs;
 using AIClient.Application.Interfaces;
 using AIClient.Application.Services;
 using AIClient.Application.Services.Tools;
+using AIClient.Domain.Graph;
 using AIClient.Domain.Interfaces;
 using AIClient.Infrastructure;
 using AIClient.Infrastructure.Configuration;
@@ -428,6 +429,10 @@ public sealed class AgentToolTests : IAsyncLifetime
                 var wanted when wanted == typeof(IProcessRunner) => _runner,
                 var wanted when wanted == typeof(IGitService) => new StubGitService(),
 
+                // The canvas tools draw on the shared graph; nothing here executes them, so an
+                // empty graph that applies nothing is all their constructors need.
+                var wanted when wanted == typeof(IGraphService) => new StubGraphService(),
+
                 // Refusing stubs, for the reason each one documents: a tool that gates on a setting or
                 // on a path is only distinguishable from a broken one if the thing behind it says no.
                 var wanted when wanted == typeof(IExternalFileService) => new StubExternalFileService(),
@@ -533,5 +538,28 @@ public sealed class AgentToolTests : IAsyncLifetime
         public Task<GitResult> PushAsync(string? remote, string? branch, bool setUpstream, CancellationToken cancellationToken) => Task.FromResult(GitResult.Ok());
         public Task<GitResult> PullAsync(string? remote, string? branch, CancellationToken cancellationToken) => Task.FromResult(GitResult.Ok());
         public Task<GitResult> FetchAsync(string? remote, CancellationToken cancellationToken) => Task.FromResult(GitResult.Ok());
+    }
+
+    private sealed class StubGraphService : IGraphService
+    {
+        public GraphSnapshot Current => GraphSnapshot.Empty;
+        public event EventHandler<GraphSnapshotChangedEventArgs>? SnapshotChanged { add { } remove { } }
+        public IReadOnlyList<GraphTimelineEntry> Timeline => [];
+        public event EventHandler? TimelineChanged { add { } remove { } }
+        public bool CanUndo => false;
+        public bool CanRedo => false;
+
+        private static Task<GraphMutationResult> Empty() => Task.FromResult(new GraphMutationResult
+        {
+            Snapshot = GraphSnapshot.Empty,
+            Applied = [],
+            Rejected = [],
+        });
+
+        public Task<GraphMutationResult> ApplyAsync(GraphChangeSet changeSet, CancellationToken cancellationToken = default) => Empty();
+        public Task<GraphMutationResult> UndoAsync(CancellationToken cancellationToken = default) => Empty();
+        public Task<GraphMutationResult> RedoAsync(CancellationToken cancellationToken = default) => Empty();
+        public Task SaveAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(GraphSnapshot.Empty);
     }
 }

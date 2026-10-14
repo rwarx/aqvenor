@@ -65,6 +65,19 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         });
 
+    /// <summary>
+    /// Hangs the request until the caller's token fires. For timeout tests: the provider
+    /// under test must give up first, and classify giving up as a timeout rather than a
+    /// user pressing Stop.
+    /// </summary>
+    public FakeHttpMessageHandler Hang()
+    {
+        _hang = true;
+        return this;
+    }
+
+    private volatile bool _hang;
+
     /// <summary>Queues a transport failure, as an offline machine produces.</summary>
     public FakeHttpMessageHandler RespondThrow(Exception exception) =>
         Respond(_ => throw exception);
@@ -83,10 +96,16 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
             request.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value), StringComparer.OrdinalIgnoreCase),
             body));
 
-        if (_responders.Count == 0)
+        if (_responders.Count == 0 && !_hang)
         {
             throw new InvalidOperationException(
                 $"No response was queued for {request.Method} {request.RequestUri}.");
+        }
+
+        if (_hang)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("Unreachable: the delay above only ends by cancellation.");
         }
 
         return _responders.Dequeue()(request);

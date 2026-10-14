@@ -39,7 +39,11 @@ builder.Services
         _ => { });
 builder.Services.AddAuthorization();
 
-builder.Services.Configure<CorsOptions>(SidecarCors.Configure);
+// AddCors (not just Configure<CorsOptions>) so UseCors can resolve ICorsService:
+// Configure alone registers the policy options but not the CORS services, and the
+// UseCors middleware fails to construct at startup without them. AddCors(action)
+// registers the services and applies the same policy configuration.
+builder.Services.AddCors(SidecarCors.Configure);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -66,7 +70,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
-    logger.LogInformation("Kontur Code sidecar starting.");
+    logger.LogInformation("Aqvenor sidecar starting.");
 
     logger.LogInformation(
         "Sidecar authentication token {Source}.",
@@ -83,7 +87,7 @@ using (var scope = app.Services.CreateScope())
     _ = services.GetRequiredService<WorkspaceGraphIndexer>();
     await services.GetRequiredService<GraphPersistence>().InitializeAsync().ConfigureAwait(false);
 
-    logger.LogInformation("Kontur Code sidecar ready.");
+    logger.LogInformation("Aqvenor sidecar ready.");
 }
 
 RunEndpoints.Map(app);

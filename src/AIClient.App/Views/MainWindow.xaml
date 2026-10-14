@@ -5,7 +5,7 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                   xmlns:views="clr-namespace:AIClient.App.Views"
-                  xmlns:kontur="clr-namespace:AIClient.App.Controls"
+                  xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
                   xmlns:motion="clr-namespace:AIClient.App.Controls"
                   xmlns:vm="clr-namespace:AIClient.App.ViewModels"
                   xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -81,11 +81,11 @@
                 -->
                 <ui:TitleBar.Header>
                     <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
-                        <Button Style="{StaticResource KcButtonTool}" Width="26" Height="26"
+                        <Button Style="{StaticResource AqButtonTool}" Width="26" Height="26"
                                 Margin="0,0,8,0"
                                 Command="{Binding ToggleSidebarCommand}"
                                 ToolTip="{DynamicResource S.Main.ToggleSidebar.ToolTip}">
-                            <kontur:MorphIcon First="CollapsePanel" Second="ExpandPanel"
+                            <aqvenor:MorphIcon First="CollapsePanel" Second="ExpandPanel"
                                               IsSecond="{Binding IsSidebarVisible, Converter={StaticResource InverseBool}}"
                                               Width="13" Height="13" />
                         </Button>
@@ -101,12 +101,12 @@
                         <TextBlock Text="{DynamicResource S.App.Name}" Style="{StaticResource Type.Title}" Margin="9,0,0,0"
                                    VerticalAlignment="Center" />
 
-                        <Button Style="{StaticResource KcButtonGhost}" Margin="16,0,0,0"
+                        <Button Style="{StaticResource AqButtonGhost}" Margin="16,0,0,0"
                                 Padding="9,4" MinHeight="26"
                                 ToolTip="{Binding Workspace.WorkspaceRoot, FallbackValue={loc:Loc S.Main.Workspace.OpenFallback}}"
                                 Command="{Binding Workspace.OpenWorkspaceCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Folder" Width="13" Height="13"
+                                <aqvenor:AqvenorIcon Kind="Folder" Width="13" Height="13"
                                                    Foreground="{DynamicResource Brush.TextSecondary}" />
                                 <TextBlock Text="{Binding Workspace.WorkspaceName, FallbackValue={loc:Loc S.Main.Workspace.None}}"
                                            Style="{StaticResource Type.Caption}" Margin="7,0,0,0" MaxWidth="160"
@@ -137,16 +137,16 @@
                 -->
                 <ui:TitleBar.CenterContent>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Style="{StaticResource KcButtonTool}" Width="26" Height="26"
+                        <Button Style="{StaticResource AqButtonTool}" Width="26" Height="26"
                                 Command="{Binding GoBackCommand}" ToolTip="{DynamicResource S.Main.GoBack.ToolTip}">
-                            <kontur:KonturIcon Kind="ChevronLeft" Width="13" Height="13" GlyphThickness="2.4" />
+                            <aqvenor:AqvenorIcon Kind="ChevronLeft" Width="13" Height="13" GlyphThickness="2.4" />
                         </Button>
-                        <Button Style="{StaticResource KcButtonTool}" Width="26" Height="26" Margin="1,0,0,0"
+                        <Button Style="{StaticResource AqButtonTool}" Width="26" Height="26" Margin="1,0,0,0"
                                 Command="{Binding GoForwardCommand}" ToolTip="{DynamicResource S.Main.GoForward.ToolTip}">
-                            <kontur:KonturIcon Kind="ChevronRight" Width="13" Height="13" GlyphThickness="2.4" />
+                            <aqvenor:AqvenorIcon Kind="ChevronRight" Width="13" Height="13" GlyphThickness="2.4" />
                         </Button>
 
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="0" Margin="8,0,0,0"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="0" Margin="8,0,0,0"
                                 HorizontalContentAlignment="Stretch"
                                 Command="{Binding ToggleCommandPaletteCommand}"
                                 ToolTip="{DynamicResource S.Main.Palette.ToolTip}">
@@ -161,7 +161,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <kontur:KonturIcon Grid.Column="0" Kind="Search" Width="13" Height="13"
+                                    <aqvenor:AqvenorIcon Grid.Column="0" Kind="Search" Width="13" Height="13"
                                                        VerticalAlignment="Center"
                                                        Foreground="{DynamicResource Brush.TextMuted}" />
                                     <TextBlock Grid.Column="1" Text="{DynamicResource S.Main.Search.Placeholder}"
@@ -180,39 +180,39 @@
                 <!-- Model chip: the active model, ending just before the caption buttons. -->
                 <ui:TitleBar.TrailingContent>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="8,4" MinHeight="26"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="8,4" MinHeight="26"
                                 Margin="0,0,4,0"                                 Command="{Binding ToggleContextPanelCommand}"
                                 ToolTip="{DynamicResource S.Main.Inspector.ToolTip}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:MorphIcon First="ExpandPanel" Second="CollapsePanel"
+                                <aqvenor:MorphIcon First="ExpandPanel" Second="CollapsePanel"
                                                   IsSecond="{Binding IsContextPanelVisible}"
                                                   Width="13" Height="13">
-                                    <kontur:MorphIcon.Style>
-                                        <Style TargetType="kontur:MorphIcon"
-                                               BasedOn="{StaticResource {x:Type kontur:MorphIcon}}">
+                                    <aqvenor:MorphIcon.Style>
+                                        <Style TargetType="aqvenor:MorphIcon"
+                                               BasedOn="{StaticResource {x:Type aqvenor:MorphIcon}}">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsContextPanelVisible}" Value="True">
                                                     <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </kontur:MorphIcon.Style>
-                                </kontur:MorphIcon>
+                                    </aqvenor:MorphIcon.Style>
+                                </aqvenor:MorphIcon>
                                 <TextBlock Text="{DynamicResource S.Main.Inspector}" Style="{StaticResource Type.Caption}" Margin="6,0,0,0"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
-                        <Button x:Name="ModelButton" Style="{StaticResource KcButtonGhost}" Padding="9,4"
+                        <Button x:Name="ModelButton" Style="{StaticResource AqButtonGhost}" Padding="9,4"
                                 MinHeight="26" Margin="0,0,8,0" VerticalAlignment="Center"
                                 Click="OnModelButtonClick" ToolTip="{DynamicResource S.Main.ChangeModel.ToolTip}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Models" Width="13" Height="13"
+                                <aqvenor:AqvenorIcon Kind="Models" Width="13" Height="13"
                                                    Foreground="{DynamicResource Brush.AccentText}" />
                                 <TextBlock Text="{Binding Chat.SelectedModel.Name, FallbackValue={loc:Loc S.Main.SelectModel}, TargetNullValue={loc:Loc S.Main.SelectModel}}"
                                            Style="{StaticResource Type.Caption}" MaxWidth="180" Margin="7,0,0,0"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <kontur:KonturIcon Kind="ChevronDown" Width="10" Height="10" GlyphThickness="2.7"
+                                <aqvenor:AqvenorIcon Kind="ChevronDown" Width="10" Height="10" GlyphThickness="2.7"
                                                    Foreground="{DynamicResource Brush.TextMuted}" Margin="6,1,0,0" />
                             </StackPanel>
                         </Button>
@@ -234,12 +234,12 @@
             <views:SidebarView x:Name="Sidebar" Grid.Column="0"
                                Visibility="{Binding IsSidebarVisible, Converter={StaticResource BoolToVisibility}}" />
 
-            <GridSplitter Grid.Column="1" Style="{StaticResource KcSplitV}"
+            <GridSplitter Grid.Column="1" Style="{StaticResource AqSplitV}"
                           Visibility="{Binding IsSidebarVisible, Converter={StaticResource BoolToVisibility}}" />
 
             <views:WorkspaceView Grid.Column="2" x:Name="WorkspaceHost" />
 
-            <GridSplitter x:Name="ContextSplitter" Grid.Column="3" Style="{StaticResource KcSplitV}"
+            <GridSplitter x:Name="ContextSplitter" Grid.Column="3" Style="{StaticResource AqSplitV}"
                           Visibility="{Binding IsContextPanelVisible, Converter={StaticResource BoolToVisibility}}" />
 
             <views:ContextPanelView x:Name="ContextPanel" Grid.Column="4"

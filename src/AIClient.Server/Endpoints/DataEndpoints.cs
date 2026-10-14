@@ -360,13 +360,40 @@ public static class DataEndpoints
         {
             try
             {
-                await ApplySectionAsync(s, section, body, ct).ConfigureAwait(false);
+                var refused = await ApplySectionAsync(s, section, body, ct).ConfigureAwait(false);
+                return Results.Ok(new { settings = s.Current, refused });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+        g.MapPost("/settings/{section}/reset", async (string section, ISettingsService s, CancellationToken ct) =>
+        {
+            try
+            {
+                await ResetSectionAsync(s, section, ct).ConfigureAwait(false);
                 return Results.Ok(s.Current);
             }
             catch (Exception ex)
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+        g.MapGet("/meta", (IAppPaths paths) =>
+        {
+            var informational = typeof(DataEndpoints).Assembly
+                .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), inherit: false)
+                .OfType<AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion;
+            return Results.Ok(new
+            {
+                appVersion = informational ?? "0.0.0",
+                dataDirectory = paths.DataDirectory,
+                databasePath = paths.DatabasePath,
+                logsDirectory = paths.LogsDirectory,
+                attachmentsDirectory = paths.AttachmentsDirectory,
+            });
         });
 
         // ----- export -----
@@ -495,7 +522,7 @@ public static class DataEndpoints
     private sealed record GraphChangeIn(
         string Kind, string? NodeId, GraphNodeIn? Node, string? Title, string? Subtitle,
         string? Detail, string? NodeKind, double? X, double? Y, string? EdgeId,
-        GraphEdgeIn? Edge, string? EdgeKind, string? Label);
+        GraphEdgeIn? Edge, string? EdgeKind, string? Label, string? Status);
     private sealed record GraphApplyRequest(string? Title, string? Description, IReadOnlyList<GraphChangeIn> Changes);
 
     private sealed record CheckpointCreateRequest(
@@ -517,6 +544,7 @@ public static class DataEndpoints
             y = n.Y,
             width = n.Width,
             height = n.Height,
+            status = n.Status.ToString(),
         }),
         edges = s.Edges.Select(e => new
         {
@@ -550,6 +578,8 @@ public static class DataEndpoints
                 c.NodeKind is { } k ? ParseKind<GraphNodeKind?>(k, null) : null),
             "move-node" when c.NodeId is { } id && c.X is { } x && c.Y is { } y
                 => new MoveNode(id, x, y),
+            "set-node-status" when c.NodeId is { } id
+                => new SetNodeStatus(id, ParseKind<GraphNodeState>(c.Status ?? "None", GraphNodeState.None)),
             "remove-node" when c.NodeId is { } id => new RemoveNode(id),
             "add-edge" when c.Edge is { } e => new AddEdge(new GraphEdge
             {
@@ -595,7 +625,12 @@ public static class DataEndpoints
         ["canvas"] = s => s.Canvas,
     };
 
-    private static async Task ApplySectionAsync(
+    /// <summary>
+    /// Applies the request body's properties to a section. Returns the property
+    /// names that were refused by the server-owned guard, so the caller can tell
+    /// "saved" apart from "silently ignored" rather than discovering it later.
+    /// </summary>
+    private static async Task<IReadOnlyList<string>> ApplySectionAsync(
         ISettingsService settings, string section, JsonElement body, CancellationToken ct)
     {
         if (!Sections.TryGetValue(section, out var get))
@@ -629,17 +664,63 @@ public static class DataEndpoints
         var apply = typeof(DataEndpoints).GetMethod(
             nameof(ApplyPatched), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(sectionType);
-        var task = (Task?)apply.Invoke(null, [settings, patched, present, ct]);
+        var task = apply.Invoke(null, [settings, patched, present, ct]) as Task<IReadOnlyList<string>>;
+        if (task is not null)
+        {
+            return await task.ConfigureAwait(false);
+        }
+
+        return [];
+    }
+
+    /// <summary>Resets one section to its defaults. Unknown sections are rejected.</summary>
+    private static async Task ResetSectionAsync(ISettingsService settings, string section, CancellationToken ct)
+    {
+        var reset = typeof(DataEndpoints).GetMethod(
+            nameof(ResetSection), BindingFlags.NonPublic | BindingFlags.Static)!
+            .MakeGenericMethod(SectionType(section));
+        var task = reset.Invoke(null, [settings, ct]) as Task;
         if (task is not null)
         {
             await task.ConfigureAwait(false);
         }
     }
 
-    private static async Task ApplyPatched<TSection>(
+    /// <summary>Section CLR type for a section name; throws for anything else.</summary>
+    private static readonly Dictionary<string, Type> SectionTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["general"] = typeof(GeneralSettings),
+        ["appearance"] = typeof(AppearanceSettings),
+        ["chat"] = typeof(ChatSettings),
+        ["storage"] = typeof(StorageSettings),
+        ["agent"] = typeof(AgentSettings),
+        ["canvas"] = typeof(CanvasSettings),
+    };
+
+    private static Type SectionType(string section)
+    {
+        if (!SectionTypes.TryGetValue(section, out var type))
+        {
+            throw new ArgumentException($"Unknown settings section '{section}'.");
+        }
+
+        return type;
+    }
+
+    private static Task ResetSection<TSection>(ISettingsService settings, CancellationToken ct)
+        where TSection : class, new() =>
+        settings.ResetAsync<TSection>(ct);
+
+    private static async Task<IReadOnlyList<string>> ApplyPatched<TSection>(
         ISettingsService settings, TSection patched, HashSet<string> present, CancellationToken ct)
         where TSection : class
     {
+        var refused = typeof(TSection).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.CanWrite && present.Contains(p.Name))
+            .Where(p => ServerOwnedSettings.Contains(p.Name))
+            .Select(p => p.Name)
+            .ToList();
+
         var props = typeof(TSection).GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanRead && p.CanWrite && present.Contains(p.Name))
 
@@ -654,7 +735,7 @@ public static class DataEndpoints
 
         if (props.Count == 0)
         {
-            return;
+            return refused;
         }
 
         var values = props.ToDictionary(p => p, p => p.GetValue(patched));
@@ -665,6 +746,8 @@ public static class DataEndpoints
                 prop.SetValue(target, value);
             }
         }, ct).ConfigureAwait(false);
+
+        return refused;
     }
 
     /// <summary>

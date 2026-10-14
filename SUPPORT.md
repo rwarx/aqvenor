@@ -4,11 +4,11 @@
 
 | You want to… | Go to |
 | --- | --- |
-| Report a bug | <https://github.com/rwarx/kontur-code/issues> |
-| Ask how something works | <https://github.com/rwarx/kontur-code/discussions> |
+| Report a bug | <https://github.com/rwarx/aqvenor/issues> |
+| Ask how something works | <https://github.com/rwarx/aqvenor/discussions> |
 | Ask whether something is a bug or intended | Discussions — read [ARCHITECTURE.md](ARCHITECTURE.md) first, it may already answer it |
 | Report a vulnerability | **Do not open an issue.** See [SECURITY.md](SECURITY.md) |
-| Report a licence or attribution problem | <https://github.com/rwarx/kontur-code/issues> — these are treated as bugs |
+| Report a licence or attribution problem | <https://github.com/rwarx/aqvenor/issues> — these are treated as bugs |
 | Understand your data | [PRIVACY.md](PRIVACY.md) |
 
 Before opening anything: **[DEVELOPMENT.md § Troubleshooting](DEVELOPMENT.md#troubleshooting)**

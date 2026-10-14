@@ -2,6 +2,7 @@ using System.Text.Json;
 using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Infrastructure.Providers.OpenAiCompatible;
 
@@ -27,8 +28,9 @@ public sealed class CustomOpenAiCompatibleProvider : OpenAiCompatibleProvider
         string baseUrl,
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<CustomOpenAiCompatibleProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);

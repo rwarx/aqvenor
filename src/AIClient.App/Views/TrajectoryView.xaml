@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:motion="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -32,15 +32,15 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <kontur:KonturIcon Grid.Column="0" Kind="History" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Grid.Column="0" Kind="History" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.AccentText}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource S.Mode.Title.Trajectory}" Style="{StaticResource Type.Section}"
                            Margin="9,0,0,0" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Style="{StaticResource KcButtonGhost}" Padding="8,4" MinHeight="26"
+                <Button Grid.Column="2" Style="{StaticResource AqButtonGhost}" Padding="8,4" MinHeight="26"
                         Command="{Binding ExportTranscriptCommand}"
                         ToolTip="{DynamicResource S.Trajectory.Export.ToolTip}">
                     <StackPanel Orientation="Horizontal">
-                        <kontur:KonturIcon Kind="Export" Width="12" Height="12" />
+                        <aqvenor:AqvenorIcon Kind="Export" Width="12" Height="12" />
                         <TextBlock Text="{DynamicResource S.Trajectory.Export}" Style="{StaticResource Type.Caption}"
                                    Margin="6,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
@@ -57,29 +57,29 @@
                     <ColumnDefinition Width="*" MaxWidth="260" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:TrajectoryFilter.All}">
                         <TextBlock Text="{DynamicResource S.Trajectory.Filter.All}" Style="{StaticResource Type.Caption}" />
                     </Button>
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:TrajectoryFilter.Agent}">
                         <TextBlock Text="{DynamicResource S.Trajectory.Filter.Agent}" Style="{StaticResource Type.Caption}" />
                     </Button>
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:TrajectoryFilter.Tools}">
                         <TextBlock Text="{DynamicResource S.Trajectory.Filter.Tools}" Style="{StaticResource Type.Caption}" />
                     </Button>
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,3" MinHeight="24" Margin="0,0,4,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:TrajectoryFilter.Graph}">
                         <TextBlock Text="{DynamicResource S.Trajectory.Filter.Graph}" Style="{StaticResource Type.Caption}" />
                     </Button>
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="8,3" MinHeight="24"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="8,3" MinHeight="24"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:TrajectoryFilter.Issues}">
                         <TextBlock Text="{DynamicResource S.Trajectory.Filter.Issues}" Style="{StaticResource Type.Caption}" />
                     </Button>
                 </StackPanel>
                 <TextBox Grid.Column="1" Margin="12,0,0,0" MinHeight="28" VerticalContentAlignment="Center"
-                         Style="{StaticResource KcInputPlaceholder}"
+                         Style="{StaticResource AqInputPlaceholder}"
                          Tag="{DynamicResource S.Trajectory.Filter.Placeholder}"
                          Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
@@ -154,7 +154,7 @@
         <!-- Empty: nothing ran yet, and the surface says so without pretending otherwise. -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,30"
                     Visibility="{Binding HasRows, Converter={StaticResource InverseBoolToVisibility}}">
-            <kontur:KonturIcon Kind="History" Width="34" Height="34" GlyphThickness="1.65"
+            <aqvenor:AqvenorIcon Kind="History" Width="34" Height="34" GlyphThickness="1.65"
                                Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
             <TextBlock Text="{DynamicResource S.Trajectory.Empty.Title}" Style="{StaticResource Type.Section}"
                        HorizontalAlignment="Center" Margin="0,10,0,0" />

@@ -731,6 +731,7 @@ public sealed class AgentService : IAgentService
                         _settings.Current.Agent.AllowExternalFiles),
                     ContextWindow = model?.ContextWindow,
                     ReservedOutputTokens = chat.ReservedOutputTokens,
+                    MaxHistoryTurns = chat.MaxHistoryMessages,
                 },
                 run.RunToken).ConfigureAwait(false);
 

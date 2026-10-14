@@ -1,5 +1,5 @@
 <!--
-    Kontur Code design system — spacing and radius tokens.
+    Aqvenor design system — spacing and radius tokens.
 
     Space is a 4px grid. Views compose from these values instead of inventing margins,
     which is what keeps ten different panels from feeling like ten different apps.

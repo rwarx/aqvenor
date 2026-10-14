@@ -1,8 +1,8 @@
 # Security Policy
 
-**Applies to Kontur Code `0.1.0-alpha` and every later build.**
+**Applies to Aqvenor `0.1.0-alpha` and every later build.**
 
-Kontur Code runs a language-model agent with the ability to read and write files
+Aqvenor runs a language-model agent with the ability to read and write files
 and to run programs. That is the product. A security document for this project is
 therefore not a list of hardening achievements — it is mostly a description of what
 the agent can reach, what stops it, and **what does not**.
@@ -14,7 +14,7 @@ the agent can reach, what stops it, and **what does not**.
 **Do not open a public issue for a security problem.**
 
 Use GitHub's private reporting on this repository:
-**<https://github.com/rwarx/kontur-code/security/advisories/new>**
+**<https://github.com/rwarx/aqvenor/security/advisories/new>**
 
 If that is unavailable to you, open a regular issue that says only *"security
 report, please open a private channel"* — with **no technical detail** — and wait.
@@ -94,7 +94,11 @@ CORS, read the response. So:
 - **Settings that reduce containment cannot be written over HTTP.** The command
   allowlist, the command/network/external-file switches and the workspace root are
   refused by name on the settings route — otherwise a caller with the token could
-  turn off the guard rails and then answer its own approval prompts.
+  turn off the guard rails and then answer its own approval prompts. The refusal is
+  explicit: the PUT response carries a `refused` list, and the Electron settings
+  surface renders those switches locked (disabled, live values) instead of editable
+  toggles — an editable toggle that the server silently ignores would be worse than
+  none. Change them in the WPF host's Settings window, which is the only writer.
 - **`/api/ai/complete` is clamped**: prompt length, system length, temperature and
   output tokens are bounded, so even a caller legitimately inside the app cannot
   spend unbounded credit through it.
@@ -116,7 +120,7 @@ CORS, read the response. So:
   packaged build. The policy is injected at runtime from the loopback address
   actually in use, so pointing the app at a different port cannot silently produce
   an app that loads no data.
-- **`kontur:readFileLocal` is confined** to folders the user picked through the OS
+- **`aqvenor:readFileLocal` is confined** to folders the user picked through the OS
   dialog in this session, refuses symlinks, and is capped at 8 MB. It was an
   arbitrary-path read with no cap before this release.
 
@@ -205,6 +209,6 @@ public issue.
 
 ---
 
-*This document describes Kontur Code `0.1.0-alpha`. It is written by the project's
+*This document describes Aqvenor `0.1.0-alpha`. It is written by the project's
 contributors; treat the "protected" sections as claims about code that has tests
 behind them, and the "known gaps" section as the honest remainder.*

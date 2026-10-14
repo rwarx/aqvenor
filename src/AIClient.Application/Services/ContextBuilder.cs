@@ -45,12 +45,27 @@ public sealed class ContextBuilder : IContextBuilder
         }
 
         var history = SelectHistory(conversation.Messages, request.UpToMessageId);
+        var budget = CalculateBudget(request);
+
+        var dropped = 0;
+
+        // No window to trim against: cap the turns up front instead of sending an
+        // unbounded history to a model whose limit nobody reported.
+        if (budget is null)
+        {
+            var keep = Math.Max(1, request.MaxHistoryTurns);
+            if (history.Count > keep)
+            {
+                dropped = history.Count - keep;
+                history = history.TakeLast(keep).ToList();
+            }
+        }
+
         var blocks = Group([.. history.Select(ToTurn)]);
 
         var systemPrompt = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : request.SystemPrompt.Trim();
-        var budget = CalculateBudget(request);
 
-        var dropped = budget is null ? 0 : Trim(blocks, systemPrompt, budget.Value);
+        dropped += budget is null ? 0 : Trim(blocks, systemPrompt, budget.Value);
 
         var turns = blocks.SelectMany(block => block).ToList();
 

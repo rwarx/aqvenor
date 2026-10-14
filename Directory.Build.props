@@ -11,8 +11,8 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <InvariantGlobalization>false</InvariantGlobalization>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <Product>Kontur Code</Product>
-    <Company>Kontur Code</Company>
+    <Product>Aqvenor</Product>
+    <Company>Aqvenor</Company>
 
     <!--
       One version, and it must agree with electron/package.json and with the tag on the release.

@@ -594,7 +594,8 @@ public sealed class ContextBuilderTests : IAsyncLifetime
         string? systemPrompt = null,
         int? contextWindow = null,
         int reservedOutputTokens = 1024,
-        Guid? upToMessageId = null) =>
+        Guid? upToMessageId = null,
+        int maxHistoryTurns = 100) =>
         _builder.BuildAsync(
             new ContextBuildRequest
             {
@@ -602,6 +603,7 @@ public sealed class ContextBuilderTests : IAsyncLifetime
                 SystemPrompt = systemPrompt,
                 ContextWindow = contextWindow,
                 ReservedOutputTokens = reservedOutputTokens,
+                MaxHistoryTurns = maxHistoryTurns,
                 UpToMessageId = upToMessageId,
             },
             TestContext.Current.CancellationToken);
@@ -633,4 +635,31 @@ public sealed class ContextBuilderTests : IAsyncLifetime
 
     private static AIToolCall Call(string id, string name, string argumentsJson = "{}") =>
         new(id, name, argumentsJson);
+
+    [Fact]
+    public async Task Without_a_known_window_the_history_is_capped_up_front()
+    {
+        // A model whose limit nobody reported would otherwise be sent the whole
+        // unbounded history. The cap keeps the tail; the question stays answerable.
+        var chat = await NewChatAsync(
+            User("one"), Assistant("two"), User("three"), Assistant("four"), User("five"));
+
+        var result = await BuildAsync(chat, contextWindow: null, maxHistoryTurns: 3);
+
+        Assert.Equal(["three", "four", "five"], result.Messages.Select(m => m.Content));
+        Assert.Equal(2, result.DroppedMessageCount);
+    }
+
+    [Fact]
+    public async Task With_a_known_window_the_history_cap_does_not_shrink_the_prompt()
+    {
+        // The cap is only the no-window fallback. A known window trims by budget,
+        // and a small history fits, so everything goes out.
+        var chat = await NewChatAsync(User("one"), Assistant("two"), User("three"));
+
+        var result = await BuildAsync(chat, contextWindow: 100_000, maxHistoryTurns: 2);
+
+        Assert.Equal(["one", "two", "three"], result.Messages.Select(m => m.Content));
+        Assert.Equal(0, result.DroppedMessageCount);
+    }
 }

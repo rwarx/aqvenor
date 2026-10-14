@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
               xmlns:canvas="clr-namespace:AIClient.App.Canvas"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -34,53 +34,53 @@
                 Padding="3,2"
                 Effect="{StaticResource Shadow.Subtle}">
             <StackPanel Orientation="Horizontal">
-                <RadioButton Style="{StaticResource KcToggle}" GroupName="CanvasTool"
+                <RadioButton Style="{StaticResource AqToggle}" GroupName="CanvasTool"
                              Width="30" Height="28" Padding="0"
                              IsChecked="{Binding Canvas.IsSelectTool, Mode=OneWay}"
                              Command="{Binding Canvas.UseSelectToolCommand}"
                              ToolTip="{DynamicResource S.Canvas.Tool.Select.Tip}">
-                    <kontur:KonturIcon Kind="Pointer" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="Pointer" Width="14" Height="14" />
                 </RadioButton>
-                <RadioButton Style="{StaticResource KcToggle}" GroupName="CanvasTool"
+                <RadioButton Style="{StaticResource AqToggle}" GroupName="CanvasTool"
                              Width="30" Height="28" Padding="0"
                              IsChecked="{Binding Canvas.IsPanTool, Mode=OneWay}"
                              Command="{Binding Canvas.UsePanToolCommand}"
                              ToolTip="{DynamicResource S.Canvas.Tool.Pan.Tip}">
-                    <kontur:KonturIcon Kind="Hand" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="Hand" Width="14" Height="14" />
                 </RadioButton>
                 <Separator Margin="2,4" />
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.ZoomOutCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.ZoomOutCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.ZoomOut.Tip}">
-                    <kontur:KonturIcon Kind="ZoomOut" Width="13" Height="13" />
+                    <aqvenor:AqvenorIcon Kind="ZoomOut" Width="13" Height="13" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.ZoomResetCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.ZoomResetCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.ZoomReset.Tip}">
                     <TextBlock Text="{Binding Canvas.ZoomPercent, StringFormat={}{0:0}%}"
                                Style="{StaticResource Type.Metadata}" MinWidth="38"
                                HorizontalAlignment="Center" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.ZoomInCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.ZoomInCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.ZoomIn.Tip}">
-                    <kontur:KonturIcon Kind="ZoomIn" Width="13" Height="13" />
+                    <aqvenor:AqvenorIcon Kind="ZoomIn" Width="13" Height="13" />
                 </Button>
                 <Separator Margin="2,4" />
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.FocusSelectionCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.FocusSelectionCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.Focus.Tip}">
-                    <kontur:KonturIcon Kind="Focus" Width="13" Height="13" />
+                    <aqvenor:AqvenorIcon Kind="Focus" Width="13" Height="13" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.FitCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.FitCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.Fit.Tip}">
-                    <kontur:KonturIcon Kind="Fit" Width="13" Height="13" />
+                    <aqvenor:AqvenorIcon Kind="Fit" Width="13" Height="13" />
                 </Button>
                 <Separator Margin="2,4" />
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.AutoLayoutCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.AutoLayoutCommand}"
                         ToolTip="{DynamicResource S.Canvas.AutoLayout}">
-                    <kontur:KonturIcon Kind="AutoLayout" Width="14" Height="14" />
+                    <aqvenor:AqvenorIcon Kind="AutoLayout" Width="14" Height="14" />
                 </Button>
                 <Separator Margin="2,4" />
-                <Button Style="{StaticResource KcButtonTool}" Command="{Binding Canvas.AskAiCommand}"
+                <Button Style="{StaticResource AqButtonTool}" Command="{Binding Canvas.AskAiCommand}"
                         ToolTip="{DynamicResource S.Canvas.Tool.Ask.Tip}">
-                    <kontur:KonturIcon Kind="Sparkle" Width="13" Height="13"
+                    <aqvenor:AqvenorIcon Kind="Sparkle" Width="13" Height="13"
                                        Foreground="{DynamicResource Brush.AccentText}" />
                 </Button>
             </StackPanel>
@@ -131,7 +131,7 @@
                 Padding="8,4"
                 Visibility="{Binding IsIndexing, Converter={StaticResource BoolToVisibility}}">
             <StackPanel Orientation="Horizontal">
-                <kontur:KonturIcon Kind="Refresh" Width="12" Height="12"
+                <aqvenor:AqvenorIcon Kind="Refresh" Width="12" Height="12"
                                    Foreground="{DynamicResource Brush.AccentText}"
                                    motion:Motion.Spin="True" />
                 <TextBlock Text="{DynamicResource S.Canvas.Status.IndexingWorkspace}" Style="{StaticResource Type.Metadata}" Margin="7,0,0,0" />
@@ -153,7 +153,7 @@
                 Visibility="{Binding Canvas.NodeCount, Converter={StaticResource NodeCountToVisibility}, ConverterParameter=invert}">
             <StackPanel MaxWidth="380">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-                    <kontur:KonturIcon Kind="Canvas" Width="34" Height="34" GlyphThickness="1.65"
+                    <aqvenor:AqvenorIcon Kind="Canvas" Width="34" Height="34" GlyphThickness="1.65"
                                        Foreground="{DynamicResource Brush.Accent}" />
                 </StackPanel>
                 <TextBlock Text="{DynamicResource S.Canvas.Blank.Title}"
@@ -163,14 +163,14 @@
                            Text="{DynamicResource S.Canvas.Blank.Hint}" />
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
-                    <Button Style="{StaticResource KcButtonPrimary}" Padding="14,8"
+                    <Button Style="{StaticResource AqButtonPrimary}" Padding="14,8"
                             Command="{Binding OpenWorkspaceCommand}" MinWidth="150">
                         <TextBlock Text="{DynamicResource S.Canvas.Blank.Open}" FontWeight="SemiBold" />
                     </Button>
-                    <Button Style="{StaticResource KcButtonGhost}" Padding="14,8" Margin="8,0,0,0" MinWidth="150"
+                    <Button Style="{StaticResource AqButtonGhost}" Padding="14,8" Margin="8,0,0,0" MinWidth="150"
                             Command="{Binding AskForPlanCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="Sparkle" Width="13" Height="13" />
+                            <aqvenor:AqvenorIcon Kind="Sparkle" Width="13" Height="13" />
                             <TextBlock Text="{DynamicResource S.Canvas.Blank.AskPlan}" Style="{StaticResource Type.Caption}" Margin="7,0,0,0" />
                         </StackPanel>
                     </Button>

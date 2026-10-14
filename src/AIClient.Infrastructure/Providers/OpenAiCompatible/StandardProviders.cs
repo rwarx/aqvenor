@@ -3,6 +3,7 @@ using System.Text.Json;
 using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Infrastructure.Providers.OpenAiCompatible;
 
@@ -49,8 +50,9 @@ public sealed class OpenAiProvider : OpenAiCompatibleProvider
     public OpenAiProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<OpenAiProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 
@@ -126,8 +128,9 @@ public sealed class GroqProvider : OpenAiCompatibleProvider
     public GroqProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<GroqProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 
@@ -195,8 +198,9 @@ public sealed class XaiProvider : OpenAiCompatibleProvider
     public XaiProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<XaiProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 
@@ -251,8 +255,9 @@ public sealed class MistralProvider : OpenAiCompatibleProvider
     public MistralProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<MistralProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 
@@ -338,8 +343,9 @@ public sealed class DeepSeekProvider : OpenAiCompatibleProvider
     public DeepSeekProvider(
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<DeepSeekProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
     }
 

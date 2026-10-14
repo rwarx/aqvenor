@@ -31,8 +31,9 @@ namespace AIClient.Application.Graph;
 /// </para>
 /// <para>
 /// The listing is capped by the workspace service (400 entries by default), and the
-/// indexer naturally stops there: the change set says so in its description, so nobody
-/// reads a capped refresh as a complete one.
+/// index itself is capped by settings (20,000 nodes by default): entries past either
+/// cap are left out before anything is built, and the change set says so in its
+/// description, so nobody reads a capped refresh as a complete one.
 /// </para>
 /// <para>
 /// Removal is scoped to the id families this class mints - <c>ws</c>, <c>dir:</c>,
@@ -57,19 +58,23 @@ public sealed class WorkspaceGraphIndexer
 
     private readonly IWorkspaceService _workspace;
     private readonly IGraphService _graph;
+    private readonly ISettingsService _settings;
     private readonly ILogger<WorkspaceGraphIndexer> _logger;
 
     public WorkspaceGraphIndexer(
         IWorkspaceService workspace,
         IGraphService graph,
+        ISettingsService settings,
         ILogger<WorkspaceGraphIndexer> logger)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(logger);
 
         _workspace = workspace;
         _graph = graph;
+        _settings = settings;
         _logger = logger;
     }
 
@@ -157,12 +162,24 @@ public sealed class WorkspaceGraphIndexer
         WorkspaceListing listing,
         CancellationToken cancellationToken)
     {
-        var fileCount = listing.Entries.Count(entry => !entry.IsDirectory);
-        var targetNodes = new List<GraphNode>(listing.Entries.Count + 1) { BuildRootNode(fileCount) };
-        var targetEdges = new List<GraphEdge>(listing.Entries.Count);
+        // The index cap turns a mistaken root (a home directory, a vendored SDK) into a
+        // truncated index with a message rather than a graph that takes a minute to open.
+        // Entries past the cap are left out before anything is built, so no edge dangles.
+        var maxNodes = Math.Max(1, _settings.Current.Canvas.MaxIndexedNodes);
+        var entries = listing.Entries;
+        var cappedBySettings = false;
+        if (entries.Count + 1 > maxNodes)
+        {
+            entries = entries.Take(Math.Max(0, maxNodes - 1)).ToList();
+            cappedBySettings = true;
+        }
+
+        var fileCount = entries.Count(entry => !entry.IsDirectory);
+        var targetNodes = new List<GraphNode>(entries.Count + 1) { BuildRootNode(fileCount) };
+        var targetEdges = new List<GraphEdge>(entries.Count);
         var targetIds = new HashSet<string>(StringComparer.Ordinal) { RootNodeId };
 
-        foreach (var entry in listing.Entries)
+        foreach (var entry in entries)
         {
             var id = entry.IsDirectory
                 ? DirectoryPrefix + entry.Path.Value
@@ -245,6 +262,11 @@ public sealed class WorkspaceGraphIndexer
         if (listing.IsTruncated)
         {
             description += $"; showing the first {listing.Entries.Count} entries (the listing stopped at its cap)";
+        }
+
+        if (cappedBySettings)
+        {
+            description += $"; showing the first {entries.Count} of {listing.Entries.Count} entries (the index stopped at its cap of {maxNodes} nodes)";
         }
 
         var changeSet = new GraphChangeSet

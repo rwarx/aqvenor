@@ -38,6 +38,8 @@ public sealed class CanvasSettings
     /// still has to fit, or the model answers a question about a graph with no memory of what was
     /// asked. Forty percent is enough for a few files of real source and little enough that a
     /// two-hundred-node marquee degrades to titles instead of evicting the last ten turns.
+    /// Operationalized as nodes: the ask-AI funnel budgets 100 nodes per full share (40 at the
+    /// 0.4 default), on top of the context source's own absolute cap.
     /// </remarks>
     public double MaxContextShare { get; set; } = 0.4;
 

@@ -383,6 +383,7 @@ public sealed class ChatService : IChatService
                     SystemPrompt = systemPrompt,
                     ContextWindow = model?.ContextWindow,
                     ReservedOutputTokens = chat.ReservedOutputTokens,
+                    MaxHistoryTurns = chat.MaxHistoryMessages,
                     UpToMessageId = upToMessageId,
                 },
                 cancellationToken).ConfigureAwait(false);

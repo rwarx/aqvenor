@@ -91,12 +91,12 @@ foreach ($kind in $map.Keys) {
 
 $header = @'
 <!--
-    Kontur Code design system - icon drawings.
+    Aqvenor design system - icon drawings.
 
     The set is Iconsax (Linear variant, by Vuesax - free license), drawn on one 24x24
     grid with 1.5px strokes and round caps and joins: the same shared grid the
     morphicons library builds its rotations on, which is why pairs of these icons can
-    turn into each other. Geometry resources are frozen StreamGeometries; KonturIcon
+    turn into each other. Geometry resources are frozen StreamGeometries; AqvenorIcon
     resolves "Icon.<Kind>" from this dictionary, MorphIcon folds one kind into another.
 
     Conventions:
@@ -110,7 +110,7 @@ $header = @'
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options">
 
-    <!-- Identity. The Kontur mark: a stem and a broken chevron (house drawing, 16-grid). -->
+    <!-- Identity. The Aqvenor mark: a stem and a broken chevron (house drawing, 16-grid). -->
     <StreamGeometry x:Key="Icon.Logo" po:Freeze="True">M4.4 2.2 V13.8 M12.9 2.2 L5.3 8 L12.9 13.8</StreamGeometry>
 
     <!-- Node: the abstract graph node, four dots and the cross between them (house). -->

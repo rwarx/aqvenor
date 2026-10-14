@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="clr-namespace:AIClient.App.Views"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:beh="clr-namespace:AIClient.App.Behaviors"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -27,7 +27,7 @@
         <Border Grid.Row="0" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
                 Background="{DynamicResource Brush.Surface1}" Padding="12,7">
             <StackPanel Orientation="Horizontal">
-                <kontur:KonturIcon Kind="Models" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Kind="Models" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.AccentText}" />
                 <TextBlock Text="{DynamicResource S.Mode.Title.Providers}" Style="{StaticResource Type.Section}" Margin="9,0,0,0"
                            VerticalAlignment="Center" />
@@ -55,7 +55,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <kontur:KonturIcon Grid.Column="0" Kind="{Binding Icon}" Width="14" Height="14"
+                                <aqvenor:AqvenorIcon Grid.Column="0" Kind="{Binding Icon}" Width="14" Height="14"
                                                    Foreground="{DynamicResource Brush.TextSecondary}"
                                                    VerticalAlignment="Center" />
 
@@ -97,29 +97,29 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
 
-                                <Button Grid.Column="3" Style="{StaticResource KcButtonGhost}" Padding="9,4" Margin="0,0,4,0"
+                                <Button Grid.Column="3" Style="{StaticResource AqButtonGhost}" Padding="9,4" Margin="0,0,4,0"
                                         Command="{Binding BeginEditApiKeyCommand}"
                                         ToolTip="{DynamicResource S.Models.Key.ToolTip}">
                                     <StackPanel Orientation="Horizontal">
-                                        <kontur:KonturIcon Kind="Edit" Width="12" Height="12" />
+                                        <aqvenor:AqvenorIcon Kind="Edit" Width="12" Height="12" />
                                         <TextBlock Text="{DynamicResource S.Models.Key}" Style="{StaticResource Type.Metadata}" Margin="6,0,0,0" />
                                     </StackPanel>
                                 </Button>
 
-                                <Button Grid.Column="4" Style="{StaticResource KcButtonGhost}" Padding="9,4" Margin="0,0,4,0"
+                                <Button Grid.Column="4" Style="{StaticResource AqButtonGhost}" Padding="9,4" Margin="0,0,4,0"
                                         Command="{Binding DataContext.RefreshProviderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}" ToolTip="{DynamicResource S.Models.Refresh.ToolTip}">
                                     <StackPanel Orientation="Horizontal">
-                                        <kontur:KonturIcon Kind="Refresh" Width="12" Height="12" />
+                                        <aqvenor:AqvenorIcon Kind="Refresh" Width="12" Height="12" />
                                         <TextBlock Text="{DynamicResource S.Common.Refresh}" Style="{StaticResource Type.Metadata}" Margin="6,0,0,0" />
                                     </StackPanel>
                                 </Button>
 
-                                <Button Grid.Column="5" Style="{StaticResource KcButtonGhost}" Padding="9,4"
+                                <Button Grid.Column="5" Style="{StaticResource AqButtonGhost}" Padding="9,4"
                                         Command="{Binding DataContext.TestProviderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}" ToolTip="{DynamicResource S.Models.Test.ToolTip}">
                                     <StackPanel Orientation="Horizontal">
-                                        <kontur:KonturIcon Kind="Check" Width="12" Height="12" />
+                                        <aqvenor:AqvenorIcon Kind="Check" Width="12" Height="12" />
                                         <TextBlock Text="{DynamicResource S.Models.Test}" Style="{StaticResource Type.Metadata}" Margin="6,0,0,0" />
                                     </StackPanel>
                                 </Button>
@@ -141,17 +141,17 @@
                                                  Padding="8,7" />
 
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                                        <Button Style="{StaticResource KcButtonGhost}" Padding="9,4" Margin="0,0,4,0"
+                                        <Button Style="{StaticResource AqButtonGhost}" Padding="9,4" Margin="0,0,4,0"
                                                 Command="{Binding SaveApiKeyCommand}" ToolTip="{DynamicResource S.Common.Save}">
                                             <StackPanel Orientation="Horizontal">
-                                                <kontur:KonturIcon Kind="Check" Width="12" Height="12" />
+                                                <aqvenor:AqvenorIcon Kind="Check" Width="12" Height="12" />
                                                 <TextBlock Text="{DynamicResource S.Common.Save}" Style="{StaticResource Type.Metadata}" Margin="6,0,0,0" />
                                             </StackPanel>
                                         </Button>
-                                        <Button Style="{StaticResource KcButtonGhost}" Padding="9,4"
+                                        <Button Style="{StaticResource AqButtonGhost}" Padding="9,4"
                                                 Command="{Binding CancelEditApiKeyCommand}" ToolTip="{DynamicResource S.Common.Cancel}">
                                             <StackPanel Orientation="Horizontal">
-                                                <kontur:KonturIcon Kind="Close" Width="12" Height="12" />
+                                                <aqvenor:AqvenorIcon Kind="Close" Width="12" Height="12" />
                                                 <TextBlock Text="{DynamicResource S.Common.Cancel}" Style="{StaticResource Type.Metadata}" Margin="6,0,0,0" />
                                             </StackPanel>
                                         </Button>

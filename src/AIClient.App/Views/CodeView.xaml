@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:md="clr-namespace:AIClient.App.Markdown"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -57,15 +57,15 @@
                                         </Style>
                                     </Border.Style>
                                     <StackPanel Orientation="Horizontal" MinWidth="0">
-                                        <kontur:KonturIcon Kind="{Binding Icon}" Width="13" Height="13"
+                                        <aqvenor:AqvenorIcon Kind="{Binding Icon}" Width="13" Height="13"
                                                            Foreground="{DynamicResource Brush.TextSecondary}" />
                                         <TextBlock Text="{Binding Title}" Style="{StaticResource Type.Caption}"
                                                    Margin="8,0,0,0" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis" />
-                                        <Button Style="{StaticResource KcButtonTool}" Width="18" Height="18"
+                                        <Button Style="{StaticResource AqButtonTool}" Width="18" Height="18"
                                                 Margin="6,-2,-4,-2" Click="OnCloseTabClicked"
                                                 ToolTip="{DynamicResource S.Settings.Agent.Close}">
-                                            <kontur:KonturIcon Kind="Close" Width="10" Height="10" GlyphThickness="2.7" />
+                                            <aqvenor:AqvenorIcon Kind="Close" Width="10" Height="10" GlyphThickness="2.7" />
                                         </Button>
                                     </StackPanel>
                                 </Border>
@@ -74,11 +74,11 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <Button Grid.Column="1" Style="{StaticResource KcButtonTool}" Width="26" Height="26" Margin="6,0,8,0"
+                <Button Grid.Column="1" Style="{StaticResource AqButtonTool}" Width="26" Height="26" Margin="6,0,8,0"
                         Command="{Binding ReloadActiveCommand}"
                         Visibility="{Binding HasTabs, Converter={StaticResource BoolToVisibility}}"
                         ToolTip="{DynamicResource S.Code.Reload.ToolTip}">
-                    <kontur:KonturIcon Kind="Refresh" Width="13" Height="13" />
+                    <aqvenor:AqvenorIcon Kind="Refresh" Width="13" Height="13" />
                 </Button>
             </Grid>
         </Border>
@@ -88,7 +88,7 @@
             <!-- No tabs: the honest empty state. -->
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding HasTabs, Converter={StaticResource InverseBoolToVisibility}}">
-                <kontur:KonturIcon Kind="Code" Width="34" Height="34" GlyphThickness="1.65"
+                <aqvenor:AqvenorIcon Kind="Code" Width="34" Height="34" GlyphThickness="1.65"
                                    Foreground="{DynamicResource Brush.Accent}" HorizontalAlignment="Center" />
                 <TextBlock Text="{DynamicResource S.Code.Empty.Title}" Style="{StaticResource Type.Section}"
                            HorizontalAlignment="Center" Margin="0,10,0,0" />
@@ -110,7 +110,7 @@
                 <Border Grid.Row="0" Padding="14,6" BorderBrush="{DynamicResource Brush.BorderFaint}"
                         BorderThickness="0,0,0,1" Background="{DynamicResource Brush.Surface1}">
                     <StackPanel Orientation="Horizontal">
-                        <kontur:KonturIcon Kind="{Binding ActiveTab.Icon, TargetNullValue=File}" Width="13" Height="13"
+                        <aqvenor:AqvenorIcon Kind="{Binding ActiveTab.Icon, TargetNullValue=File}" Width="13" Height="13"
                                            Foreground="{DynamicResource Brush.AccentText}" />
                         <TextBlock Text="{Binding ActiveTab.Directory, TargetNullValue=''}"
                                    Style="{StaticResource Type.Metadata}" Margin="8,0,0,0" Opacity="0.7"
@@ -118,9 +118,9 @@
                         <TextBlock Text="{Binding ActiveTab.Title, TargetNullValue=''}"
                                    Style="{StaticResource Type.Caption}" Margin="6,0,0,0" FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
-                        <Border Style="{StaticResource KcBadge}" Margin="10,0,0,0"
+                        <Border Style="{StaticResource AqBadge}" Margin="10,0,0,0"
                                 Visibility="{Binding ActiveTab.IsTruncated, Converter={StaticResource BoolToVisibility}}">
-                             <TextBlock Style="{StaticResource KcBadgeText}"><Run Text="{DynamicResource S.Code.FirstLines.Start}" /><Run Text=" " /><Run Text="{Binding ActiveTab.TotalLines, Mode=OneWay}" /><Run Text=" " /><Run Text="{DynamicResource S.Code.FirstLines.End}" /></TextBlock>
+                             <TextBlock Style="{StaticResource AqBadgeText}"><Run Text="{DynamicResource S.Code.FirstLines.Start}" /><Run Text=" " /><Run Text="{Binding ActiveTab.TotalLines, Mode=OneWay}" /><Run Text=" " /><Run Text="{DynamicResource S.Code.FirstLines.End}" /></TextBlock>
                         </Border>
                     </StackPanel>
                 </Border>

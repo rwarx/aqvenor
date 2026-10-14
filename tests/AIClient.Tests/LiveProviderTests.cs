@@ -164,6 +164,7 @@ public sealed class LiveProviderTests : IDisposable
         return new OpenRouterProvider(
             _factory,
             FakeSecureStorage.With(OpenRouterProvider.ProviderId, apiKey),
+            Options.Create(new ProviderEndpointOptions()),
             logger);
     }
 

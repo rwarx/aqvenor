@@ -6,7 +6,7 @@
          служба локализации проверяет соответствие при загрузке и пишет предупреждение в журнал. -->
 
     <!-- ===== Общие ===== -->
-    <sys:String x:Key="S.App.Name">Kontur Code</sys:String>
+    <sys:String x:Key="S.App.Name">Aqvenor</sys:String>
     <sys:String x:Key="S.Chat.CopyCode">Копировать</sys:String>
     <sys:String x:Key="S.Common.Cancel">Отмена</sys:String>
     <sys:String x:Key="S.Common.Save">Сохранить</sys:String>
@@ -17,6 +17,7 @@
     <sys:String x:Key="S.Common.Copy">Копировать</sys:String>
     <sys:String x:Key="S.Common.Retry">Повторить</sys:String>
     <sys:String x:Key="S.Common.Back">Назад</sys:String>
+    <sys:String x:Key="S.Common.Free">Бесплатно</sys:String>
     <sys:String x:Key="S.Common.TechnicalDetails">Технические подробности</sys:String>
 
     <!-- ===== Языки (всегда показываются в собственном написании) ===== -->
@@ -54,7 +55,7 @@
     <sys:String x:Key="S.Sidebar.Menu.Delete">Удалить</sys:String>
     <sys:String x:Key="S.Sidebar.Empty.Search">Нет чатов по запросу «{0}».</sys:String>
     <sys:String x:Key="S.Sidebar.Empty.None">Пока нет чатов.&#10;Начните первый через «Новый чат».</sys:String>
-    <sys:String x:Key="S.Sidebar.Canvas">Канва</sys:String>
+    <sys:String x:Key="S.Sidebar.Canvas">Канвас</sys:String>
     <sys:String x:Key="S.Sidebar.Canvas.ToolTip">Граф знаний (Ctrl+G)</sys:String>
     <sys:String x:Key="S.Sidebar.Settings">Настройки</sys:String>
     <sys:String x:Key="S.Sidebar.Settings.ToolTip">Настройки (Ctrl+,)</sys:String>
@@ -67,8 +68,9 @@
     <sys:String x:Key="S.Chat.Empty.Subtitle">Задайте вопрос, вставьте код или приложите файл.</sys:String>
     <sys:String x:Key="S.Chat.JumpToLatest">К последнему сообщению</sys:String>
     <sys:String x:Key="S.Chat.SaveResend">Сохранить и отправить</sys:String>
-    <sys:String x:Key="S.Chat.Thinking">Думаю…</sys:String>
+    <sys:String x:Key="S.Chat.Thinking">Думает…</sys:String>
     <sys:String x:Key="S.Chat.Reasoning">Размышления</sys:String>
+    <sys:String x:Key="S.Chat.AssistantName">ассистент</sys:String>
     <sys:String x:Key="S.Chat.Failed.Title">Запрос не выполнен</sys:String>
     <sys:String x:Key="S.Chat.Stopped">Генерация остановлена.</sys:String>
     <sys:String x:Key="S.Chat.Copy.ToolTip">Копировать сообщение</sys:String>
@@ -85,6 +87,7 @@
     <sys:String x:Key="S.Chat.Voice.Unavailable">Распознавание речи недоступно на этой системе.</sys:String>
     <sys:String x:Key="S.Chat.Voice.Failed">Ошибка диктовки: {0}</sys:String>
     <sys:String x:Key="S.Chat.ShowResult.ToolTip">Показать, что вернул вызов</sys:String>
+    <sys:String x:Key="S.Tool.Risk.Read">читает файлы</sys:String>
     <sys:String x:Key="S.Tool.Risk.Write">меняет файлы</sys:String>
     <sys:String x:Key="S.Tool.Risk.Execute">запускает программу</sys:String>
 
@@ -96,20 +99,26 @@
     <sys:String x:Key="S.Tool.Interrupted">Прервано</sys:String>
     <sys:String x:Key="S.Tool.Failed">Ошибка</sys:String>
     <sys:String x:Key="S.Tool.Body.Truncated">... остаток результата не показан.</sys:String>
+    <sys:String x:Key="S.Tool.Name.Fallback">инструмент</sys:String>
+    <sys:String x:Key="S.Usage.In">вход</sys:String>
+    <sys:String x:Key="S.Usage.Out">выход</sys:String>
+    <sys:String x:Key="S.Time.JustNow">только что</sys:String>
+    <sys:String x:Key="S.Time.MinutesAgo">{0} мин назад</sys:String>
+    <sys:String x:Key="S.Time.Yesterday">вчера</sys:String>
 
     <!-- ===== Кнопка и меню агента ===== -->
     <sys:String x:Key="S.Agent.Label">Агент</sys:String>
     <sys:String x:Key="S.Agent.ToolTip">Позвольте модели работать с проектом. По умолчанию она планирует и спрашивает перед любым необратимым действием.</sys:String>
-    <sys:String x:Key="S.Agent.Mode.Plan">План</sys:String>
-    <sys:String x:Key="S.Agent.Mode.PlanCanvas">План + канва</sys:String>
-    <sys:String x:Key="S.Agent.Mode.Build">Сборка</sys:String>
-    <sys:String x:Key="S.Agent.Mode.Off">Выкл</sys:String>
+    <sys:String x:Key="S.Agent.Mode.Plan">Планирование</sys:String>
+    <sys:String x:Key="S.Agent.Mode.PlanCanvas">План + канвас</sys:String>
+    <sys:String x:Key="S.Agent.Mode.Build">Реализация</sys:String>
+    <sys:String x:Key="S.Agent.Mode.Off">Выключен</sys:String>
     <sys:String x:Key="S.Agent.Menu.Plan.Hint">Читает и решает, что делать. Ничего не меняет.</sys:String>
     <sys:String x:Key="S.Agent.Menu.PlanCanvas.Hint">Составляет план и рисует проект, который построил бы.</sys:String>
     <sys:String x:Key="S.Agent.Menu.Build.Hint">Выполняет работу, спрашивая перед каждым изменением.</sys:String>
     <sys:String x:Key="S.Agent.Menu.Off.Hint">Один ответ модели, без инструментов.</sys:String>
-    <sys:String x:Key="S.Agent.Hint.Build.NoFolder">Сборка · папка не открыта. Выберите её в настройках.</sys:String>
-    <sys:String x:Key="S.Agent.Hint.Build.In">Сборка · работает в {0}</sys:String>
+    <sys:String x:Key="S.Agent.Hint.Build.NoFolder">Реализация · папка не открыта. Выберите её в настройках.</sys:String>
+    <sys:String x:Key="S.Agent.Hint.Build.In">Реализация · работает в {0}</sys:String>
     <sys:String x:Key="S.Agent.Hint.Plan.New">{0} · планирует что-то новое. Ничего не будет прочитано или изменено.</sys:String>
     <sys:String x:Key="S.Agent.Hint.Plan.In">{0} · читает {1}. Ничего не будет изменено.</sys:String>
 
@@ -238,7 +247,6 @@
     <sys:String x:Key="S.Settings.Chat.AutoScroll">Следить за ответом во время генерации</sys:String>
     <sys:String x:Key="S.Settings.Chat.ShowUsage">Показывать расход токенов и время генерации</sys:String>
     <sys:String x:Key="S.Settings.Chat.History">Сообщений истории на запрос</sys:String>
-    <sys:String x:Key="S.Settings.Chat.Timeout">Тайм-аут запроса (секунды)</sys:String>
 
     <sys:String x:Key="S.Settings.Agent.Workspace">Рабочая папка</sys:String>
     <sys:String x:Key="S.Settings.Agent.Workspace.None">Папка не открыта. Агент не может ничего читать или менять, пока она не выбрана.</sys:String>
@@ -265,6 +273,16 @@
     <sys:String x:Key="S.Settings.Programs.Dropped">Пропущено, потому что программа указана без пути, пробела или аргумента: {0}</sys:String>
     <sys:String x:Key="S.Settings.Programs.Empty">Не разрешено ничего, поэтому все команды будут отклоняться. Добавьте программы, которыми проект собирается и тестируется.</sys:String>
 
+    <sys:String x:Key="S.Settings.Network">Сеть</sys:String>
+    <sys:String x:Key="S.Settings.Network.Allow">Разрешить загрузку веб-страниц</sys:String>
+    <sys:String x:Key="S.Settings.Network.Allow.Hint">Разрешить агенту загружать веб-страницы. По умолчанию выключено; каждая загрузка требует подтверждения. Меняется только здесь — локальный API это имя отклоняет.</sys:String>
+    <sys:String x:Key="S.Settings.Network.Timeout">Таймаут загрузки (сек)</sys:String>
+    <sys:String x:Key="S.Settings.Network.MaxResponse">Предел ответа (символов)</sys:String>
+
+    <sys:String x:Key="S.Settings.External">Файлы вне проекта</sys:String>
+    <sys:String x:Key="S.Settings.External.Allow">Разрешить файлы вне проекта</sys:String>
+    <sys:String x:Key="S.Settings.External.Allow.Hint">Разрешить агенту читать и изменять файлы вне открытой папки. По умолчанию выключено; чтение подтверждается один раз за запуск, каждая запись — отдельно. Меняется только здесь — локальный API это имя отклоняет.</sys:String>
+
     <sys:String x:Key="S.Settings.Storage.MaxAttachment">Максимальный размер вложения (КБ)</sys:String>
     <sys:String x:Key="S.Settings.Storage.LogLevel">Минимальный уровень журнала</sys:String>
     <sys:String x:Key="S.Settings.Storage.KeepLogs">Хранить журналы (дней)</sys:String>
@@ -285,13 +303,13 @@
 
     <!-- ===== Первый запуск ===== -->
     <sys:String x:Key="S.FirstRun.Step">Шаг {0} из 3</sys:String>
-    <sys:String x:Key="S.FirstRun.Welcome.Title">Добро пожаловать в AI Client</sys:String>
+    <sys:String x:Key="S.FirstRun.Welcome.Title">Добро пожаловать в Aqvenor</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Intro">Настольный клиент для работы с моделями. Используйте свой ключ API от провайдера, которым вы уже пользуетесь — разговоры и настройки остаются на этом компьютере.</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.Title">Что вы получаете</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.1">• Ответы с потоком, Markdown и подсветкой синтаксиса</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.2">• Разговоры сохраняются локально и ищутся</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Get.3">• Несколько провайдеров рядом, за одним выбором модели</sys:String>
-    <sys:String x:Key="S.FirstRun.Welcome.Get.4">• Ключи API шифруются Windows DPAPI и не попадают в базу</sys:String>
+    <sys:String x:Key="S.FirstRun.Welcome.Get.4">• API-ключи шифруются Windows DPAPI и не попадают в базу</sys:String>
     <sys:String x:Key="S.FirstRun.Connect.Title">Подключите провайдера</sys:String>
     <sys:String x:Key="S.FirstRun.Connect.Intro">Добавьте ключ хотя бы одного провайдера. Остальные подождут — всё это есть и в настройках.</sys:String>
     <sys:String x:Key="S.FirstRun.Model.Title">Выберите модель по умолчанию</sys:String>
@@ -357,7 +375,7 @@
     <sys:String x:Key="S.Canvas.Reindex.ToolTip">Заново обойти папку проекта и обновить граф</sys:String>
     <sys:String x:Key="S.Canvas.Folder">Папка…</sys:String>
     <sys:String x:Key="S.Canvas.Folder.ToolTip">Выбрать папку проекта для показа на канве</sys:String>
-    <sys:String x:Key="S.Canvas.Ask">Спросить Kontur AI…</sys:String>
+    <sys:String x:Key="S.Canvas.Ask">Спросить ИИ…</sys:String>
     <sys:String x:Key="S.Canvas.Action.Analyze">Проанализировать</sys:String>
     <sys:String x:Key="S.Canvas.Action.Explain">Объяснить</sys:String>
     <sys:String x:Key="S.Canvas.Action.Refactor">Отрефакторить</sys:String>
@@ -365,7 +383,7 @@
     <sys:String x:Key="S.Canvas.Action.GenerateTests">Сгенерировать тесты</sys:String>
     <sys:String x:Key="S.Canvas.AutoLayout">Автоформат</sys:String>
     <sys:String x:Key="S.Canvas.AutoLayout.ToolTip">Привести в порядок карточки, которые никто не расставлял вручную</sys:String>
-    <sys:String x:Key="S.Canvas.Empty.Title">Kontur Code</sys:String>
+    <sys:String x:Key="S.Canvas.Empty.Title">Aqvenor</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Graph">В вашем проекте пока нет графа знаний.</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Index">Индексировать папку</sys:String>
     <sys:String x:Key="S.Canvas.Empty.Note">Граф будет построен по структуре вашего проекта.</sys:String>
@@ -451,7 +469,7 @@
     <sys:String x:Key="S.Main.GoBack.ToolTip">Назад (Alt+Left)</sys:String>
     <sys:String x:Key="S.Main.GoForward.ToolTip">Вперёд (Alt+Right)</sys:String>
     <sys:String x:Key="S.Main.Palette.ToolTip">Поиск и команды (Ctrl+Shift+P)</sys:String>
-    <sys:String x:Key="S.Main.Search.Placeholder">Поиск по Kontur Code</sys:String>
+    <sys:String x:Key="S.Main.Search.Placeholder">Поиск по Aqvenor</sys:String>
     <sys:String x:Key="S.Main.Inspector">Инспектор</sys:String>
     <sys:String x:Key="S.Main.Inspector.ToolTip">Показать или скрыть инспектор (Ctrl+Alt+I)</sys:String>
     <sys:String x:Key="S.Main.Workspace.OpenFallback">Открыть папку рабочего пространства</sys:String>
@@ -462,14 +480,14 @@
     <sys:String x:Key="S.Status.NoModel">Модель не выбрана</sys:String>
     <sys:String x:Key="S.Status.PickModel">Выберите модель в разделе «Провайдеры»</sys:String>
     <sys:String x:Key="S.Status.Counts">{0} узлов · {1} связей</sys:String>
-    <sys:String x:Key="S.Status.Counts.Empty">пустой холст</sys:String>
+    <sys:String x:Key="S.Status.Counts.Empty">пустой канвас</sys:String>
     <sys:String x:Key="S.Status.Undo.ToolTip">Отменить (Ctrl+Z)</sys:String>
     <sys:String x:Key="S.Status.Redo.ToolTip">Вернуть (Ctrl+Y)</sys:String>
     <sys:String x:Key="S.Status.Selection.OneConnection">1 связь</sys:String>
     <sys:String x:Key="S.Status.Selection.OneNode">1 узел</sys:String>
     <sys:String x:Key="S.Status.Selection.Nodes">{0} узлов</sys:String>
     <sys:String x:Key="S.Workspace.Offline">Нет подключения к сети. Сохранённые беседы, рабочее пространство и настройки доступны; новые сообщения не будут отправлены до восстановления связи.</sys:String>
-    <sys:String x:Key="S.Workspace.BackToCanvas">Назад к холсту</sys:String>
+    <sys:String x:Key="S.Workspace.BackToCanvas">Назад к канвасу</sys:String>
     <sys:String x:Key="S.Workspace.BackLabel">Рабочее пространство</sys:String>
     <sys:String x:Key="S.Outline.Title">Структура графа</sys:String>
     <sys:String x:Key="S.Outline.ClearFilter">Сбросить фильтр</sys:String>
@@ -481,8 +499,8 @@
     <sys:String x:Key="S.Sidebar.Refresh.ToolTip">Перечитать рабочее пространство в граф</sys:String>
     <sys:String x:Key="S.Sidebar.RefreshGraph">Обновить граф</sys:String>
     <sys:String x:Key="S.Sidebar.Theme.ToolTip">Переключить тему</sys:String>
-    <sys:String x:Key="S.Nav.Canvas">Холст</sys:String>
-    <sys:String x:Key="S.Nav.Canvas.ToolTip">Рабочее пространство как пространственная карта (Ctrl+Shift+P → Холст)</sys:String>
+    <sys:String x:Key="S.Nav.Canvas">Канвас</sys:String>
+    <sys:String x:Key="S.Nav.Canvas.ToolTip">Рабочее пространство как пространственная карта (Ctrl+Shift+P → Канвас)</sys:String>
     <sys:String x:Key="S.Nav.Graph">Граф</sys:String>
     <sys:String x:Key="S.Nav.Graph.ToolTip">Та же карта в виде структуры</sys:String>
     <sys:String x:Key="S.Nav.Files">Файлы</sys:String>
@@ -499,7 +517,7 @@
     <sys:String x:Key="S.Nav.Trajectory.ToolTip">Что сделал запуск, шаг за шагом</sys:String>
     <sys:String x:Key="S.Nav.Workflows">Процессы</sys:String>
     <sys:String x:Key="S.Nav.Workflows.ToolTip">Готовые рецепты и каталог инструментов</sys:String>
-    <sys:String x:Key="S.Mode.Canvas">Холст</sys:String>
+    <sys:String x:Key="S.Mode.Canvas">Канвас</sys:String>
     <sys:String x:Key="S.Mode.Canvas.ToolTip">Рабочее пространство как пространственная карта</sys:String>
     <sys:String x:Key="S.Mode.Graph">Граф</sys:String>
     <sys:String x:Key="S.Mode.Graph.ToolTip">Та же карта в виде структуры</sys:String>
@@ -517,7 +535,7 @@
     <sys:String x:Key="S.Palette.AskAiAboutSelection">ИИ о выделении</sys:String>
     <sys:String x:Key="S.Palette.ToggleContextPanel">Переключить контекстную панель</sys:String>
     <sys:String x:Key="S.Palette.ToggleSidebar">Переключить боковую панель</sys:String>
-    <sys:String x:Key="S.Palette.SwitchToCanvas">Открыть холст</sys:String>
+    <sys:String x:Key="S.Palette.SwitchToCanvas">Открыть канвас</sys:String>
     <sys:String x:Key="S.Palette.SwitchToGraph">Открыть структуру графа</sys:String>
     <sys:String x:Key="S.Palette.SwitchToFiles">Открыть файлы</sys:String>
     <sys:String x:Key="S.Palette.SwitchToCode">Открыть код</sys:String>
@@ -561,7 +579,7 @@
     <sys:String x:Key="S.Inspector.Mode.Node">Узел</sys:String>
     <sys:String x:Key="S.Inspector.Mode.Selection">Выделение</sys:String>
     <sys:String x:Key="S.Inspector.Mode.Workspace">Рабочее пространство</sys:String>
-    <sys:String x:Key="S.Inspector.OpenInCode">Открыть в Code</sys:String>
+    <sys:String x:Key="S.Inspector.OpenInCode">Открыть в коде</sys:String>
     <sys:String x:Key="S.Inspector.Relations">Связи</sys:String>
     <sys:String x:Key="S.Inspector.Timeline">Хронология</sys:String>
     <sys:String x:Key="S.Kind.Note">заметка|заметки|заметок</sys:String>
@@ -599,21 +617,21 @@
     <sys:String x:Key="S.Files.Empty">Выберите файл, чтобы увидеть его здесь.</sys:String>
     <sys:String x:Key="S.Code.Reload.ToolTip">Перезагрузить (агент мог переписать файл)</sys:String>
     <sys:String x:Key="S.Code.Empty.Title">Нет открытых документов</sys:String>
-    <sys:String x:Key="S.Code.Empty.Hint">Откройте файл во вкладке «Файлы» или выберите узел на холсте.</sys:String>
+    <sys:String x:Key="S.Code.Empty.Hint">Откройте файл во вкладке «Файлы» или выберите узел на канвасе.</sys:String>
     <sys:String x:Key="S.Code.FirstLines.Start">первые</sys:String>
     <sys:String x:Key="S.Code.FirstLines.End">строк</sys:String>
     <sys:String x:Key="S.Tasks.Empty.Title">Нет активности агента</sys:String>
     <sys:String x:Key="S.Tasks.Empty.Hint">Вызовы инструментов и шаги агента появятся здесь во время работы.</sys:String>
     <sys:String x:Key="S.FirstRun.Welcome.Heading">Добро пожаловать</sys:String>
     <sys:String x:Key="S.Canvas.Tool.Select.Tip">Выбор и перемещение (V)</sys:String>
-    <sys:String x:Key="S.Canvas.Tool.Pan.Tip">Панорамирование холста (H или удерживайте Space)</sys:String>
+    <sys:String x:Key="S.Canvas.Tool.Pan.Tip">Панорамирование канваса (H или удерживайте Space)</sys:String>
     <sys:String x:Key="S.Canvas.Tool.ZoomOut.Tip">Уменьшить масштаб (колесо)</sys:String>
     <sys:String x:Key="S.Canvas.Tool.ZoomReset.Tip">Масштаб 100%</sys:String>
     <sys:String x:Key="S.Canvas.Tool.ZoomIn.Tip">Увеличить масштаб (колесо)</sys:String>
     <sys:String x:Key="S.Canvas.Tool.Focus.Tip">Фокус на выделении</sys:String>
     <sys:String x:Key="S.Canvas.Tool.Fit.Tip">Вписать граф в вид (двойной клик по пустому месту)</sys:String>
     <sys:String x:Key="S.Canvas.Tool.Ask.Tip">Спросить ИИ о выделенном (Ctrl+I)</sys:String>
-    <sys:String x:Key="S.Canvas.Blank.Title">Холст пуст</sys:String>
+    <sys:String x:Key="S.Canvas.Blank.Title">Канвас пуст</sys:String>
     <sys:String x:Key="S.Canvas.Blank.Hint">Откройте рабочее пространство, чтобы увидеть карту, или попросите агента составить план - он будет отрисован здесь.</sys:String>
     <sys:String x:Key="S.Canvas.Blank.Open">Открыть рабочее пространство</sys:String>
     <sys:String x:Key="S.Canvas.Blank.AskPlan">Запросить план</sys:String>
@@ -644,14 +662,15 @@
     <sys:String x:Key="S.History.Redo">Вернуть</sys:String>
     <sys:String x:Key="S.History.CloseGraph">Закрыть граф рабочего пространства</sys:String>
     <sys:String x:Key="S.History.RefreshGraph">Обновить граф рабочего пространства</sys:String>
-    <sys:String x:Key="S.Canvas.PlanConfirm.Title">Отрисовать этот план на холсте?</sys:String>
+    <sys:String x:Key="S.Canvas.PlanConfirm.Title">Отрисовать этот план на канвасе?</sys:String>
     <sys:String x:Key="S.Canvas.PlanConfirm.Message">«{0}» — узлов: {1}, связей: {2}. Отменить можно из таймлайна.</sys:String>
     <sys:String x:Key="S.Canvas.PlanConfirm.Button">Отрисовать</sys:String>
-    <sys:String x:Key="S.Tasks.Kind.Build">Агент · сборка</sys:String>
-    <sys:String x:Key="S.Tasks.Kind.PlanCanvas">Агент · план + холст</sys:String>
+    <sys:String x:Key="S.Tasks.Kind.Build">Агент · реализация</sys:String>
+    <sys:String x:Key="S.Tasks.Kind.PlanCanvas">Агент · план + канвас</sys:String>
     <sys:String x:Key="S.Tasks.Kind.Plan">Агент · план</sys:String>
     <sys:String x:Key="S.Tasks.Kind.Agent">Агент</sys:String>
     <sys:String x:Key="S.Tasks.WaitingForYou">Ждёт вашего решения</sys:String>
+    <sys:String x:Key="S.Tasks.Streaming">Пишет</sys:String>
     <sys:String x:Key="S.Trajectory.Empty.Title">Пока ничего не запущено</sys:String>
     <sys:String x:Key="S.Trajectory.Empty.Hint">Сообщения, вызовы инструментов и шаги графа появятся здесь по порядку.</sys:String>
     <sys:String x:Key="S.Trajectory.Export">Экспорт</sys:String>

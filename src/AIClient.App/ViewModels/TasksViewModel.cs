@@ -33,7 +33,7 @@ public sealed partial class TasksViewModel : ObservableObject
     private bool _isRunning;
 
     [ObservableProperty]
-    private string _stateText = "Idle";
+    private string _stateText = Localization.T("S.Main.Ai.Idle");
 
     [ObservableProperty]
     private string _runKind = string.Empty;
@@ -216,8 +216,8 @@ public sealed partial class TaskRowViewModel : ObservableObject
         });
 
     public static TaskRowViewModel Streaming(MessageViewModel message) => new(
-        "Writing",
-        message.ModelId ?? "assistant",
+        Localization.T("S.Tasks.Streaming"),
+        message.ModelId ?? Localization.T("S.Chat.AssistantName"),
         TaskRowState.Running);
 }
 

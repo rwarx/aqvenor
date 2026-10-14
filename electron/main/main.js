@@ -1,7 +1,7 @@
 "use strict";
 
 /* ============================================================
-   Kontur Code — Electron main process.
+   Aqvenor — Electron main process.
    Owns the window, the .NET sidecar backend (AIClient.Server)
    and the native bridges (dialogs, shell, menu).
    ============================================================ */
@@ -12,7 +12,7 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const DEV_URL = process.env.KONTUR_RENDERER_URL || "http://127.0.0.1:5173";
+const DEV_URL = process.env.AQVENOR_RENDERER_URL || "http://127.0.0.1:5173";
 const isDev = !app.isPackaged;
 
 const SIDECAR_PORT = 45631;
@@ -69,7 +69,7 @@ const authToken = crypto.randomBytes(32).toString("base64");
  * Folders the user has actually chosen through the OS dialog in this session.
  *
  * The renderer is not trusted to nominate one on its own: anything it can name
- * here would become readable through kontur:readFileLocal, so the authority for
+ * here would become readable through aqvenor:readFileLocal, so the authority for
  * the list is a directory the person picked, and this process is the only thing
  * that sees that pick.
  *
@@ -97,7 +97,7 @@ function isInsideKnownWorkspace(target) {
 
 function sidecarCandidates() {
   const list = [];
-  if (process.env.KONTUR_SIDECAR) list.push(process.env.KONTUR_SIDECAR);
+  if (process.env.AQVENOR_SIDECAR) list.push(process.env.AQVENOR_SIDECAR);
   // packaged layout: <resources>/sidecar/AIClient.Server(.exe)
   list.push(path.join(process.resourcesPath || "", "sidecar", process.platform === "win32" ? "AIClient.Server.exe" : "AIClient.Server"));
   // dev layout: repo checkout next to electron/
@@ -110,8 +110,8 @@ function startSidecar() {
   // An externally hosted backend is a development convenience and has to be loopback too: the token
   // protects the sidecar, but pointing the renderer at a remote host would send conversation content
   // off the machine and the token with it.
-  if (process.env.KONTUR_BACKEND_URL) {
-    const raw = process.env.KONTUR_BACKEND_URL;
+  if (process.env.AQVENOR_BACKEND_URL) {
+    const raw = process.env.AQVENOR_BACKEND_URL;
     let parsed = null;
     try {
       parsed = new URL(raw);
@@ -119,10 +119,10 @@ function startSidecar() {
       parsed = null;
     }
     if (!parsed || !["127.0.0.1", "localhost", "::1", "[::1]"].includes(parsed.hostname)) {
-      throw new Error(`KONTUR_BACKEND_URL must point at loopback; got ${raw}`);
+      throw new Error(`AQVENOR_BACKEND_URL must point at loopback; got ${raw}`);
     }
     backendUrl = raw;
-    console.log(`[kontur] using external backend ${backendUrl} (loopback only)`);
+    console.log(`[aqvenor] using external backend ${backendUrl} (loopback only)`);
     resolveBackendReady();
     return;
   }
@@ -135,13 +135,13 @@ function startSidecar() {
     }
   });
   if (!exe) {
-    console.error("[kontur] sidecar not found; the renderer will fall back to the default port and fail to authenticate.");
+    console.error("[aqvenor] sidecar not found; the renderer will fall back to the default port and fail to authenticate.");
     backendUrl = LOOPBACK_URL;
     resolveBackendReady();
     return;
   }
 
-  console.log(`[kontur] starting sidecar: ${exe} --urls ${LOOPBACK_URL}`);
+  console.log(`[aqvenor] starting sidecar: ${exe} --urls ${LOOPBACK_URL}`);
   sidecar = spawn(exe, ["--urls", LOOPBACK_URL], {
     stdio: ["ignore", "pipe", "pipe"],
     // Without this a console-subsystem child of a GUI app flashes a console window on every launch.
@@ -177,17 +177,17 @@ function startSidecar() {
   // exe, a partial install or an out-of-memory spawn takes the whole application down before it draws a
   // window, and the user sees nothing at all instead of an error.
   child.on("error", (err) => {
-    console.error(`[kontur] sidecar failed to start: ${err.message}`);
+    console.error(`[aqvenor] sidecar failed to start: ${err.message}`);
     clearTimeout(timer);
     done();
   });
 
   child.on("exit", (code) => {
-    console.error(`[kontur] sidecar exited with code ${code}`);
+    console.error(`[aqvenor] sidecar exited with code ${code}`);
     clearTimeout(timer);
     done();
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("kontur:sidecarGone", code);
+      mainWindow.webContents.send("aqvenor:sidecarGone", code);
     }
   });
 }
@@ -256,7 +256,9 @@ function createWindow() {
 
   /* A child window inherits this window's preload, contextIsolation and sandbox, so an unhandled
      window.open() is a second privileged surface rather than a browser tab. Nothing here needs one:
-     outbound links go through kontur:openExternal, which protocol-gates them. */
+     outbound links go through aqvenor:openExternal, which protocol-gates them. (The dockable
+     workspace keeps every panel inside this window — floating groups are disabled — so no child
+     window is ever opened.) */
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     return { action: "deny" };
@@ -268,7 +270,7 @@ function createWindow() {
     const allowed = isDev ? DEV_URL : url.startsWith("file://");
     if (!allowed) {
       event.preventDefault();
-      console.error(`[kontur] blocked navigation to ${url}`);
+      console.error(`[aqvenor] blocked navigation to ${url}`);
     }
   });
 
@@ -277,14 +279,14 @@ function createWindow() {
   // Keep the custom title-bar's maximize/restore control in sync with the OS.
   const emitMaximized = () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("kontur:winMaximizedChanged", mainWindow.isMaximized());
+      mainWindow.webContents.send("aqvenor:winMaximizedChanged", mainWindow.isMaximized());
     }
   };
   mainWindow.on("maximize", emitMaximized);
   mainWindow.on("unmaximize", emitMaximized);
 
   if (isDev) {
-    mainWindow.loadURL(DEV_URL).catch((err) => console.error("[kontur] loadURL failed:", err));
+    mainWindow.loadURL(DEV_URL).catch((err) => console.error("[aqvenor] loadURL failed:", err));
   } else {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "renderer", "index.html"));
   }
@@ -339,7 +341,7 @@ function buildMenu() {
 }
 
 function registerIpc() {
-  ipcMain.handle("kontur:getBackendUrl", async () => {
+  ipcMain.handle("aqvenor:getBackendUrl", async () => {
     await backendReady;
     return backendUrl || LOOPBACK_URL;
   });
@@ -347,12 +349,12 @@ function registerIpc() {
   /* The sidecar's bearer token. It crosses the bridge rather than living in the bundle because it is
      generated per launch: a token baked into the renderer would be a token an attacker could read out
      of a published asar. The renderer attaches it as an Authorization header and nothing else. */
-  ipcMain.handle("kontur:getBackendAuth", async () => {
+  ipcMain.handle("aqvenor:getBackendAuth", async () => {
     await backendReady;
     return authToken;
   });
 
-  ipcMain.handle("kontur:pickFolder", async () => {
+  ipcMain.handle("aqvenor:pickFolder", async () => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return null;
     const res = await dialog.showOpenDialog(win, { properties: ["openDirectory"] });
@@ -361,7 +363,7 @@ function registerIpc() {
     return res.filePaths[0];
   });
 
-  ipcMain.handle("kontur:saveDialog", async (_evt, defaultName, filters) => {
+  ipcMain.handle("aqvenor:saveDialog", async (_evt, defaultName, filters) => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return null;
     const res = await dialog.showSaveDialog(win, {
@@ -372,7 +374,7 @@ function registerIpc() {
     return res.filePath;
   });
 
-  ipcMain.handle("kontur:openDialog", async (_evt, filters) => {
+  ipcMain.handle("aqvenor:openDialog", async (_evt, filters) => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return [];
     const res = await dialog.showOpenDialog(win, {
@@ -383,7 +385,7 @@ function registerIpc() {
     return res.filePaths;
   });
 
-  ipcMain.handle("kontur:showInFolder", async (_evt, fullPath) => {
+  ipcMain.handle("aqvenor:showInFolder", async (_evt, fullPath) => {
     if (typeof fullPath !== "string" || fullPath.length === 0) return;
     // Resolved before it reaches the shell so a relative or malformed path cannot be handed to
     // Explorer, and so the check below is against an absolute path rather than whatever the caller
@@ -393,7 +395,7 @@ function registerIpc() {
     shell.showItemInFolder(resolved);
   });
 
-  ipcMain.handle("kontur:readFileLocal", async (_evt, fullPath) => {
+  ipcMain.handle("aqvenor:readFileLocal", async (_evt, fullPath) => {
     /* Read off disk for the renderer: a project file the user has already opened. It was an
        arbitrary-path read with no size cap, which meant one string in one IPC message could pull any
        file on the disk - including the DPAPI-protected keys - into the renderer. Now: the path must
@@ -422,7 +424,7 @@ function registerIpc() {
     return fs.promises.readFile(resolved, "utf-8");
   });
 
-  ipcMain.handle("kontur:openExternal", async (_evt, url) => {
+  ipcMain.handle("aqvenor:openExternal", async (_evt, url) => {
     /* only ever hand http/https URLs to the OS browser */
     if (typeof url === "string" && /^https?:\/\//i.test(url)) {
       await shell.openExternal(url);
@@ -432,25 +434,25 @@ function registerIpc() {
   // ----- frameless window chrome (custom TitleBar controls) -----
   const focusedWin = () => BrowserWindow.getFocusedWindow() || mainWindow;
 
-  ipcMain.handle("kontur:winMinimize", () => {
+  ipcMain.handle("aqvenor:winMinimize", () => {
     focusedWin()?.minimize();
   });
 
-  ipcMain.handle("kontur:winMaximizeToggle", () => {
+  ipcMain.handle("aqvenor:winMaximizeToggle", () => {
     const win = focusedWin();
     if (!win) return;
     if (win.isMaximized()) win.unmaximize();
     else win.maximize();
   });
 
-  ipcMain.handle("kontur:winClose", () => {
+  ipcMain.handle("aqvenor:winClose", () => {
     focusedWin()?.close();
   });
 
-  ipcMain.handle("kontur:winIsMaximized", () => focusedWin()?.isMaximized() ?? false);
+  ipcMain.handle("aqvenor:winIsMaximized", () => focusedWin()?.isMaximized() ?? false);
 
   // ----- interface zoom (app scale) -----
-  ipcMain.handle("kontur:setZoom", (_evt, factor) => {
+  ipcMain.handle("aqvenor:setZoom", (_evt, factor) => {
     const win = focusedWin();
     if (!win) return 1;
     const n = Number(factor);

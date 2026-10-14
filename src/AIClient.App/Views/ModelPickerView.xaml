@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
@@ -29,12 +29,12 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <kontur:KonturIcon Grid.Column="0" Kind="Search" Width="13" Height="13"
+                <aqvenor:AqvenorIcon Grid.Column="0" Kind="Search" Width="13" Height="13"
                                    Foreground="{DynamicResource Brush.TextMuted}"
                                    VerticalAlignment="Center" Margin="9,0,0,0" />
                 <TextBox Grid.Column="1"
                          x:Name="FilterBox"
-                         Style="{StaticResource KcInputBare}"
+                         Style="{StaticResource AqInputBare}"
                          Padding="7,0"
                          MinHeight="28"
                          VerticalContentAlignment="Center"
@@ -92,20 +92,20 @@
                             <!-- Capability badges: what actually decides whether a model
                                  suits the task, without opening a docs page. -->
                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                <Border Style="{StaticResource KcBadge}"
+                                <Border Style="{StaticResource AqBadge}"
                                         Visibility="{Binding ContextWindow, Converter={StaticResource NullToVisibility}}">
-                                    <TextBlock Style="{StaticResource KcBadgeText}"
+                                    <TextBlock Style="{StaticResource AqBadgeText}"
                                                Text="{Binding ContextWindow, Converter={StaticResource ContextWindow}}" />
                                 </Border>
 
-                                <Border Style="{StaticResource KcBadge}"
+                                <Border Style="{StaticResource AqBadge}"
                                         Visibility="{Binding SupportsImages, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Style="{StaticResource KcBadgeText}" Text="{DynamicResource S.Picker.Vision}" />
+                                    <TextBlock Style="{StaticResource AqBadgeText}" Text="{DynamicResource S.Picker.Vision}" />
                                 </Border>
 
-                                <Border Style="{StaticResource KcBadge}"
+                                <Border Style="{StaticResource AqBadge}"
                                         Visibility="{Binding SupportsTools, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Style="{StaticResource KcBadgeText}" Text="{DynamicResource S.Picker.Tools}" />
+                                    <TextBlock Style="{StaticResource AqBadgeText}" Text="{DynamicResource S.Picker.Tools}" />
                                 </Border>
 
                                 <TextBlock Style="{StaticResource Type.Metadata}"
@@ -132,7 +132,7 @@
                            Text="{DynamicResource S.Picker.None.Hint}" />
             </StackPanel>
 
-            <kontur:KonturIcon Kind="Refresh" Width="20" Height="20"
+            <aqvenor:AqvenorIcon Kind="Refresh" Width="20" Height="20"
                                Foreground="{DynamicResource Brush.AccentText}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"

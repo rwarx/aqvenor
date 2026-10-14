@@ -25,6 +25,15 @@ public interface ISettingsService
     /// <summary>Persists every section. Used on shutdown.</summary>
     Task SaveAllAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Replaces one section with its defaults and persists it.
+    /// The settings screen's per-section reset is built on this rather than on
+    /// a client sending the defaults back, so a stale client cannot reset a
+    /// section to values the current version no longer uses.
+    /// </summary>
+    Task ResetAsync<TSection>(CancellationToken cancellationToken = default)
+        where TSection : class, new();
+
     /// <summary>Raised after a section has been persisted, with the section name from <see cref="AppSettings.Keys"/>.</summary>
     event EventHandler<string>? SettingsChanged;
 }

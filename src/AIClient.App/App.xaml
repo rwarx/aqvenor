@@ -19,7 +19,7 @@
                 <ui:ControlsDictionary />
 
                 <!--
-                    The Kontur design system. Merged after WPF-UI's dictionaries so the
+                    The Aqvenor design system. Merged after WPF-UI's dictionaries so the
                     product's own tokens and control styles take precedence over the
                     framework defaults for everything inside the window, while WPF-UI
                     keeps the window chrome (caption buttons, dialogs, snackbars).

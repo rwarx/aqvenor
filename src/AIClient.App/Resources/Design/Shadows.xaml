@@ -1,5 +1,5 @@
 <!--
-    Kontur Code design system — elevation and focus.
+    Aqvenor design system — elevation and focus.
 
     Shadows are for overlays only (palettes, popups, dialogs): a handful of elements,
     shown briefly. Anything permanent sits on flat surfaces separated by borders and
@@ -14,7 +14,7 @@
         Tokens this dictionary's own templates reference. StaticResource inside deferred
         template content resolves at INFLATION time against this dictionary's chain - the
         sibling dictionaries merged alongside it in Theme.xaml are not visible there, so
-        the tokens must be merged here directly or KcFocusVisual fails with "Cannot find
+        the tokens must be merged here directly or AqFocusVisual fails with "Cannot find
         resource named Radius.SM" at the first ApplyTemplate.
     -->
     <ResourceDictionary.MergedDictionaries>
@@ -31,7 +31,7 @@
 
     <!-- Keyboard focus indicator. A 1px accent rectangle with the same radius as the
          control; replaces the dotted default which reads as 1995. -->
-    <Style x:Key="KcFocusVisual">
+    <Style x:Key="AqFocusVisual">
         <Setter Property="Control.Template">
             <Setter.Value>
                 <ControlTemplate>

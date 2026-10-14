@@ -23,9 +23,14 @@ public static class ProviderHarness
 
     public static OpenRouterProvider OpenRouter(
         FakeHttpMessageHandler handler,
-        ISecureStorage? secureStorage = null) =>
+        ISecureStorage? secureStorage = null,
+        int? requestTimeoutSeconds = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(OpenRouterProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions
+            {
+                RequestTimeoutSeconds = requestTimeoutSeconds ?? new ProviderEndpointOptions().RequestTimeoutSeconds,
+            }),
             NullLogger<OpenRouterProvider>.Instance);
 
     public static NvidiaProvider Nvidia(
@@ -44,6 +49,7 @@ public static class ProviderHarness
         ISecureStorage? secureStorage = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(OpenAiProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<OpenAiProvider>.Instance);
 
     public static AnthropicProvider Anthropic(
@@ -58,6 +64,7 @@ public static class ProviderHarness
         ISecureStorage? secureStorage = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(GroqProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<GroqProvider>.Instance);
 
     public static XaiProvider Xai(
@@ -65,6 +72,7 @@ public static class ProviderHarness
         ISecureStorage? secureStorage = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(XaiProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<XaiProvider>.Instance);
 
     public static MistralProvider Mistral(
@@ -72,6 +80,7 @@ public static class ProviderHarness
         ISecureStorage? secureStorage = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(MistralProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<MistralProvider>.Instance);
 
     public static DeepSeekProvider DeepSeek(
@@ -79,6 +88,7 @@ public static class ProviderHarness
         ISecureStorage? secureStorage = null) =>
         new(new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(DeepSeekProvider.ProviderId, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<DeepSeekProvider>.Instance);
 
     /// <summary>A user-defined provider, built the way CustomProviderStore builds one.</summary>
@@ -93,6 +103,7 @@ public static class ProviderHarness
             baseUrl,
             new StubHttpClientFactory(handler),
             secureStorage ?? FakeSecureStorage.With(id, DummyKey),
+            Options.Create(new ProviderEndpointOptions()),
             NullLogger<CustomOpenAiCompatibleProvider>.Instance);
 
     /// <summary>Drains a provider stream into a list, which is what most assertions want.</summary>

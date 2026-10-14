@@ -27,7 +27,7 @@ namespace AIClient.App.Controls;
 /// pair gets the crossfade-with-turn fallback.
 /// </para>
 /// <para>
-/// Colour and size inherit like <see cref="KonturIcon"/>: the caller tints via
+/// Colour and size inherit like <see cref="AqvenorIcon"/>: the caller tints via
 /// <see cref="Control.Foreground"/> and sizes via Width/Height, and both drawings share
 /// one stroke weight.
 /// </para>

@@ -119,10 +119,10 @@ public sealed class RelativeTimeConverter : IValueConverter
 
         return age switch
         {
-            { TotalMinutes: < 1 } => "just now",
-            { TotalMinutes: < 60 } => $"{(int)age.TotalMinutes}m ago",
+            { TotalMinutes: < 1 } => Services.Localization.T("S.Time.JustNow"),
+            { TotalMinutes: < 60 } => string.Format(culture, Services.Localization.T("S.Time.MinutesAgo"), (int)age.TotalMinutes),
             _ when local.Date == now.Date => local.ToString("HH:mm", culture),
-            _ when local.Date == now.Date.AddDays(-1) => "Yesterday",
+            _ when local.Date == now.Date.AddDays(-1) => Services.Localization.T("S.Time.Yesterday"),
             { TotalDays: < 7 } => local.ToString("dddd", culture),
             _ when local.Year == now.Year => local.ToString("d MMM", culture),
             _ => local.ToString("d MMM yyyy", culture),
@@ -147,12 +147,12 @@ public sealed class UsageSummaryConverter : IMultiValueConverter
 
         if (values[0] is int input and > 0)
         {
-            parts.Add($"{input:N0} in");
+            parts.Add($"{input:N0} {Services.Localization.T("S.Usage.In")}");
         }
 
         if (values[1] is int output and > 0)
         {
-            parts.Add($"{output:N0} out");
+            parts.Add($"{output:N0} {Services.Localization.T("S.Usage.Out")}");
         }
 
         if (values[2] is int elapsed and > 0)
@@ -189,7 +189,7 @@ public sealed class PriceConverter : IValueConverter
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value switch
         {
-            decimal price and 0 => "Free",
+            decimal price and 0 => Services.Localization.T("S.Common.Free"),
             decimal price and > 0 => $"${price:0.##}/M",
             _ => string.Empty,
         };

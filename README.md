@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**Read this first:** Kontur Code is a **developer tool that can write to your files and run programs
+**Read this first:** Aqvenor is a **developer tool that can write to your files and run programs
 on your machine.** That is the product, not a bug in it. Everything below about the agent's
 containment — and every known gap — is in
 [SECURITY.md](SECURITY.md). Read it before you point this at anything you care about.
@@ -181,7 +181,7 @@ rather than failing at run time.
 ## Install
 
 Download the installer from the
-[releases page](https://github.com/rwarx/kontur-code/releases). It is a per-user NSIS install — no
+[releases page](https://github.com/rwarx/aqvenor/releases). It is a per-user NSIS install — no
 administrator rights required.
 
 The first release is an **alpha**. It is published because the shape is settled enough to build
@@ -191,8 +191,8 @@ against, not because it is ready for unattended use.
 <summary>Build it yourself</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # The sidecar has to be published next to where Electron looks for it
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

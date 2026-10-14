@@ -5,6 +5,7 @@ using AIClient.Infrastructure.Database;
 using AIClient.Infrastructure.Providers.OpenAiCompatible;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIClient.Infrastructure.Providers;
 
@@ -39,6 +40,7 @@ public sealed class CustomProviderStore
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISecureStorage _secureStorage;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IOptions<ProviderEndpointOptions> _endpoints;
     private readonly ILogger<CustomProviderStore> _logger;
     private readonly Dictionary<string, IAIProvider> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _mutex = new(1, 1);
@@ -48,12 +50,14 @@ public sealed class CustomProviderStore
         IHttpClientFactory httpClientFactory,
         ISecureStorage secureStorage,
         ILoggerFactory loggerFactory,
+        IOptions<ProviderEndpointOptions> endpoints,
         ILogger<CustomProviderStore> logger)
     {
         _contextFactory = contextFactory;
         _httpClientFactory = httpClientFactory;
         _secureStorage = secureStorage;
         _loggerFactory = loggerFactory;
+        _endpoints = endpoints;
         _logger = logger;
     }
 
@@ -203,6 +207,7 @@ public sealed class CustomProviderStore
             baseUrl,
             _httpClientFactory,
             _secureStorage,
+            _endpoints,
             _loggerFactory.CreateLogger<CustomOpenAiCompatibleProvider>());
 
     /// <summary>

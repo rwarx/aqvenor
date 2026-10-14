@@ -43,6 +43,13 @@ public sealed class GraphContextSource
     /// </remarks>
     private const int MaxEdgeMentions = 200;
 
+    /// <summary>
+    /// The most note/detail characters kept on one context line. Notes carry the user's
+    /// free-form instruction, so dropping them makes notes unreadable; keeping them whole
+    /// would let one long note spend the whole budget.
+    /// </summary>
+    private const int MaxDetailChars = 500;
+
     private readonly IGraphService _graph;
 
     public GraphContextSource(IGraphService graph)
@@ -331,17 +338,42 @@ public sealed class GraphContextSource
     }
 
     /// <summary>
-    /// One node as a bare line: title, kind, and the path when the node has one.
+    /// One node as a bare line: title, kind, subtitle, path and note/detail text when present.
     /// </summary>
     /// <remarks>
     /// Titles have their line breaks replaced with spaces so the line format holds: a
     /// title that wraps is a title that stops being parseable to anything reading the
-    /// block a line at a time.
+    /// block a line at a time. Detail (the free-form note body the user types on a note
+    /// node) is essential: without it a note reads as just its title/date and the model
+    /// reports "no additional details", which is the bug this carries.
     /// </remarks>
-    private static string NodeLine(GraphNode node) =>
-        node.Path is null
-            ? $"{Clean(node.Title)} [{SingularLabel(node.Kind)}]"
-            : $"{Clean(node.Title)} [{SingularLabel(node.Kind)}] — path: {node.Path}";
+    private static string NodeLine(GraphNode node)
+    {
+        var line = $"{Clean(node.Title)} [{SingularLabel(node.Kind)}]";
+
+        if (!string.IsNullOrWhiteSpace(node.Subtitle))
+        {
+            line += $" — {Clean(node.Subtitle)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.Path)
+            && !string.Equals(node.Path.Trim(), node.Subtitle?.Trim(), StringComparison.Ordinal))
+        {
+            line += $" — path: {Clean(node.Path)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.Detail))
+        {
+            line += $" — note: {Truncate(Clean(node.Detail))}";
+        }
+
+        if (node.Status != GraphNodeState.None)
+        {
+            line += $" [status: {SingularLabel(node.Status)}]";
+        }
+
+        return line;
+    }
 
     /// <summary>
     /// One relationship as it appears in a "relates to" list: the far end, its kind, and
@@ -356,7 +388,14 @@ public sealed class GraphContextSource
             return $"node '{other}' [missing] ({SingularLabel(edge.Kind)})";
         }
 
-        return $"{Clean(node.Title)} [{SingularLabel(node.Kind)}] ({SingularLabel(edge.Kind)})";
+        var line = $"{Clean(node.Title)} [{SingularLabel(node.Kind)}] ({SingularLabel(edge.Kind)})";
+
+        if (!string.IsNullOrWhiteSpace(edge.Label))
+        {
+            line += $" : {Truncate(Clean(edge.Label))}";
+        }
+
+        return line;
     }
 
     /// <summary>The kind as the model reads it: one lowercase word.</summary>
@@ -372,5 +411,8 @@ public sealed class GraphContextSource
         kind == GraphNodeKind.Data ? "data" : $"{SingularLabel(kind)}s";
 
     /// <summary>Replaces line breaks with spaces so one node stays one line.</summary>
-    private static string Clean(string text) => text.Replace('\r', ' ').Replace('\n', ' ');
+    private static string Clean(string text) => text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+    private static string Truncate(string text) =>
+        text.Length <= MaxDetailChars ? text : text[..MaxDetailChars] + "… (truncated)";
 }

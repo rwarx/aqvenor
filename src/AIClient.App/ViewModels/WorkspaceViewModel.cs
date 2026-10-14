@@ -131,7 +131,11 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     public void SwitchMode(WorkspaceMode mode) => Mode = mode;
 
     /// <summary>Hands a language switch down to the file tree, whose empty state is code-built.</summary>
-    public void OnLanguageChanged() => Files.OnLanguageChanged();
+    public void OnLanguageChanged()
+    {
+        Files.OnLanguageChanged();
+        Outline.OnLanguageChanged();
+    }
 
     /// <summary>
     /// The empty canvas's second door: ask the agent for a plan to draw. Lands in the

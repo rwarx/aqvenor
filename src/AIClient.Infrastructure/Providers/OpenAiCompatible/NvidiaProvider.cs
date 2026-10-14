@@ -78,7 +78,7 @@ public sealed class NvidiaProvider : OpenAiCompatibleProvider
         ISecureStorage secureStorage,
         IOptions<ProviderEndpointOptions> endpoints,
         ILogger<NvidiaProvider> logger)
-        : base(httpClientFactory, secureStorage, logger)
+        : base(httpClientFactory, secureStorage, endpoints, logger)
     {
         _endpoints = endpoints.Value;
     }

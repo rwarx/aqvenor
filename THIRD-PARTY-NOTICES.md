@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Kontur Code is MIT-licensed (see [LICENSE](LICENSE)). That licence covers **this
+Aqvenor is MIT-licensed (see [LICENSE](LICENSE)). That licence covers **this
 repository's own source only**. It does not extend to the third-party components
 the built application bundles, several of which are under their own terms. This
 file lists them so the obligations travel with the source.

@@ -1,9 +1,9 @@
 # Privacy Policy
 
-**Applies to Kontur Code `0.1.0-alpha` and every later build.**
+**Applies to Aqvenor `0.1.0-alpha` and every later build.**
 **Effective date: 3 October 2026.**
 
-Kontur Code is free and open-source software. It runs on your own computer. It
+Aqvenor is free and open-source software. It runs on your own computer. It
 has no account system, no sign-up, and — this is the part that matters most —
 **no server operated by the project that your data reaches.** This document
 explains what happens to your data anyway, because "it's all local" is a claim
@@ -22,7 +22,7 @@ that is only worth something if it is specific.
 
 | | |
 | --- | --- |
-| Who is responsible for your data | You. Kontur Code's authors run no service that receives your data. |
+| Who is responsible for your data | You. Aqvenor's authors run no service that receives your data. |
 | Is there an account? | No. No registration, no login, no user identifier. |
 | Is there telemetry or analytics? | **No.** See [§4](#4-what-is-never-collected). |
 | Is there a server run by this project? | **No.** Your conversation data never touches one. |
@@ -37,11 +37,11 @@ that is only worth something if it is specific.
 
 ### 2.1 The roles
 
-Data-protection law asks who is doing what with your information. For Kontur
+Data-protection law asks who is doing what with your information. For Aqvenor
 Code the honest answer is split in two, and conflating them is the usual way
 software like this gets its policies wrong:
 
-- **You are the controller.** You decide what to type into Kontur Code, which
+- **You are the controller.** You decide what to type into Aqvenor, which
   folder to open in it, and which provider to point it at. Nobody but you can
   make those decisions, and the data is not processed on our behalf.
 - **Your chosen model provider is an independent controller** for the content
@@ -66,7 +66,7 @@ is precisely the question a lawyer answers.
 
 ### 2.3 Age
 
-Kontur Code is a developer tool. It is **not directed at children**, and the
+Aqvenor is a developer tool. It is **not directed at children**, and the
 project does not knowingly collect information from anyone under 13. Because it
 is distributed as free software and operates no service, COPPA's commercial
 operator trigger does not apply to the project itself — but if you are under 13,
@@ -77,7 +77,7 @@ anything to a model provider.
 
 ## 3. Where your data lives
 
-Everything Kontur Code writes is under your user profile, in a folder named
+Everything Aqvenor writes is under your user profile, in a folder named
 `AIClient`. Nothing is written beside the executable and nothing is written into
 the source tree.
 
@@ -97,7 +97,7 @@ Three consequences worth stating plainly:
    same account can reach — but it is a trade-off, not an oversight.
 2. **Your API keys are encrypted**, with a key only your Windows account can
    derive. They are never written to disk in the clear, never sent to any
-   Kontur Code address, and never written to a log.
+   Aqvenor address, and never written to a log.
 3. **Logs deliberately contain almost nothing.** A log line carries a category, a
    timestamp and an error kind. It does not carry your prompt, a file path, a tool
    argument or a key. This is enforced by tests that capture log output and search
@@ -132,7 +132,7 @@ This is the entire list. If something is not here, the application does not do i
 
 When you press **Send**, the following goes to the provider you configured:
 
-- your message text, the conversation history Kontur Code has assembled for this
+- your message text, the conversation history Aqvenor has assembled for this
   turn, and any attachment text;
 - for an agent run, the file contents the agent read, and the arguments of the
   tool calls it made;
@@ -147,7 +147,7 @@ the OpenAI-compatible protocol:
 | OpenRouter | `https://openrouter.ai/api/v1` | <https://openrouter.ai/privacy> |
 | NVIDIA | `https://integrate.api.nvidia.com/v1` | <https://www.nvidia.com/en-us/privacy-policy/> |
 
-NVIDIA's base URL is overridable, so you can point Kontur Code at a local
+NVIDIA's base URL is overridable, so you can point Aqvenor at a local
 OpenAI-compatible server (Ollama, LM Studio, a self-hosted NIM container) and
 keep the request on your machine. See [DEVELOPMENT.md](DEVELOPMENT.md#configuration).
 
@@ -172,7 +172,7 @@ turn them on**, and both put every call in front of an approval prompt:
 The Git panel runs `git` on your machine to read status and diffs, and — only
 when you click — to stage, commit, push, pull and fetch. Remote names and branch
 names are validated before they reach the `git` argument list. Nothing about your
-repository is sent anywhere by Kontur Code.
+repository is sent anywhere by Aqvenor.
 
 ### 5.4 Update checks
 
@@ -188,7 +188,7 @@ For verification, these are the only hosts this codebase contacts:
 | --- | --- | --- |
 | `openrouter.ai` | model catalogue, chat completions | you press Send, or refresh models |
 | `integrate.api.nvidia.com` | model catalogue, chat completions | as above |
-| `github.com` | sends `HTTP-Referer: https://github.com/rwarx/kontur-code` on OpenRouter requests | you press Send (this is OpenRouter's convention for app attribution) |
+| `github.com` | sends `HTTP-Referer: https://github.com/rwarx/aqvenor` on OpenRouter requests | you press Send (this is OpenRouter's convention for app attribution) |
 | `127.0.0.1:45631` | the local sidecar, spoken to by the app itself | always, on your own machine |
 
 Plus any host **you** explicitly configure as a provider, and any host the agent
@@ -198,7 +198,7 @@ fetches when you enable and approve network access.
 
 ## 6. Legal bases for processing (GDPR Art. 6)
 
-Where GDPR applies, the processing Kontur Code performs locally rests on:
+Where GDPR applies, the processing Aqvenor performs locally rests on:
 
 - **Art. 6(1)(b) — performance of a contract**, for storing and displaying your
   conversations and settings: it is what makes the application do the thing you
@@ -213,11 +213,11 @@ Where GDPR applies, the processing Kontur Code performs locally rests on:
 
 Consent is withdrawable at any time and does not affect the lawfulness of
 processing before withdrawal. Withdrawing it is simple: stop sending messages,
-or delete the provider's key in Settings. Once the key is deleted, Kontur Code
+or delete the provider's key in Settings. Once the key is deleted, Aqvenor
 cannot authenticate to that provider at all.
 
 **No automated decision-making with legal or similarly significant effects**
-occurs within Kontur Code. The project itself makes no decision about you. Your
+occurs within Aqvenor. The project itself makes no decision about you. Your
 provider may — a model does produce output — which is a further reason the
 provider's own policy, not this one, governs what happens to your prompt.
 
@@ -295,12 +295,12 @@ requirement for your organisation, configure a provider endpoint you control
 ## 10. Russian Federation — 152-FZ
 
 If you are in Russia, Federal Law No. 152-FZ applies to the processing of your
-personal data. Kontur Code is structured so that the project's authors hold none.
+personal data. Aqvenor is structured so that the project's authors hold none.
 
 **Localisation.** Article 18(5) requires that the collection, storage,
 processing and transfer of Russian citizens' personal data use databases located
 in Russia. This obligation attaches to an operator or a data holder that
-**processes** such data. Kontur Code processes your data on your own machine, and
+**processes** such data. Aqvenor processes your data on your own machine, and
 the project's authors operate no server anywhere, so there is no database this
 project could be required to localise — and none is operated.
 
@@ -319,7 +319,7 @@ That is a deployment decision, and this document does not make it for you.
 | Withdraw consent | 18(1) | Stop sending; delete the provider key. |
 | Access, rectification, deletion | 14–14.1 | [§7](#7-exporting-your-data), [§8](#8-deleting-your-data). |
 | Stop processing | 14(1) | Delete `%APPDATA%\AIClient`. |
-| Object to automated processing | 21 | Kontur Code performs none itself; see [§6](#6-legal-bases-for-processing-gdpr-art-6). |
+| Object to automated processing | 21 | Aqvenor performs none itself; see [§6](#6-legal-bases-for-processing-gdpr-art-6). |
 
 **Security (Art. 19).** Keys are encrypted with DPAPI. The local sidecar requires
 a per-launch bearer token and refuses to bind to anything but loopback. The agent's
@@ -341,7 +341,7 @@ by them and not by this document. Get advice before relying on it.
 
 ## 11. United States
 
-**California (CCPA/CPRA).** Kontur Code does not sell personal information, does
+**California (CCPA/CPRA).** Aqvenor does not sell personal information, does
 not share it for cross-context behavioural advertising, and has no knowledge of it
 in a form it could link to a consumer — there is no consumer record, because there
 is no account. "Sharing" for cross-context behavioural advertising does not occur.
@@ -356,7 +356,7 @@ future hosted offering, so re-read this section before shipping one. See
 <https://www.ftc.gov/legal-library/browse/rules/childrens-online-privacy-protection-rule-coppa>.
 
 **Other US states.** State breach-notification statutes are written around
-operators holding unencrypted personal data. Kontur Code holds none of yours
+operators holding unencrypted personal data. Aqvenor holds none of yours
 off-machine, and the one credential it does hold is DPAPI-encrypted. Consult
 <https://www.ftc.gov/privacy-and-security/privacy-policy>.
 
@@ -396,10 +396,10 @@ that can change after you have read it.
 
 ## 15. Contact
 
-**Project and repository:** <https://github.com/rwarx/kontur-code>
+**Project and repository:** <https://github.com/rwarx/aqvenor>
 **Security reports:** see [SECURITY.md](SECURITY.md) — private vulnerability
 reporting is enabled on the repository.
-**Everything else:** <https://github.com/rwarx/kontur-code/issues>
+**Everything else:** <https://github.com/rwarx/aqvenor/issues>
 
 > **Before distributing a build of this yourself, fill this in.** GDPR Art. 13(1)(a)
 > and 152-FZ Art. 18(1) both require the identity and contact details of the party
@@ -414,7 +414,7 @@ reporting is enabled on the repository.
 
 ## 16. Scope of the software licence
 
-Kontur Code is MIT-licensed; see [LICENSE](LICENSE). The licence covers the
+Aqvenor is MIT-licensed; see [LICENSE](LICENSE). The licence covers the
 software. **It does not cover your data, and it does not make the project a party
 to any contract with you.** The MIT terms include a warranty disclaimer and a
 limitation of liability. If you are deploying this in an organisation and need
@@ -423,7 +423,7 @@ repository is not the place for it.
 
 ---
 
-*This document describes Kontur Code `0.1.0-alpha`. It was written by the project's
+*This document describes Aqvenor `0.1.0-alpha`. It was written by the project's
 contributors and reviewed by nobody with a law degree. Treat it as an accurate and
 good-faith description of what the code does, and get it reviewed before relying
 on it.*

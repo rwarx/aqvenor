@@ -95,6 +95,19 @@ public sealed record UpdateNode(
 public sealed record MoveNode(string NodeId, double X, double Y) : GraphChange;
 
 /// <summary>
+/// Sets how the work a node stands for is going (its progress status).
+/// </summary>
+/// <param name="NodeId">The node to mark, by id.</param>
+/// <param name="Status">The new status; <see cref="GraphNodeState.None"/> clears it.</param>
+/// <remarks>
+/// Separate from <see cref="UpdateNode"/> because the timeline wants to describe "marked done"
+/// differently from "renamed", and because status — unlike title/subtitle/kind — is a closed
+/// value whose <see cref="GraphNodeState.None"/> is a real setting (clear it), not "leave alone".
+/// Rejected when the node does not exist.
+/// </remarks>
+public sealed record SetNodeStatus(string NodeId, GraphNodeState Status) : GraphChange;
+
+/// <summary>
 /// Takes a node off the canvas, together with every edge joined to it.
 /// </summary>
 /// <param name="NodeId">The node to remove, by id.</param>

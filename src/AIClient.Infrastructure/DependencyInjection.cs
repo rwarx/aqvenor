@@ -234,6 +234,15 @@ public static class DependencyInjection
         services.AddSingleton<IAgentTool, WriteExternalFileTool>();
         services.AddSingleton<IAgentTool, EditExternalFileTool>();
 
+        // Canvas: read and draw on the shared spatial graph. All Read-risk — they write app state
+        // (the canvas), not the user's machine, the same rationale as submit_plan — so they are
+        // offered in every mode and never prompt. read_canvas is the model's eyes on the graph;
+        // add_nodes / link_nodes / set_node_status build and annotate it a piece at a time.
+        services.AddSingleton<IAgentTool, ReadCanvasTool>();
+        services.AddSingleton<IAgentTool, AddNodesTool>();
+        services.AddSingleton<IAgentTool, LinkNodesTool>();
+        services.AddSingleton<IAgentTool, SetNodeStatusTool>();
+
         // Belongs to the planning modes and is withheld from a build, which AgentModePolicy decides
         // from the marker interface it implements rather than from where it sits in this list.
         services.AddSingleton<IAgentTool, SubmitPlanTool>();

@@ -1,4 +1,4 @@
-# Contributing to Kontur Code
+# Contributing to Aqvenor
 
 Thanks for looking. This is a young project and contributions are genuinely
 welcome — but the review bar is high on purpose, because this program can write
@@ -37,8 +37,8 @@ Requires **Windows 10 1809+ or Windows 11** and the **.NET 10 SDK**. There is no
 cross-platform path, and the TFM says so rather than failing at run time.
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 dotnet build AIClient.slnx
 dotnet test

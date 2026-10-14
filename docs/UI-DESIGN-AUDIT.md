@@ -1,4 +1,4 @@
-# UI Design Audit — Kontur Code
+# UI Design Audit — Aqvenor
 
 Статус: аудит выполнен до начала имплементации. Документ фиксирует текущее состояние UI,
 что переиспользуется, что заменяется, что создаётся с нуля, и миграционный план.
@@ -163,7 +163,7 @@ AI (AgentService.PlanCanvas)
 `Resources/Design/`: `Colors.xaml` (семантические Brush.*), `Typography.xaml`
 (Title/Section/Body/Caption/Metadata + Code*), `Spacing.xaml` (XS 4 / SM 8 / MD 12 / LG 16 /
 XL 24), `Radii.xaml` (SM 3 / MD 5 / LG 8), `Shadows.xaml` (Subtle/Resting/Overlay + Glow),
-`Icons.xaml` (Path-геометрии 16px, единая оптическая сетка, `KonturIcon` — control с
+`Icons.xaml` (Path-геометрии 16px, единая оптическая сетка, `AqvenorIcon` — control с
 `IconKind`), `Controls.xaml` (ImplicitButton/PrimaryButton/GhostButton/ToolButton/NavItem/
 Input/ListBox/Tab/Toggle/Splitter…), `Theme.xaml` (агрегатор). Правила: цвета только
 через семантические ключи; светлая тема — словарь-переопределение тех же ключей.

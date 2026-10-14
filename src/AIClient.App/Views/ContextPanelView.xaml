@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
               xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -33,9 +33,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <kontur:KonturIcon Grid.Column="0" Width="13" Height="13" Foreground="{DynamicResource Brush.AccentText}">
-                    <kontur:KonturIcon.Style>
-                        <Style TargetType="kontur:KonturIcon">
+                <aqvenor:AqvenorIcon Grid.Column="0" Width="13" Height="13" Foreground="{DynamicResource Brush.AccentText}">
+                    <aqvenor:AqvenorIcon.Style>
+                        <Style TargetType="aqvenor:AqvenorIcon">
                             <Setter Property="Kind" Value="Node" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Mode}" Value="Workspace">
@@ -52,8 +52,8 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </kontur:KonturIcon.Style>
-                </kontur:KonturIcon>
+                    </aqvenor:AqvenorIcon.Style>
+                </aqvenor:AqvenorIcon>
                 <TextBlock Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center"
                            Style="{StaticResource Type.Section}">
                     <TextBlock.Text>
@@ -93,7 +93,7 @@
 
                     <!-- Timeline: the graph's history, newest first, undo attached. -->
                     <StackPanel Orientation="Horizontal" Margin="12,10,0,4">
-                        <kontur:KonturIcon Kind="History" Width="11" Height="11"
+                        <aqvenor:AqvenorIcon Kind="History" Width="11" Height="11"
                                            Foreground="{DynamicResource Brush.TextMuted}"
                                            VerticalAlignment="Center" />
                         <TextBlock Text="{DynamicResource S.Inspector.Timeline}" Style="{StaticResource Type.Overline}" Margin="6,0,0,0" />
@@ -108,10 +108,10 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <kontur:KonturIcon Grid.Column="0" Width="10" Height="10" Margin="0,2,8,0"
+                                        <aqvenor:AqvenorIcon Grid.Column="0" Width="10" Height="10" Margin="0,2,8,0"
                                                            Foreground="{DynamicResource Brush.TextMuted}">
-                                            <kontur:KonturIcon.Style>
-                                                <Style TargetType="kontur:KonturIcon">
+                                            <aqvenor:AqvenorIcon.Style>
+                                                <Style TargetType="aqvenor:AqvenorIcon">
                                                     <Setter Property="Kind" Value="Clock" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Origin}" Value="Agent">
@@ -132,8 +132,8 @@
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </kontur:KonturIcon.Style>
-                                        </kontur:KonturIcon>
+                                            </aqvenor:AqvenorIcon.Style>
+                                        </aqvenor:AqvenorIcon>
                                         <StackPanel Grid.Column="1" MinWidth="0">
                                             <TextBlock Text="{Binding Title}" Style="{StaticResource Type.Caption}"
                                                        TextTrimming="CharacterEllipsis" />
@@ -163,7 +163,7 @@
                     <!-- Node identity. -->
                     <StackPanel Margin="12,10">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="{Binding InspectedNode.Kind, TargetNullValue=Node, Converter={StaticResource NodeKindToIcon}}"
+                            <aqvenor:AqvenorIcon Kind="{Binding InspectedNode.Kind, TargetNullValue=Node, Converter={StaticResource NodeKindToIcon}}"
                                                Width="15" Height="15" />
                             <TextBlock Text="{Binding InspectedNode.Title, FallbackValue='—'}"
                                        Style="{StaticResource Type.Section}" Margin="10,0,0,0"
@@ -183,10 +183,10 @@
                     <!-- Open on disk, when this node is a real thing. -->
                     <StackPanel Margin="12,2"
                                 Visibility="{Binding InspectedNode.Path, Converter={StaticResource StringToVisibility}}">
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="10,6" HorizontalContentAlignment="Left"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="10,6" HorizontalContentAlignment="Left"
                                 Command="{Binding OpenPathCommand}" CommandParameter="{Binding InspectedNode.Path}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Open" Width="13" Height="13" />
+                                <aqvenor:AqvenorIcon Kind="Open" Width="13" Height="13" />
                                 <TextBlock Text="{DynamicResource S.Inspector.OpenInCode}" Style="{StaticResource Type.Caption}" Margin="9,0,0,0" />
                             </StackPanel>
                         </Button>
@@ -194,7 +194,7 @@
 
                     <!-- Relations. -->
                     <StackPanel Orientation="Horizontal" Margin="12,10,0,4">
-                        <kontur:KonturIcon Kind="Link" Width="11" Height="11"
+                        <aqvenor:AqvenorIcon Kind="Link" Width="11" Height="11"
                                            Foreground="{DynamicResource Brush.TextMuted}"
                                            VerticalAlignment="Center" />
                         <TextBlock Text="{DynamicResource S.Inspector.Relations}" Style="{StaticResource Type.Overline}" Margin="6,0,0,0" />
@@ -209,7 +209,7 @@
                                         <TextBlock Text="{Binding Direction}" Style="{StaticResource Type.Metadata}"
                                                    Foreground="{DynamicResource Brush.AccentText}" Margin="0,0,7,0"
                                                    VerticalAlignment="Center" />
-                                        <kontur:KonturIcon Kind="{Binding Icon}" Width="12" Height="12"
+                                        <aqvenor:AqvenorIcon Kind="{Binding Icon}" Width="12" Height="12"
                                                            VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding Title}" Style="{StaticResource Type.Caption}"
                                                    Margin="7,0,0,0" TextTrimming="CharacterEllipsis"
@@ -225,33 +225,33 @@
 
                     <!-- AI actions on this node. -->
                     <StackPanel Orientation="Horizontal" Margin="12,10,0,4">
-                        <kontur:KonturIcon Kind="Sparkle" Width="11" Height="11"
+                        <aqvenor:AqvenorIcon Kind="Sparkle" Width="11" Height="11"
                                            Foreground="{DynamicResource Brush.TextMuted}"
                                            VerticalAlignment="Center" />
                         <TextBlock Text="{DynamicResource S.Inspector.AskAI}" Style="{StaticResource Type.Overline}" Margin="6,0,0,0" />
                     </StackPanel>
                     <StackPanel Margin="8,0,8,10">
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="10,6" Margin="0,1"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="10,6" Margin="0,1"
                                 HorizontalContentAlignment="Left" Command="{Binding AskExplainCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Sparkle" Width="12" Height="12"
+                                <aqvenor:AqvenorIcon Kind="Sparkle" Width="12" Height="12"
                                                    Foreground="{DynamicResource Brush.AccentText}" />
                                 <TextBlock Text="{DynamicResource S.Inspector.Ask.Architecture}" Style="{StaticResource Type.Caption}"
                                            Margin="9,0,0,0" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="10,6" Margin="0,1"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="10,6" Margin="0,1"
                                 HorizontalContentAlignment="Left" Command="{Binding AskRelationsCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Link" Width="12" Height="12" />
+                                <aqvenor:AqvenorIcon Kind="Link" Width="12" Height="12" />
                                 <TextBlock Text="{DynamicResource S.Inspector.Ask.Dependencies}" Style="{StaticResource Type.Caption}"
                                            Margin="9,0,0,0" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="10,6" Margin="0,1"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="10,6" Margin="0,1"
                                 HorizontalContentAlignment="Left" Command="{Binding AskTestsCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Check" Width="12" Height="12" />
+                                <aqvenor:AqvenorIcon Kind="Check" Width="12" Height="12" />
                                 <TextBlock Text="{DynamicResource S.Inspector.Ask.Tests}" Style="{StaticResource Type.Caption}"
                                            Margin="9,0,0,0" />
                             </StackPanel>
@@ -274,7 +274,7 @@
 
                     <StackPanel Margin="12,10">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="Link" Width="15" Height="15"
+                            <aqvenor:AqvenorIcon Kind="Link" Width="15" Height="15"
                                                Foreground="{DynamicResource Brush.AccentText}" />
                             <TextBlock Text="{DynamicResource S.Inspector.Mode.Edge}" Style="{StaticResource Type.Section}" Margin="10,0,0,0" />
                         </StackPanel>
@@ -301,7 +301,7 @@
 
                     <StackPanel Margin="12,10">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="Graph" Width="15" Height="15"
+                            <aqvenor:AqvenorIcon Kind="Graph" Width="15" Height="15"
                                                Foreground="{DynamicResource Brush.AccentText}" />
                             <TextBlock Text="{DynamicResource S.Inspector.Group.Selection}" Style="{StaticResource Type.Section}" Margin="10,0,0,0" />
                         </StackPanel>
@@ -312,10 +312,10 @@
                     </StackPanel>
 
                     <StackPanel Margin="8,0,8,10">
-                        <Button Style="{StaticResource KcButtonGhost}" Padding="10,6" Margin="0,1"
+                        <Button Style="{StaticResource AqButtonGhost}" Padding="10,6" Margin="0,1"
                                 HorizontalContentAlignment="Left" Command="{Binding AskAboutSelectionCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Sparkle" Width="12" Height="12"
+                                <aqvenor:AqvenorIcon Kind="Sparkle" Width="12" Height="12"
                                                    Foreground="{DynamicResource Brush.AccentText}" />
                                 <TextBlock Text="{DynamicResource S.Inspector.AskSelection}" Style="{StaticResource Type.Caption}"
                                            Margin="9,0,0,0" />
@@ -339,7 +339,7 @@
 
                     <StackPanel Margin="12,10">
                         <StackPanel Orientation="Horizontal">
-                            <kontur:KonturIcon Kind="Sparkle" Width="15" Height="15"
+                            <aqvenor:AqvenorIcon Kind="Sparkle" Width="15" Height="15"
                                                Foreground="{DynamicResource Brush.AccentText}" />
                             <TextBlock Text="{Binding AiStateText, FallbackValue={loc:Loc S.Main.Ai.Idle}}"
                                        Style="{StaticResource Type.Section}" Margin="10,0,0,0" />

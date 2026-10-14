@@ -1,5 +1,5 @@
 <!--
-    Kontur Code design system — colour tokens.
+    Aqvenor design system — colour tokens.
 
     One dark-first palette expressed as semantic resources. Views never hold a literal
     colour: they bind to a token here, so the whole surface can be re-tuned (or

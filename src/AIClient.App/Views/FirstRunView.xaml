@@ -5,7 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
               xmlns:beh="clr-namespace:AIClient.App.Behaviors"
               xmlns:views="clr-namespace:AIClient.App.Views"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
               mc:Ignorable="d"
@@ -57,7 +57,7 @@
                            Margin="0,0,0,22"
                            Text="{DynamicResource S.FirstRun.Welcome.Intro}" />
 
-                <Border Style="{StaticResource KcCard}" Padding="16" MaxWidth="480">
+                <Border Style="{StaticResource AqCard}" Padding="16" MaxWidth="480">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.FirstRun.Welcome.Get.Title}" Style="{StaticResource Type.Caption}" FontWeight="SemiBold"
                                    Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,8" />
@@ -88,7 +88,7 @@
                 <ItemsControl ItemsSource="{Binding Providers}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource KcCard}" Padding="14,12" Margin="0,0,0,10">
+                            <Border Style="{StaticResource AqCard}" Padding="14,12" Margin="0,0,0,10">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -105,19 +105,19 @@
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <kontur:KonturIcon Kind="Refresh" Width="14" Height="14"
+                                            <aqvenor:AqvenorIcon Kind="Refresh" Width="14" Height="14"
                                                                Foreground="{DynamicResource Brush.AccentText}"
                                                                Margin="0,0,10,0"
                                                                VerticalAlignment="Center"
                                                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
 
-                                            <kontur:KonturIcon Kind="Check" Width="14" Height="14"
+                                            <aqvenor:AqvenorIcon Kind="Check" Width="14" Height="14"
                                                                Foreground="{DynamicResource Brush.Success}"
                                                                Margin="0,0,10,0"
                                                                VerticalAlignment="Center"
                                                                Visibility="{Binding HasApiKey, Converter={StaticResource BoolToVisibility}}" />
 
-                                            <Button Style="{StaticResource KcButtonPrimary}" Content="{DynamicResource S.Provider.AddKey}"
+                                            <Button Style="{StaticResource AqButtonPrimary}" Content="{DynamicResource S.Provider.AddKey}"
                                                     Padding="12,5"
                                                     Command="{Binding BeginEditApiKeyCommand}"
                                                     Visibility="{Binding IsEditingApiKey, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -139,16 +139,16 @@
                                                          Padding="8,6" />
 
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                                                <Button Style="{StaticResource KcButtonPrimary}" Content="{DynamicResource S.Common.Save}"
+                                                <Button Style="{StaticResource AqButtonPrimary}" Content="{DynamicResource S.Common.Save}"
                                                         Padding="12,5" Margin="0,0,6,0"
                                                         Command="{Binding SaveApiKeyCommand}" />
-                                                <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Common.Cancel}"
+                                                <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Common.Cancel}"
                                                         Padding="12,5"
                                                         Command="{Binding CancelEditApiKeyCommand}" />
                                             </StackPanel>
                                         </Grid>
 
-                                        <Button Style="{StaticResource KcLink}" Content="{DynamicResource S.Provider.GetKey}"
+                                        <Button Style="{StaticResource AqLink}" Content="{DynamicResource S.Provider.GetKey}"
                                                 Margin="0,8,0,0"
                                                 HorizontalAlignment="Left"
                                                 Command="{Binding OpenApiKeyPageCommand}"
@@ -187,17 +187,17 @@
 
             <!-- Footer -->
             <Grid Grid.Row="2" Margin="0,22,0,0">
-                <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.FirstRun.Skip}"
+                <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.FirstRun.Skip}"
                         HorizontalAlignment="Left"
                         Command="{Binding SkipCommand}" />
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Common.Back}"
+                    <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Common.Back}"
                             MinWidth="90" Padding="12,5"
                             Margin="0,0,8,0"
                             Command="{Binding BackCommand}"
                             Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVisibility}}" />
-                    <Button Style="{StaticResource KcButtonPrimary}" Content="{Binding PrimaryButtonText}"
+                    <Button Style="{StaticResource AqButtonPrimary}" Content="{Binding PrimaryButtonText}"
                             MinWidth="130" Padding="12,5"
                             Command="{Binding NextCommand}" />
                 </StackPanel>

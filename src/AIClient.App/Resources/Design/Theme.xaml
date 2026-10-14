@@ -1,5 +1,5 @@
 <!--
-    Kontur Code design system — the aggregate dictionary.
+    Aqvenor design system — the aggregate dictionary.
 
     App.xaml merges this single file, and this file merges the parts in the order that
     makes the tokens resolvable by the styles that consume them: metrics first, then

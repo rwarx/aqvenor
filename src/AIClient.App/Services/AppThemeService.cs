@@ -28,14 +28,14 @@ public sealed class AppThemeService : IAppThemeService
 
     private bool _isFollowingSystem;
 
-    // The Kontur palette (Design/Colors.xaml) is dark-first. The light theme is those same
+    // The Aqvenor palette (Design/Colors.xaml) is dark-first. The light theme is those same
     // token keys re-defined with light values in Design/Light.xaml, merged last so it wins.
     // WPF-UI only repaints its own ThemesDictionary, so without this swap a light theme would
     // leave every product surface on its dark tokens - the "half-lit" regression.
-    private static readonly Uri KonturLightSource =
+    private static readonly Uri AqvenorLightSource =
         new("pack://application:,,,/Resources/Design/Light.xaml", UriKind.Absolute);
 
-    private ResourceDictionary? _konturLight;
+    private ResourceDictionary? _aqvenorLight;
     private bool _watchingPalette;
 
     /// <inheritdoc />
@@ -56,7 +56,7 @@ public sealed class AppThemeService : IAppThemeService
     {
         // One subscription for the process: ApplicationThemeManager.Changed fires for every
         // effective-theme change - the user's, and Windows' own under a System setting - so
-        // the Kontur palette swap and the canvas refresh hang off it rather than off Apply,
+        // the Aqvenor palette swap and the canvas refresh hang off it rather than off Apply,
         // which a runtime system flip never re-enters.
         if (!_watchingPalette)
         {
@@ -68,7 +68,7 @@ public sealed class AppThemeService : IAppThemeService
 
         // Applying a theme equal to the startup default (Dark) raises no Changed, so the
         // initial palette is squared away here rather than relying on the event.
-        SyncKonturPalette();
+        SyncAqvenorPalette();
     }
 
     public async Task SetThemeAsync(ThemeMode mode)
@@ -126,17 +126,17 @@ public sealed class AppThemeService : IAppThemeService
 
     private void OnApplicationThemeChanged(ApplicationTheme currentApplicationTheme, Color systemAccent)
     {
-        SyncKonturPalette();
+        SyncAqvenorPalette();
         EffectiveThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
-    /// Brings the Kontur token palette into line with the effective theme: the light
+    /// Brings the Aqvenor token palette into line with the effective theme: the light
     /// override is merged when WPF-UI is light and removed when it is dark. Idempotent, so
     /// the accent-only and repeated raises of <see cref="ApplicationThemeManager.Changed"/>
     /// cost nothing.
     /// </summary>
-    private void SyncKonturPalette()
+    private void SyncAqvenorPalette()
     {
         var app = System.Windows.Application.Current;
 
@@ -150,18 +150,18 @@ public sealed class AppThemeService : IAppThemeService
 
         if (wantLight)
         {
-            _konturLight ??= new ResourceDictionary { Source = KonturLightSource };
+            _aqvenorLight ??= new ResourceDictionary { Source = AqvenorLightSource };
 
-            if (!dictionaries.Contains(_konturLight))
+            if (!dictionaries.Contains(_aqvenorLight))
             {
                 // Last wins: appended after Colors.xaml and the legacy Shared.xaml so its
                 // re-definitions of the same token keys take precedence for every consumer.
-                dictionaries.Add(_konturLight);
+                dictionaries.Add(_aqvenorLight);
             }
         }
-        else if (_konturLight is not null)
+        else if (_aqvenorLight is not null)
         {
-            dictionaries.Remove(_konturLight);
+            dictionaries.Remove(_aqvenorLight);
         }
     }
 

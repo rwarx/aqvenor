@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**À lire en premier :** Kontur Code est un **outil de développement capable d'écrire dans vos
+**À lire en premier :** Aqvenor est un **outil de développement capable d'écrire dans vos
 fichiers et d'exécuter des programmes sur votre machine.** C'est le produit, pas un défaut. Tout ce
 qui suit sur l'isolement de l'agent — et chaque lacune connue — se trouve dans
 [SECURITY.md](SECURITY.md). Lisez-le avant de diriger cet outil vers quoi que ce soit qui vous
@@ -197,7 +197,7 @@ cible le dit au lieu d'échouer à l'exécution.
 ## Installation
 
 Téléchargez l'installateur depuis la
-[page des versions](https://github.com/rwarx/kontur-code/releases). C'est une installation NSIS par
+[page des versions](https://github.com/rwarx/aqvenor/releases). C'est une installation NSIS par
 utilisateur — aucun droit administrateur n'est requis.
 
 La première version est une **alpha**. Elle est publiée parce que la forme est assez stabilisée pour
@@ -207,8 +207,8 @@ construire dessus, pas parce qu'elle est prête pour un usage sans surveillance.
 <summary>Compilez-la vous-même</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # The sidecar has to be published next to where Electron looks for it
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

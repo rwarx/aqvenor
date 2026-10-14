@@ -29,6 +29,7 @@ public sealed partial class WorkflowsViewModel : ObservableObject
 {
     private readonly ChatViewModel _chat;
     private readonly WorkspaceViewModel _workspace;
+    private readonly IAgentToolRegistry _tools;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBusy))]
@@ -46,6 +47,7 @@ public sealed partial class WorkflowsViewModel : ObservableObject
 
         _chat = chat;
         _workspace = workspace;
+        _tools = tools;
 
         Recipes =
         [
@@ -65,7 +67,7 @@ public sealed partial class WorkflowsViewModel : ObservableObject
 
         foreach (var tool in tools.Tools)
         {
-            Tools.Add(new ToolCatalogRow(tool.Name, tool.Description, tool.Risk.ToString()));
+            Tools.Add(new ToolCatalogRow(tool.Name, tool.Description, RiskText(tool.Risk)));
         }
 
         _chat.PropertyChanged += OnChatPropertyChanged;
@@ -82,7 +84,29 @@ public sealed partial class WorkflowsViewModel : ObservableObject
         {
             recipe.RefreshLanguage();
         }
+
+        RebuildTools();
     }
+
+    /// <summary>The tool catalogue in the interface language; rebuilt, not patched.</summary>
+    private void RebuildTools()
+    {
+        Tools.Clear();
+
+        foreach (var tool in _tools.Tools)
+        {
+            Tools.Add(new ToolCatalogRow(tool.Name, tool.Description, RiskText(tool.Risk)));
+        }
+    }
+
+    /// <summary>A tool's risk level in the interface language, never the enum name.</summary>
+    private static string RiskText(AgentToolRisk risk) => risk switch
+    {
+        AgentToolRisk.Read => Localization.T("S.Tool.Risk.Read"),
+        AgentToolRisk.Write => Localization.T("S.Tool.Risk.Write"),
+        AgentToolRisk.Execute => Localization.T("S.Tool.Risk.Execute"),
+        _ => risk.ToString(),
+    };
 
     /// <summary>
     /// Stages a recipe in the composer with its agent mode and shows Chat.

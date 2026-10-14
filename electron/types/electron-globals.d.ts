@@ -14,8 +14,8 @@
  */
 /// <reference types="electron" />
 
-/** The bridge `preload.js` exposes. Mirrored by `kontur-bridge.d.ts` on the renderer side. */
-interface KonturMainBridge {
+/** The bridge `preload.js` exposes. Mirrored by `aqvenor-bridge.d.ts` on the renderer side. */
+interface AqvenorMainBridge {
   getBackendUrl(): Promise<string>;
   getBackendAuth(): Promise<string>;
   pickFolder(): Promise<string | null>;

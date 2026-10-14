@@ -40,6 +40,18 @@ public sealed class StubSettingsService : ISettingsService
 
     public Task SaveAllAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+    public Task ResetAsync<TSection>(CancellationToken cancellationToken = default)
+        where TSection : class, new()
+    {
+        var fresh = new TSection();
+        var property = typeof(AppSettings).GetProperties()
+            .Single(p => p.PropertyType == typeof(TSection));
+        property.SetValue(Current, fresh);
+
+        SettingsChanged?.Invoke(this, Resolve<TSection>().Key);
+        return Task.CompletedTask;
+    }
+
     private TSection Section<TSection>() where TSection : class => Resolve<TSection>().Section;
 
     /// <summary>

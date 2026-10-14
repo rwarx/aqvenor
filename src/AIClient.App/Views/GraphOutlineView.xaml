@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:GraphOutlineViewModel}"
@@ -30,19 +30,19 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <kontur:KonturIcon Grid.Column="0" Kind="Graph" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Grid.Column="0" Kind="Graph" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.AccentText}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource S.Outline.Title}" Style="{StaticResource Type.Section}"
                            Margin="9,0,0,0" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Style="{StaticResource KcButtonTool}" Width="24" Height="24"
+                <Button Grid.Column="2" Style="{StaticResource AqButtonTool}" Width="24" Height="24"
                         Command="{Binding ClearFilterCommand}" ToolTip="{DynamicResource S.Outline.ClearFilter}">
-                    <kontur:KonturIcon Kind="Close" Width="12" Height="12" />
+                    <aqvenor:AqvenorIcon Kind="Close" Width="12" Height="12" />
                 </Button>
             </Grid>
         </Border>
 
         <TextBox Grid.Row="1" Margin="10,8,10,4" MinHeight="28"
-                 Style="{StaticResource KcInputPlaceholder}"
+                 Style="{StaticResource AqInputPlaceholder}"
                  VerticalContentAlignment="Center"
                  Tag="{DynamicResource S.Outline.Filter}"
                  Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" />
@@ -65,7 +65,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <kontur:KonturIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13"
+                            <aqvenor:AqvenorIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13"
                                                Foreground="{DynamicResource Brush.TextMuted}" />
                             <TextBlock Grid.Column="1" Text="{Binding Title}" Style="{StaticResource Type.Metadata}"
                                        Margin="8,0,0,0" FontWeight="SemiBold" />

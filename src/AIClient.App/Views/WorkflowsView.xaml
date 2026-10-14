@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:WorkflowsViewModel}"
@@ -17,7 +17,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,12">
         <StackPanel MaxWidth="860">
             <StackPanel Orientation="Horizontal">
-                <kontur:KonturIcon Kind="Sparkle" Width="14" Height="14"
+                <aqvenor:AqvenorIcon Kind="Sparkle" Width="14" Height="14"
                                    Foreground="{DynamicResource Brush.AccentText}" />
                 <TextBlock Text="{DynamicResource S.Mode.Title.Workflows}" Style="{StaticResource Type.Section}"
                            Margin="9,0,0,0" VerticalAlignment="Center" />
@@ -50,13 +50,13 @@
                                         <Run Text="{Binding ModeName, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
-                                <Button Grid.Column="1" Style="{StaticResource KcButtonPrimary}"
+                                <Button Grid.Column="1" Style="{StaticResource AqButtonPrimary}"
                                         Padding="12,5" Margin="12,0,0,0" VerticalAlignment="Center"
                                         Command="{Binding DataContext.RunRecipeCommand,
                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}">
                                     <StackPanel Orientation="Horizontal">
-                                        <kontur:KonturIcon Kind="Play" Width="12" Height="12" />
+                                        <aqvenor:AqvenorIcon Kind="Play" Width="12" Height="12" />
                                         <TextBlock Text="{DynamicResource S.Workflows.Run}" Style="{StaticResource Type.Caption}"
                                                    Margin="6,0,0,0" VerticalAlignment="Center" />
                                     </StackPanel>

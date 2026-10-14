@@ -196,8 +196,8 @@ public sealed class ProviderCatalogueTests
 
         await ModelsOf(ProviderHarness.OpenRouter(handler));
 
-        Assert.Equal("Kontur Code", handler.LastRequest.Header("X-Title"));
-        Assert.Equal("https://github.com/rwarx/kontur-code", handler.LastRequest.Header("HTTP-Referer"));
+        Assert.Equal("Aqvenor", handler.LastRequest.Header("X-Title"));
+        Assert.Equal("https://github.com/rwarx/aqvenor", handler.LastRequest.Header("HTTP-Referer"));
     }
 
     [Fact]
@@ -393,6 +393,42 @@ public sealed class ProviderCatalogueTests
 
     private static Task<IReadOnlyList<AIModelDescriptor>> ModelsOf(IAIProvider provider) =>
         provider.GetModelsAsync(TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task A_catalogue_call_that_outlives_the_request_timeout_is_a_timeout_not_a_cancellation()
+    {
+        // A catalogue host that accepts the connection and then goes quiet must read as
+        // "timed out" (retryable, test button reports it), not as the user pressing Stop.
+        var handler = new FakeHttpMessageHandler().Hang();
+        var provider = ProviderHarness.OpenRouter(handler, requestTimeoutSeconds: 1);
+
+        var started = DateTimeOffset.UtcNow;
+        var exception = await Assert.ThrowsAsync<AIProviderException>(
+            () => provider.GetModelsAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(AIErrorKind.Timeout, exception.Kind);
+        Assert.True(exception.IsRetryable);
+        Assert.DoesNotContain(ProviderHarness.DummyKey, exception.UserMessage, StringComparison.Ordinal);
+        Assert.True(
+            DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(30),
+            "The request timeout should fire in about a second, not after the client's own timeout.");
+    }
+
+    [Fact]
+    public async Task A_user_cancellation_while_the_catalogue_hangs_is_still_a_cancellation()
+    {
+        // The mirror case: when the caller cancels, the timeout mapping must not claim it.
+        using var userCancel = new CancellationTokenSource();
+        var handler = new FakeHttpMessageHandler().Hang();
+        var provider = ProviderHarness.OpenRouter(handler, requestTimeoutSeconds: 60);
+
+        userCancel.Cancel();
+
+        var exception = await Assert.ThrowsAsync<AIProviderException>(
+            () => provider.GetModelsAsync(userCancel.Token));
+
+        Assert.Equal(AIErrorKind.Cancelled, exception.Kind);
+    }
 
     /// <summary>Fails if a placeholder credential shows up in anything user-visible.</summary>
     private static void AssertNoKeyAnywhere(params string?[] texts)

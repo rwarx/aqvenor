@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./globals.css";
-import { KonturApp } from "./components/kontur/KonturApp";
-import { useKontur } from "./lib/kontur/store";
-import { hydrateFromBackend } from "./lib/kontur/sync";
+import { AqvenorApp } from "./components/aqvenor/AqvenorApp";
+import { useAqvenor } from "./lib/aqvenor/store";
+import { hydrateFromBackend } from "./lib/aqvenor/sync";
 
 function Boot() {
   const [backendSettled, setBackendSettled] = useState(false);
-  const hydrated = useKontur((s) => s.hydrated);
+  const hydrated = useAqvenor((s) => s.hydrated);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +36,7 @@ function Boot() {
       </div>
     );
   }
-  return <KonturApp />;
+  return <AqvenorApp />;
 }
 
 createRoot(document.getElementById("root")!).render(

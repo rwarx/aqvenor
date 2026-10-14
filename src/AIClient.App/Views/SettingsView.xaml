@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:beh="clr-namespace:AIClient.App.Behaviors"
-             xmlns:kontur="clr-namespace:AIClient.App.Controls"
+             xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
              xmlns:vm="clr-namespace:AIClient.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
@@ -28,7 +28,7 @@
         </Style>
 
         <!-- Numeric entry: invariant text, committed on blur, never a spinner strip. -->
-        <Style x:Key="NumericInput" TargetType="TextBox" BasedOn="{StaticResource KcInputPlaceholder}">
+        <Style x:Key="NumericInput" TargetType="TextBox" BasedOn="{StaticResource AqInputPlaceholder}">
             <Setter Property="Width" Value="150" />
             <Setter Property="MinHeight" Value="28" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -46,17 +46,17 @@
         <!-- Page header: what this page is, and the way back. -->
         <Grid Grid.Row="0" Margin="24,14,24,4">
             <StackPanel Orientation="Horizontal">
-                <kontur:KonturIcon Kind="Settings" Width="16" Height="16"
+                <aqvenor:AqvenorIcon Kind="Settings" Width="16" Height="16"
                                    Foreground="{DynamicResource Brush.AccentText}"
                                    VerticalAlignment="Center" />
                 <TextBlock Text="{DynamicResource S.Settings.Title}" Style="{StaticResource Type.Title}" FontSize="19" Margin="10,0,0,0"
                            VerticalAlignment="Center" />
             </StackPanel>
 
-            <Button Style="{StaticResource KcButtonTool}" HorizontalAlignment="Right"
+            <Button Style="{StaticResource AqButtonTool}" HorizontalAlignment="Right"
                     ToolTip="{DynamicResource S.Settings.Back.WorkspaceTip}"
                     Command="{Binding DataContext.ShowChatCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                <kontur:KonturIcon Kind="Close" Width="13" Height="13" />
+                <aqvenor:AqvenorIcon Kind="Close" Width="13" Height="13" />
             </Button>
         </Grid>
 
@@ -75,7 +75,7 @@
                 <ItemsControl ItemsSource="{Binding Providers}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource KcCard}" Margin="0,0,0,10" Padding="14,12">
+                            <Border Style="{StaticResource AqCard}" Margin="0,0,0,10" Padding="14,12">
                                 <StackPanel>
 
                                     <!-- Header: status dot, name, status line, enable switch -->
@@ -147,15 +147,15 @@
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Provider.Change}"
+                                            <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Provider.Change}"
                                                     Padding="10,4" Margin="0,0,6,0"
                                                     Command="{Binding BeginEditApiKeyCommand}"
                                                     Visibility="{Binding HasApiKey, Converter={StaticResource BoolToVisibility}}" />
-                                            <Button Style="{StaticResource KcButtonPrimary}" Content="{DynamicResource S.Provider.AddKey}"
+                                            <Button Style="{StaticResource AqButtonPrimary}" Content="{DynamicResource S.Provider.AddKey}"
                                                     Padding="10,4" Margin="0,0,6,0"
                                                     Command="{Binding BeginEditApiKeyCommand}"
                                                     Visibility="{Binding HasApiKey, Converter={StaticResource InverseBoolToVisibility}}" />
-                                            <Button Style="{StaticResource KcButtonDanger}" Content="{DynamicResource S.Provider.Remove}"
+                                            <Button Style="{StaticResource AqButtonDanger}" Content="{DynamicResource S.Provider.Remove}"
                                                     Padding="10,4"
                                                     Command="{Binding RemoveApiKeyCommand}"
                                                     Visibility="{Binding HasApiKey, Converter={StaticResource BoolToVisibility}}" />
@@ -180,10 +180,10 @@
                                                          Padding="8,6" />
 
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                                                <Button Style="{StaticResource KcButtonPrimary}" Content="{DynamicResource S.Common.Save}"
+                                                <Button Style="{StaticResource AqButtonPrimary}" Content="{DynamicResource S.Common.Save}"
                                                         Padding="10,4" Margin="0,0,6,0"
                                                         Command="{Binding SaveApiKeyCommand}" />
-                                                <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Common.Cancel}"
+                                                <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Common.Cancel}"
                                                         Padding="10,4"
                                                         Command="{Binding CancelEditApiKeyCommand}" />
                                             </StackPanel>
@@ -198,18 +198,18 @@
 
                                     <!-- Actions -->
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                        <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Provider.TestConnection}"
+                                        <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Provider.TestConnection}"
                                                 Padding="10,4" Margin="0,0,6,0"
                                                 Command="{Binding TestConnectionCommand}" />
-                                        <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Provider.RefreshModels}"
+                                        <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Provider.RefreshModels}"
                                                 Padding="10,4" Margin="0,0,6,0"
                                                 Command="{Binding RefreshModelsCommand}" />
-                                        <Button Style="{StaticResource KcLink}" Content="{DynamicResource S.Provider.GetKey}"
+                                        <Button Style="{StaticResource AqLink}" Content="{DynamicResource S.Provider.GetKey}"
                                                 VerticalAlignment="Center"
                                                 Command="{Binding OpenApiKeyPageCommand}"
                                                 Visibility="{Binding ApiKeyUrl, Converter={StaticResource StringToVisibility}}" />
 
-                                        <kontur:KonturIcon Kind="Refresh" Width="14" Height="14"
+                                        <aqvenor:AqvenorIcon Kind="Refresh" Width="14" Height="14"
                                                            Foreground="{DynamicResource Brush.AccentText}"
                                                            Margin="10,0,0,0"
                                                            VerticalAlignment="Center"
@@ -220,7 +220,7 @@
                                          can only be disabled. Same row, different futures. -->
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
                                                 Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}">
-                                        <Button Style="{StaticResource KcButtonDanger}" Content="{DynamicResource S.Settings.Providers.Remove}"
+                                        <Button Style="{StaticResource AqButtonDanger}" Content="{DynamicResource S.Settings.Providers.Remove}"
                                                 Padding="10,4"
                                                 Command="{Binding DataContext.RemoveProviderCommand,
                                                                   RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -244,7 +244,7 @@
                                                  TextWrapping="Wrap"
                                                  MaxHeight="160"
                                                  VerticalScrollBarVisibility="Auto"
-                                                 Style="{StaticResource KcInputBare}"
+                                                 Style="{StaticResource AqInputBare}"
                                                  FontFamily="{StaticResource CodeFont}"
                                                  FontSize="12" />
                                     </Expander>
@@ -255,7 +255,7 @@
                 </ItemsControl>
 
                 <!-- Custom providers: any OpenAI-compatible endpoint the user names. -->
-                <Border Style="{StaticResource KcCard}" Margin="0,4,0,10" Padding="14,12">
+                <Border Style="{StaticResource AqCard}" Margin="0,4,0,10" Padding="14,12">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.Settings.Providers.AddCustom}" Style="{StaticResource Type.Body}"
                                    FontWeight="SemiBold" />
@@ -270,21 +270,21 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBox Grid.Column="0"
-                                     Style="{StaticResource KcInputPlaceholder}"
+                                     Style="{StaticResource AqInputPlaceholder}"
                                      Tag="{DynamicResource S.Settings.Providers.NamePlaceholder}"
                                      VerticalContentAlignment="Center"
                                      Margin="0,0,6,0"
                                      Text="{Binding NewProviderName, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBox Grid.Column="1"
-                                     Style="{StaticResource KcInputPlaceholder}"
+                                     Style="{StaticResource AqInputPlaceholder}"
                                      Tag="{DynamicResource S.Settings.Providers.UrlPlaceholder}"
                                      VerticalContentAlignment="Center"
                                      Margin="0,0,6,0"
                                      Text="{Binding NewProviderBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
 
                             <Button Grid.Column="2"
-                                    Style="{StaticResource KcButtonPrimary}"
+                                    Style="{StaticResource AqButtonPrimary}"
                                     Content="{DynamicResource S.Settings.Providers.Add}"
                                     Padding="12,4"
                                     Command="{Binding AddCustomProviderCommand}" />
@@ -303,7 +303,7 @@
                 <!-- ============ General ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.General}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <Grid Style="{StaticResource SettingRow}">
                             <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.General.Language}" VerticalAlignment="Center" />
@@ -327,7 +327,7 @@
                 <!-- ============ Appearance ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Appearance}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <Grid Style="{StaticResource SettingRow}">
                             <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.Appearance.Theme}" VerticalAlignment="Center" />
@@ -379,7 +379,7 @@
                 <!-- ============ Chat ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Mode.Chat}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.Settings.Chat.SystemPrompt}" Style="{StaticResource Type.Caption}" Margin="0,0,0,5" />
                         <TextBox Text="{Binding SystemPrompt, UpdateSourceTrigger=LostFocus}"
@@ -475,19 +475,13 @@
                             <TextBox Style="{StaticResource NumericInput}"
                                      Text="{Binding MaxHistoryMessages, Converter={StaticResource IntToText}, UpdateSourceTrigger=LostFocus}" />
                         </Grid>
-
-                        <Grid Style="{StaticResource SettingRow}">
-                            <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.Chat.Timeout}" VerticalAlignment="Center" />
-                            <TextBox Style="{StaticResource NumericInput}"
-                                     Text="{Binding RequestTimeoutSeconds, Converter={StaticResource IntToText}, UpdateSourceTrigger=LostFocus}" />
-                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- ============ Agent ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Agent}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.Settings.Agent.Workspace}" Style="{StaticResource Type.Caption}" Margin="0,0,0,5" />
 
@@ -504,13 +498,13 @@
                                    Margin="0,0,0,10" />
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Settings.Agent.Choose}" Padding="10,4"
+                            <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Settings.Agent.Choose}" Padding="10,4"
                                     Command="{Binding ChooseWorkspaceCommand}" Margin="0,0,8,0" />
-                            <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Settings.Agent.ShowInExplorer}" Padding="10,4"
+                            <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Settings.Agent.ShowInExplorer}" Padding="10,4"
                                     Command="{Binding OpenWorkspaceFolderCommand}"
                                     Visibility="{Binding HasWorkspace, Converter={StaticResource BoolToVisibility}}"
                                     Margin="0,0,8,0" />
-                            <Button Style="{StaticResource KcButtonDanger}" Content="{DynamicResource S.Settings.Agent.Close}" Padding="10,4"
+                            <Button Style="{StaticResource AqButtonDanger}" Content="{DynamicResource S.Settings.Agent.Close}" Padding="10,4"
                                     ToolTip="{DynamicResource S.Settings.Agent.Close.ToolTip}"
                                     Command="{Binding CloseWorkspaceCommand}"
                                     Visibility="{Binding HasWorkspace, Converter={StaticResource BoolToVisibility}}" />
@@ -525,7 +519,7 @@
                                 Margin="0,0,0,10"
                                 Visibility="{Binding WorkspaceProblem, Converter={StaticResource StringToVisibility}}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Warning" Width="13" Height="13"
+                                <aqvenor:AqvenorIcon Kind="Warning" Width="13" Height="13"
                                                    Foreground="{DynamicResource Brush.Warning}"
                                                    VerticalAlignment="Top" Margin="0,1,9,0" />
                                 <StackPanel>
@@ -567,7 +561,7 @@
                 <!-- ============ Running programs ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Programs}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <!--
                             The one switch in this application that changes what kind of thing the agent
@@ -593,7 +587,7 @@
                                 Visibility="{Binding AllowCommands, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <kontur:KonturIcon Kind="Warning" Width="13" Height="13"
+                                    <aqvenor:AqvenorIcon Kind="Warning" Width="13" Height="13"
                                                        Foreground="{DynamicResource Brush.Warning}"
                                                        VerticalAlignment="Top" Margin="0,1,9,0" />
                                     <TextBlock Text="{DynamicResource S.Settings.Programs.Warning.Title}"
@@ -652,7 +646,7 @@
                                 Margin="0,0,0,10"
                                 Visibility="{Binding AllowedCommandsProblem, Converter={StaticResource StringToVisibility}}">
                             <StackPanel Orientation="Horizontal">
-                                <kontur:KonturIcon Kind="Warning" Width="13" Height="13"
+                                <aqvenor:AqvenorIcon Kind="Warning" Width="13" Height="13"
                                                    Foreground="{DynamicResource Brush.Warning}"
                                                    VerticalAlignment="Top" Margin="0,1,9,0" />
                                 <StackPanel>
@@ -679,10 +673,65 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ============ Network ============ -->
+                <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Network}" />
+
+                <Border Style="{StaticResource AqCard}">
+                    <StackPanel>
+                        <!--
+                            The second switch that widens what the agent can reach. Off until the
+                            user turns it on here - the HTTP settings surface refuses this name,
+                            so there is no other place.
+                        -->
+                        <CheckBox Content="{DynamicResource S.Settings.Network.Allow}"
+                                  IsChecked="{Binding AllowNetwork}"
+                                  Margin="0,0,0,6" />
+
+                        <TextBlock Style="{StaticResource Type.Metadata}"
+                                   TextWrapping="Wrap"
+                                   TextTrimming="None"
+                                   Margin="0,0,0,10"
+                                   Text="{DynamicResource S.Settings.Network.Allow.Hint}" />
+
+                        <Grid Style="{StaticResource SettingRow}" IsEnabled="{Binding AllowNetwork}">
+                            <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.Network.Timeout}" VerticalAlignment="Center" />
+                            <TextBox Style="{StaticResource NumericInput}"
+                                     Text="{Binding FetchTimeoutSeconds, Converter={StaticResource IntToText}, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <Grid Style="{StaticResource SettingRow}" IsEnabled="{Binding AllowNetwork}">
+                            <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.Network.MaxResponse}" VerticalAlignment="Center" />
+                            <TextBox Style="{StaticResource NumericInput}"
+                                     Text="{Binding MaxFetchResponseCharacters, Converter={StaticResource IntToText}, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ Files outside the project ============ -->
+                <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.External}" />
+
+                <Border Style="{StaticResource AqCard}">
+                    <StackPanel>
+                        <!--
+                            The third widening switch, with the same one-place rule: only this
+                            screen writes it, the sidecar refuses it over HTTP.
+                        -->
+                        <CheckBox Content="{DynamicResource S.Settings.External.Allow}"
+                                  IsChecked="{Binding AllowExternalFiles}"
+                                  Margin="0,0,0,6" />
+
+                        <TextBlock Style="{StaticResource Type.Metadata}"
+                                   TextWrapping="Wrap"
+                                   TextTrimming="None"
+                                   Margin="0,0,0,2"
+                                   Text="{DynamicResource S.Settings.External.Allow.Hint}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- ============ Storage ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Storage}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <StackPanel>
                         <Grid Style="{StaticResource SettingRow}">
                             <TextBlock Style="{StaticResource Type.Caption}" Text="{DynamicResource S.Settings.Storage.MaxAttachment}" VerticalAlignment="Center" />
@@ -714,9 +763,9 @@
                                    Margin="0,3,0,10" />
 
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Settings.Storage.OpenData}" Padding="10,4"
+                            <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Settings.Storage.OpenData}" Padding="10,4"
                                     Command="{Binding OpenDataFolderCommand}" Margin="0,0,6,0" />
-                            <Button Style="{StaticResource KcButtonGhost}" Content="{DynamicResource S.Settings.Storage.OpenLogs}" Padding="10,4"
+                            <Button Style="{StaticResource AqButtonGhost}" Content="{DynamicResource S.Settings.Storage.OpenLogs}" Padding="10,4"
                                     Command="{Binding OpenLogsFolderCommand}" />
                         </StackPanel>
                     </StackPanel>
@@ -725,15 +774,15 @@
                 <!-- ============ Keyboard shortcuts ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.Shortcuts}" />
 
-                <Border Style="{StaticResource KcCard}">
+                <Border Style="{StaticResource AqCard}">
                     <ItemsControl ItemsSource="{Binding Shortcuts}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,0,0,7">
                                     <TextBlock Text="{Binding Description}" Style="{StaticResource Type.Caption}"
                                                VerticalAlignment="Center" />
-                                    <Border Style="{StaticResource KcBadge}" HorizontalAlignment="Right" Padding="7,2">
-                                        <TextBlock Style="{StaticResource KcBadgeText}"
+                                    <Border Style="{StaticResource AqBadge}" HorizontalAlignment="Right" Padding="7,2">
+                                        <TextBlock Style="{StaticResource AqBadgeText}"
                                                    FontFamily="{StaticResource CodeFont}"
                                                    Text="{Binding Keys}" />
                                     </Border>
@@ -746,7 +795,7 @@
                 <!-- ============ About ============ -->
                 <TextBlock Style="{StaticResource SettingsSection}" Text="{DynamicResource S.Settings.About}" />
 
-                <Border Style="{StaticResource KcCard}" Margin="0,0,0,24">
+                <Border Style="{StaticResource AqCard}" Margin="0,0,0,24">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.App.Name}" Style="{StaticResource Type.Body}" FontWeight="SemiBold" />
                         <TextBlock Style="{StaticResource Type.Metadata}"

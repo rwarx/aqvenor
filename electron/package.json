@@ -1,22 +1,22 @@
 {
-    "name": "kontur-code-electron",
+    "name": "aqvenor",
     "version": "0.1.1-alpha",
     "private": true,
-    "description": "Kontur Code вЂ” Electron shell over the ported new-interface renderer and the .NET sidecar backend",
+    "description": "Aqvenor вЂ” Electron shell over the ported new-interface renderer and the .NET sidecar backend",
     "main": "main/main.js",
-    "author": "Kontur Code contributors",
+    "author": "Aqvenor contributors",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/rwarx/kontur-code.git"
+        "url": "git+https://github.com/rwarx/aqvenor.git"
     },
-    "homepage": "https://github.com/rwarx/kontur-code#readme",
+    "homepage": "https://github.com/rwarx/aqvenor#readme",
     "bugs": {
-        "url": "https://github.com/rwarx/kontur-code/issues"
+        "url": "https://github.com/rwarx/aqvenor/issues"
     },
     "build": {
-        "appId": "com.kontur.code",
-        "productName": "Kontur Code",
+        "appId": "com.aqvenor.app",
+        "productName": "Aqvenor",
         "directories": {
             "output": "release"
         },
@@ -28,11 +28,12 @@
         ],
         "extraResources": [
             {
-                "from": "sidecar/AIClient.Server.exe",
-                "to": "sidecar/AIClient.Server.exe"
+                "from": "sidecar",
+                "to": "sidecar"
             }
         ],
         "win": {
+            "icon": "build/icon.ico",
             "target": [
                 "nsis"
             ]
@@ -42,19 +43,20 @@
             "perMachine": false,
             "createDesktopShortcut": true,
             "createStartMenuShortcut": true,
-            "shortcutName": "Kontur Code"
+            "shortcutName": "Aqvenor"
         },
         "publish": [
             {
                 "provider": "github",
                 "owner": "rwarx",
-                "repo": "kontur-code"
+                "repo": "aqvenor"
             }
         ]
     },
     "scripts": {
         "dev": "vite",
         "build:renderer": "vite build",
+        "test": "vitest run",
         "typecheck": "tsc --noEmit",
         "typecheck:shell": "tsc -p tsconfig.shell.json --noEmit",
         "typecheck:all": "npm run typecheck && npm run typecheck:shell",
@@ -86,6 +88,8 @@
         "@radix-ui/react-toast": "^1.2.14",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "dockview-core": "8.4.1",
+        "dockview-react": "8.4.1",
         "lucide-react": "^0.525.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -100,9 +104,11 @@
         "@vitejs/plugin-react": "^4.3.0",
         "electron": "^44.0.0",
         "electron-builder": "^26.0.0",
+        "jsdom": "^30.1.2",
         "tailwindcss": "^4.0.0",
         "tw-animate-css": "^1.3.5",
         "typescript": "^5.5.0",
-        "vite": "^7.2.0"
+        "vite": "^7.2.0",
+        "vitest": "^5.0.4"
     }
 }

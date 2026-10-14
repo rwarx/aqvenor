@@ -1,19 +1,41 @@
 # Changelog
 
-All notable changes to Kontur Code are recorded here.
+All notable changes to Aqvenor are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with a
 prerelease suffix while the surface is still moving.
 
 Versions are also published on the
-[GitHub releases page](https://github.com/rwarx/kontur-code/releases).
+[GitHub releases page](https://github.com/rwarx/aqvenor/releases).
 
 ---
 
 ## [Unreleased]
 
-Nothing yet.
+### Settings overhaul
+
+- **The Electron settings toggles for command execution, network fetch and
+  out-of-project files no longer pretend to work.** The sidecar has always
+  refused those names over HTTP; the UI showed editable switches anyway, so a
+  user could believe a guard rail was on (or off) while the backend disagreed.
+  The switches now render locked with live values, the PUT response reports
+  refused names explicitly, and the WPF host — the only writer — gained the
+  missing network/external switches and their budgets.
+- **Every setting is clamped where it is saved.** `SettingsLimits` bounds all
+  six sections in `SettingsService`, so the WPF screen, the HTTP surface and a
+  hand-edited row agree. An HTTP `PUT` of `{"maxSteps": 500}` now sticks at 100.
+- **Dead knobs removed or wired.** `ChatSettings.RequestTimeoutSeconds` had a
+  WPF control nothing read; the control is gone. Catalogue and connection-test
+  calls now honour `Providers:RequestTimeoutSeconds` (default 100s) and report
+  a timeout instead of hanging to the 600s stream budget. The workspace
+  index cap, the unknown-window history cap and the graph-context depth/share
+  are read live instead of sitting in the database.
+- **Settings are searchable and categorized** (13 sections with a filter), with
+  a tools registry table, a data/diagnostics area (real app and sidecar
+  versions, data locations, secret-free config snapshot, per-section reset),
+  Top P and nullable sampling, a System theme, and session behaviours
+  (delete confirmation, auto-titles) that actually apply.
 
 ---
 
@@ -204,7 +226,7 @@ Fixed before publishing, all of it in the local sidecar's HTTP surface:
 - **Electron hardening**: `window.open` and in-page navigation are blocked, all
   permission requests are refused, CSP no longer ships `unsafe-inline` in
   `script-src`, and CSP is injected at runtime from the address actually in use.
-- **`kontur:readFileLocal` confined** to folders the user picked through the OS
+- **`aqvenor:readFileLocal` confined** to folders the user picked through the OS
   dialog, refusing symlinks and capping at 8 MB. It was an arbitrary-path read.
 - **The sidecar process is killed properly on quit** (`taskkill /T /F` on
   Windows), had an `error` listener attached so a failed spawn no longer takes the
@@ -245,6 +267,6 @@ Carried into this alpha deliberately, and detailed with file references in
    UI kit that was replaced. They are not bundled, but they are a supply-chain
    surface for anyone running `npm install`.
 
-[Unreleased]: https://github.com/rwarx/kontur-code/compare/v0.1.1-alpha...HEAD
-[0.1.1-alpha]: https://github.com/rwarx/kontur-code/compare/v0.1.0-alpha...v0.1.1-alpha
-[0.1.0-alpha]: https://github.com/rwarx/kontur-code/releases/tag/v0.1.0-alpha
+[Unreleased]: https://github.com/rwarx/aqvenor/compare/v0.1.1-alpha...HEAD
+[0.1.1-alpha]: https://github.com/rwarx/aqvenor/compare/v0.1.0-alpha...v0.1.1-alpha
+[0.1.0-alpha]: https://github.com/rwarx/aqvenor/releases/tag/v0.1.0-alpha

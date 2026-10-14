@@ -1,5 +1,5 @@
 ﻿<!--
-    Kontur Code design system — control styles.
+    Aqvenor design system — control styles.
 
     Plain WPF controls, styled from the semantic tokens only: no literal colours, no
     literal sizes outside the spacing/radius dictionaries. WPF-UI keeps the window chrome
@@ -12,14 +12,14 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-                    xmlns:kontur="clr-namespace:AIClient.App.Controls">
+                    xmlns:aqvenor="clr-namespace:AIClient.App.Controls">
 
     <!--
         Tokens the templates below reference. StaticResource inside deferred template
         content (ControlTemplate/Setter templates) resolves at INFLATION time against
         THIS dictionary's own chain; the dictionaries merged alongside this one in
         Theme.xaml are siblings, invisible to that lookup. Radius/Spacing (Spacing.xaml),
-        Font/Size (Typography.xaml), Icon.* (Icons.xaml) and KcFocusVisual (Shadows.xaml)
+        Font/Size (Typography.xaml), Icon.* (Icons.xaml) and AqFocusVisual (Shadows.xaml)
         must therefore be merged here directly, or the first ApplyTemplate of a styled
         control fails with "Cannot find resource named Radius.SM". Brushes stay
         DynamicResource, which resolves from the element site and needs no merge.
@@ -34,7 +34,7 @@
 
     <!-- ================================================================ Icon -->
 
-    <Style TargetType="kontur:KonturIcon">
+    <Style TargetType="aqvenor:AqvenorIcon">
         <Setter Property="Width" Value="16" />
         <Setter Property="Height" Value="16" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
@@ -45,7 +45,7 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="kontur:KonturIcon">
+                <ControlTemplate TargetType="aqvenor:AqvenorIcon">
                     <!-- Uniform stretch keeps stroke weight proportional to the size the
                          layout gives; round caps/joins are half the icon set's identity. -->
                     <Path Data="{Binding Geometry, RelativeSource={RelativeSource TemplatedParent}}"
@@ -64,7 +64,7 @@
 
     <!-- The morphing variant of the icon: same tinting and sizing rules, but it owns a
          pair of states and folds between them instead of swapping. -->
-    <Style TargetType="kontur:MorphIcon">
+    <Style TargetType="aqvenor:MorphIcon">
         <Setter Property="Width" Value="16" />
         <Setter Property="Height" Value="16" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
@@ -90,7 +90,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource KcFocusVisual}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource AqFocusVisual}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -153,7 +153,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="KcButtonPrimary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Style x:Key="AqButtonPrimary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnAccent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
@@ -238,7 +238,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="KcButtonGhost" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Style x:Key="AqButtonGhost" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">
@@ -318,15 +318,15 @@
         </Setter>
     </Style>
 
-    <!-- Square icon button; content is a KonturIcon. -->
-    <Style x:Key="KcButtonTool" TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+    <!-- Square icon button; content is a AqvenorIcon. -->
+    <Style x:Key="AqButtonTool" TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
         <Setter Property="Width" Value="28" />
         <Setter Property="Height" Value="28" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="ToolTipService.InitialShowDelay" Value="500" />
     </Style>
 
-    <Style x:Key="KcButtonDanger" TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+    <Style x:Key="AqButtonDanger" TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Error}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -355,7 +355,7 @@
 
     <!-- Text link for inline actions inside copy. No outline box: a link answers the
          pointer with brightness, the way text has always answered. -->
-    <Style x:Key="KcLink" TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+    <Style x:Key="AqLink" TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
         <Setter Property="Padding" Value="2,1" />
         <Setter Property="MinHeight" Value="0" />
@@ -384,14 +384,14 @@
     </Style>
 
     <!-- Toggle states: the selected agent-mode chip, row disclosure chevrons, view toggles. -->
-    <Style x:Key="KcToggle" TargetType="ToggleButton">
+    <Style x:Key="AqToggle" TargetType="ToggleButton">
         <Setter Property="FontFamily" Value="{StaticResource Font.Interface}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="Padding" Value="{StaticResource Spacing.Inset}" />
         <Setter Property="MinHeight" Value="26" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource KcFocusVisual}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource AqFocusVisual}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -475,7 +475,7 @@
     </Style>
 
     <!-- Multi-line variant: top-aligned content, visible vertical scroll. -->
-    <Style x:Key="KcInputMultiline" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="AqInputMultiline" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="AcceptsReturn" Value="True" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="VerticalContentAlignment" Value="Top" />
@@ -510,7 +510,7 @@
     <!-- No chrome at all: for a text surface that lives inside a container that already
          draws its own border (the composer, a tool-result well). The implicit style's
          frame would double the border a hand's width apart. -->
-    <Style x:Key="KcInputBare" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="AqInputBare" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Template">
             <Setter.Value>
@@ -527,7 +527,7 @@
 
     <!-- Placeholder support without a subclass: the text rides in Tag, the template shows
          it while Text is empty. Keep Tag otherwise unused on inputs that opt in. -->
-    <Style x:Key="KcInputPlaceholder" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="AqInputPlaceholder" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -575,7 +575,7 @@
 
     <!-- A bare input with placeholder for inline rows: same template logic, no sunken
          frame of its own - it sits inside a container that has one. -->
-    <Style x:Key="KcInputBarePlaceholder" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Style x:Key="AqInputBarePlaceholder" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Template">
             <Setter.Value>
@@ -615,7 +615,7 @@
         <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource KcFocusVisual}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource AqFocusVisual}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
@@ -709,7 +709,7 @@
                     <StackPanel Background="{TemplateBinding Background}">
                         <ToggleButton x:Name="Header"
                                       IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                                      FocusVisualStyle="{StaticResource KcFocusVisual}"
+                                      FocusVisualStyle="{StaticResource AqFocusVisual}"
                                       Cursor="Hand"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -784,7 +784,7 @@
 
     <!-- The action row's button: ghost-quiet but text-sized down, for Copy / Regenerate
          / Edit lines under messages where a full-height button would shout. -->
-    <Style x:Key="KcButtonQuiet" TargetType="Button" BasedOn="{StaticResource KcButtonGhost}">
+    <Style x:Key="AqButtonQuiet" TargetType="Button" BasedOn="{StaticResource AqButtonGhost}">
         <Setter Property="FontFamily" Value="{StaticResource Font.Interface}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Metadata}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
@@ -822,7 +822,7 @@
         <Setter Property="Padding" Value="8,5" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource KcFocusVisual}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource AqFocusVisual}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -871,7 +871,7 @@
 
     <!-- Navigation row. Selection is a state, not a colour statement: tinted background,
          accent text, and a 2.5px accent bar hard against the row's left edge. -->
-    <Style x:Key="KcNavItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+    <Style x:Key="AqNavItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="Margin" Value="2,1" />
@@ -951,7 +951,7 @@
     <!-- Workspace mode tabs. An underline, not a boxed tab control: the workspace is one
          surface changing content, and a chrome-y tab strip would claim more visual rank
          than the canvas it sits above. -->
-    <Style x:Key="KcTabs" TargetType="ListBox">
+    <Style x:Key="AqTabs" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="ItemsPanel">
@@ -970,14 +970,14 @@
         </Setter>
     </Style>
 
-    <Style x:Key="KcTab" TargetType="ListBoxItem">
+    <Style x:Key="AqTab" TargetType="ListBoxItem">
         <Setter Property="FontFamily" Value="{StaticResource Font.Interface}" />
         <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="Padding" Value="10,7" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource KcFocusVisual}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource AqFocusVisual}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -1043,7 +1043,7 @@
 
     <!-- ============================================================== Cards -->
 
-    <Style x:Key="KcCard" TargetType="Border">
+    <Style x:Key="AqCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface2}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -1054,7 +1054,7 @@
 
     <!-- ============================================================= Badges -->
 
-    <Style x:Key="KcBadge" TargetType="Border">
+    <Style x:Key="AqBadge" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface2}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderFaint}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -1065,27 +1065,27 @@
         <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
 
-    <Style x:Key="KcBadgeText" TargetType="TextBlock">
+    <Style x:Key="AqBadgeText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource Font.Interface}" />
         <Setter Property="FontSize" Value="10.5" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
     </Style>
 
-    <Style x:Key="KcBadgeAccent" TargetType="Border" BasedOn="{StaticResource KcBadge}">
+    <Style x:Key="AqBadgeAccent" TargetType="Border" BasedOn="{StaticResource AqBadge}">
         <Setter Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
     </Style>
 
-    <Style x:Key="KcBadgeSuccess" TargetType="Border" BasedOn="{StaticResource KcBadge}">
+    <Style x:Key="AqBadgeSuccess" TargetType="Border" BasedOn="{StaticResource AqBadge}">
         <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
     </Style>
 
-    <Style x:Key="KcBadgeWarning" TargetType="Border" BasedOn="{StaticResource KcBadge}">
+    <Style x:Key="AqBadgeWarning" TargetType="Border" BasedOn="{StaticResource AqBadge}">
         <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
     </Style>
 
-    <Style x:Key="KcBadgeError" TargetType="Border" BasedOn="{StaticResource KcBadge}">
+    <Style x:Key="AqBadgeError" TargetType="Border" BasedOn="{StaticResource AqBadge}">
         <Setter Property="Background" Value="{DynamicResource Brush.ErrorSoft}" />
     </Style>
 
@@ -1238,7 +1238,7 @@
 
     <!-- Thin, quiet, hit-target sized: 12px wide, 6px thumb, transparent track, no page
          arrows. Scrollbars are a means of moving a surface, not a chrome element. -->
-    <Style x:Key="KcScrollRepeatButton" TargetType="RepeatButton">
+    <Style x:Key="AqScrollRepeatButton" TargetType="RepeatButton">
         <Setter Property="Focusable" Value="False" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Background" Value="Transparent" />
@@ -1285,11 +1285,11 @@
                                IsDirectionReversed="True"
                                Focusable="False">
                             <Track.DecreaseRepeatButton>
-                                <RepeatButton Style="{StaticResource KcScrollRepeatButton}"
+                                <RepeatButton Style="{StaticResource AqScrollRepeatButton}"
                                               Command="ScrollBar.PageUpCommand" />
                             </Track.DecreaseRepeatButton>
                             <Track.IncreaseRepeatButton>
-                                <RepeatButton Style="{StaticResource KcScrollRepeatButton}"
+                                <RepeatButton Style="{StaticResource AqScrollRepeatButton}"
                                               Command="ScrollBar.PageDownCommand" />
                             </Track.IncreaseRepeatButton>
                             <Track.Thumb>
@@ -1350,7 +1350,7 @@
 
     <!-- Panel splitters are generous hit targets with a hairline centre that wakes on
          hover: discoverable by pointer, invisible when idle. -->
-    <Style x:Key="KcSplitV" TargetType="GridSplitter">
+    <Style x:Key="AqSplitV" TargetType="GridSplitter">
         <Setter Property="Width" Value="6" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="ShowsPreview" Value="False" />
@@ -1372,7 +1372,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="KcSplitH" TargetType="GridSplitter">
+    <Style x:Key="AqSplitH" TargetType="GridSplitter">
         <Setter Property="Height" Value="6" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="ShowsPreview" Value="False" />

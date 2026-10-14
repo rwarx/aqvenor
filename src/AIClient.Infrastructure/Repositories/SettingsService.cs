@@ -62,6 +62,10 @@ public sealed class SettingsService : ISettingsService
             Canvas = Deserialize<CanvasSettings>(rows, AppSettings.Keys.Canvas),
         };
 
+        // Rows predate the bounds (or were hand-edited): keep the app safe without
+        // rewriting the user's file behind their back. The next save persists them.
+        SettingsLimits.Clamp(Current);
+
         _logger.LogInformation("Loaded {Count} settings section(s).", rows.Count);
     }
 
@@ -78,6 +82,7 @@ public sealed class SettingsService : ISettingsService
         try
         {
             mutate(section);
+            SettingsLimits.Clamp(Current);
             await PersistAsync(key, section, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -89,6 +94,73 @@ public sealed class SettingsService : ISettingsService
         SettingsChanged?.Invoke(this, key);
     }
 
+    public async Task ResetAsync<TSection>(CancellationToken cancellationToken = default)
+        where TSection : class, new()
+    {
+        var key = ResolveKey<TSection>();
+        var fresh = new TSection();
+
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            Replace(fresh);
+            await PersistAsync(key, fresh, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+
+        SettingsChanged?.Invoke(this, key);
+    }
+
+    /// <summary>Section key for a section type; throws for anything else.</summary>
+    private static string ResolveKey<TSection>() where TSection : class
+    {
+        if (typeof(TSection) == typeof(GeneralSettings))
+        {
+            return AppSettings.Keys.General;
+        }
+
+        if (typeof(TSection) == typeof(AppearanceSettings))
+        {
+            return AppSettings.Keys.Appearance;
+        }
+
+        if (typeof(TSection) == typeof(ChatSettings))
+        {
+            return AppSettings.Keys.Chat;
+        }
+
+        if (typeof(TSection) == typeof(StorageSettings))
+        {
+            return AppSettings.Keys.Storage;
+        }
+
+        if (typeof(TSection) == typeof(AgentSettings))
+        {
+            return AppSettings.Keys.Agent;
+        }
+
+        if (typeof(TSection) == typeof(CanvasSettings))
+        {
+            return AppSettings.Keys.Canvas;
+        }
+
+        throw new ArgumentException(
+            $"'{typeof(TSection).Name}' is not a settings section.", nameof(TSection));
+    }
+
+    /// <summary>Swaps the live section instance for a fresh one.</summary>
+    private void Replace<TSection>(TSection fresh) where TSection : class
+    {
+        var property = typeof(AppSettings).GetProperties()
+            .Single(p => p.PropertyType == typeof(TSection));
+
+        property.SetValue(Current, fresh);
+    }
+
+    /// <summary>Persists every section. Used on shutdown.</summary>
     public async Task SaveAllAsync(CancellationToken cancellationToken = default)
     {
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);

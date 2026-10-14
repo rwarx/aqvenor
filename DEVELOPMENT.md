@@ -147,11 +147,11 @@ the `Providers` section:
 
 `StreamTimeoutSeconds` has to outlast a slow model rather than a slow network: a reasoning model
 routinely runs past two minutes before its last token. Because it is set on the named client it
-currently governs the catalogue call and the connection test as well, which is what
-`RequestTimeoutSeconds` was meant to shorten - separating them needs a linked
-`CancellationTokenSource` per call inside the provider base, not a second client-level timeout, so
-the option is declared and unused for now. `ChatSettings.RequestTimeoutSeconds` in the database is a
-different, similarly unwired knob; neither is exposed as a promise anywhere in the UI.
+no longer governs the catalogue call and the connection test: those go through a linked
+`CancellationTokenSource` per call inside the provider base, bounded by
+`RequestTimeoutSeconds` (floored at 1 second) and reported as `AIErrorKind.Timeout`
+rather than as a user pressing Stop. `ChatSettings.RequestTimeoutSeconds` in the database is a
+different, retired knob: nothing reads it, so no UI offers it.
 
 OpenRouter's base URL is deliberately absent: it is a hosted gateway with no self-hosted equivalent,
 so the subclass hardcodes it. Only NVIDIA's is overridable, which is enough to point the app at a
@@ -185,7 +185,7 @@ The token is not configuration - it is generated per launch:
 
 1. `electron/main/main.js` creates 32 bytes of CSPRNG output at startup.
 2. It is passed to the sidecar it spawns as the `AICLIENT_AUTHTOKEN` environment variable.
-3. The renderer asks for it over the preload bridge (`kontur:getBackendAuth`) and attaches it as
+3. The renderer asks for it over the preload bridge (`aqvenor:getBackendAuth`) and attaches it as
    a header on every request.
 
 **It is never written to disk, bundled into the renderer, or put in a URL.** A token baked into
@@ -202,7 +202,7 @@ curl -H "Authorization: Bearer anything-you-like-for-local-debugging" http://127
 ```
 
 **The sidecar refuses to bind to anything but loopback.** Passing `--urls http://0.0.0.0:45631`
-throws at startup rather than quietly opening a port, and `KONTUR_BACKEND_URL` in the Electron
+throws at startup rather than quietly opening a port, and `AQVENOR_BACKEND_URL` in the Electron
 main process is rejected unless it points at `127.0.0.1`, `localhost` or `::1`.
 
 Anything a user would normally change lives in the database instead, edited through Settings, which
@@ -226,6 +226,12 @@ the WPF host's Settings window.
 
 **If you add a property to `AgentSettings` whose purpose is to reduce containment, add it to that
 list in the same commit.** Nothing enforces it at build time.
+
+Bounds live in one place: `SettingsLimits` in `AIClient.Application/Configuration`
+clamps every section on save (and defensively on load), so the WPF screen, the
+HTTP surface and a hand-edited row all end up with the same values. Do not clamp
+in a view model instead — a second set of ranges is how two hosts come to
+disagree about what a value means.
 
 ## The agent's safety model
 

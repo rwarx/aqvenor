@@ -209,11 +209,11 @@ speaks HTTP.
 - `preload/preload.js` — a deliberately small `contextBridge` surface: the backend
   URL, the bearer token, four dialogs, `openExternal`, window chrome, zoom. If a
   capability is not on this list, the renderer cannot reach the OS with it.
-- `renderer/src/lib/kontur/backend.ts` — the HTTP and NDJSON client. Every call
+- `renderer/src/lib/aqvenor/backend.ts` — the HTTP and NDJSON client. Every call
   carries the bearer token and a timeout.
-- `renderer/src/lib/kontur/store.ts` — one Zustand store, persisted to
+- `renderer/src/lib/aqvenor/store.ts` — one Zustand store, persisted to
   `localStorage`.
-- `renderer/src/components/kontur/` — the surfaces: `chat/`, `workspace/`,
+- `renderer/src/components/aqvenor/` — the surfaces: `chat/`, `workspace/`,
   `canvas/`, `shell/`, `settings/`, and `ui.tsx`, which is the real design system.
   `components/ui/` is an unused shadcn kit retained for reference;
   see [CHANGELOG](CHANGELOG.md#known-limitations).

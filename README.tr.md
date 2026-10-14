@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**Önce bunu okuyun:** Kontur Code, **dosyalarınıza yazabilen ve makinenizde programlar çalıştırabilen bir geliştirme aracıdır.** Bu bir hata değil, ürünün kendisidir. Aşağıdaki ajanın kapsama alanı — ve bilinen tüm açıkları — ile ilgili her şey
+**Önce bunu okuyun:** Aqvenor, **dosyalarınıza yazabilen ve makinenizde programlar çalıştırabilen bir geliştirme aracıdır.** Bu bir hata değil, ürünün kendisidir. Aşağıdaki ajanın kapsama alanı — ve bilinen tüm açıkları — ile ilgili her şey
 [SECURITY.md](SECURITY.md) dosyasındadır. Bunu, önemsediğiniz herhangi bir şeye yönlendirmeden önce okuyun.
 
 [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md) · [Español](README.es.md) ·
@@ -147,7 +147,7 @@ GDPR, Rus 152-FZ ve CCPA/CPRA'ya göre yazılmış tüm ayrıntılar [PRIVACY.md
 
 ## Kurulum
 
-Kurulum dosyasını [sürümler sayfasından](https://github.com/rwarx/kontur-code/releases) indirin. Bu, kullanıcı başına bir NSIS kurulumudur — yönetici hakkı gerekmez.
+Kurulum dosyasını [sürümler sayfasından](https://github.com/rwarx/aqvenor/releases) indirin. Bu, kullanıcı başına bir NSIS kurulumudur — yönetici hakkı gerekmez.
 
 İlk sürüm bir **alfa**. Şekli, üzerine bir şey kurmaya yetecek kadar oturmuş olduğu için yayımlanıyor; denetimsiz kullanıma hazır olduğu için değil.
 
@@ -155,8 +155,8 @@ Kurulum dosyasını [sürümler sayfasından](https://github.com/rwarx/kontur-co
 <summary>Kendiniz derleyin</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # Yan süreç, Electron'un onu aradığı yere yanında yayımlanmak zorunda
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar

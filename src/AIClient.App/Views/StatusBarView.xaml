@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-              xmlns:kontur="clr-namespace:AIClient.App.Controls"
+              xmlns:aqvenor="clr-namespace:AIClient.App.Controls"
               xmlns:motion="clr-namespace:AIClient.App.Controls"
               xmlns:vm="clr-namespace:AIClient.App.ViewModels"
               xmlns:loc="clr-namespace:AIClient.App.Markup"
@@ -30,7 +30,7 @@
 
             <!-- The workspace identity. -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <kontur:KonturIcon Kind="Folder" Width="12" Height="12"
+                <aqvenor:AqvenorIcon Kind="Folder" Width="12" Height="12"
                                    Foreground="{DynamicResource Brush.TextMuted}"
                                    VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Workspace.WorkspaceName, FallbackValue={loc:Loc S.Main.Workspace.None}}"
@@ -52,7 +52,7 @@
                 <!-- The one honest busy state: the index is rebuilding. -->
                 <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
                             Visibility="{Binding Workspace.IsIndexing, Converter={StaticResource BoolToVisibility}}">
-                    <kontur:KonturIcon Kind="Refresh" Width="12" Height="12"
+                    <aqvenor:AqvenorIcon Kind="Refresh" Width="12" Height="12"
                                        Foreground="{DynamicResource Brush.AccentText}"
                                        VerticalAlignment="Center"
                                        motion:Motion.Spin="True" />
@@ -68,7 +68,7 @@
                 <!-- Generation in flight - the only thing worth a glance while waiting. -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,12,0"
                             Visibility="{Binding Chat.IsGenerating, Converter={StaticResource BoolToVisibility}}">
-                    <kontur:KonturIcon Kind="Sparkle" Width="12" Height="12"
+                    <aqvenor:AqvenorIcon Kind="Sparkle" Width="12" Height="12"
                                        Foreground="{DynamicResource Brush.AccentText}"
                                        VerticalAlignment="Center"
                                        motion:Motion.Pulse="True" />
@@ -105,19 +105,19 @@
                 </StackPanel>
 
                 <!-- History reach: undo and redo, disabled when their stack is empty. -->
-                <Button Style="{StaticResource KcButtonTool}"
+                <Button Style="{StaticResource AqButtonTool}"
                         Command="{Binding Workspace.Canvas.UndoCommand}"
                         IsEnabled="{Binding Workspace.Canvas.CanUndo}"
                         ToolTip="{DynamicResource S.Status.Undo.ToolTip}"
                         VerticalAlignment="Center">
-                    <kontur:KonturIcon Kind="Undo" Width="12" Height="12" />
+                    <aqvenor:AqvenorIcon Kind="Undo" Width="12" Height="12" />
                 </Button>
-                <Button Style="{StaticResource KcButtonTool}"
+                <Button Style="{StaticResource AqButtonTool}"
                         Command="{Binding Workspace.Canvas.RedoCommand}"
                         IsEnabled="{Binding Workspace.Canvas.CanRedo}"
                         ToolTip="{DynamicResource S.Status.Redo.ToolTip}"
                         VerticalAlignment="Center">
-                    <kontur:KonturIcon Kind="Redo" Width="12" Height="12" />
+                    <aqvenor:AqvenorIcon Kind="Redo" Width="12" Height="12" />
                 </Button>
 
             </StackPanel>

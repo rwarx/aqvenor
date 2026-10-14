@@ -1,4 +1,4 @@
-# UI Migration Audit — Kontur Code
+# UI Migration Audit — Aqvenor
 
 Status: Phase 0 of the desktop UI migration. This document records what actually exists in the
 repository as of this audit, what is worth keeping, what is broken or stale, and the architecture

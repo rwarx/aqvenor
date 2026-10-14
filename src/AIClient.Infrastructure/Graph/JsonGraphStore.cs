@@ -205,6 +205,7 @@ public sealed class JsonGraphStore : IGraphStore
         Width = node.Width,
         Height = node.Height,
         Metric = node.Metric,
+        Status = node.Status,
     };
 
     private static EdgeDto ToDto(GraphEdge edge) => new()
@@ -258,6 +259,7 @@ public sealed class JsonGraphStore : IGraphStore
                 Width = candidate.Width,
                 Height = candidate.Height,
                 Metric = candidate.Metric,
+                Status = candidate.Status,
             });
         }
 
@@ -323,6 +325,8 @@ public sealed class JsonGraphStore : IGraphStore
         public double Height { get; set; }
 
         public int? Metric { get; set; }
+
+        public GraphNodeState Status { get; set; }
     }
 
     private sealed record EdgeDto

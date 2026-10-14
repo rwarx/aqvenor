@@ -1,6 +1,6 @@
-# Kontur Code
+# Aqvenor
 
-**Прочтите это первым:** Kontur Code — **инструмент для разработчиков, который пишет в ваши файлы
+**Прочтите это первым:** Aqvenor — **инструмент для разработчиков, который пишет в ваши файлы
 и запускает программы на вашей машине.** Это и есть продукт, а не дефект. Всё, что ниже сказано
 об ограничении возможностей агента — и о каждом известном пробеле, — изложено в
 [SECURITY.md](SECURITY.md). Прочтите это, прежде чем направить инструмент на что-то, что вам
@@ -193,7 +193,7 @@ CodeMirror 6 с грамматиками десяти языков, встрое
 
 ## Установка
 
-Скачайте установщик со [страницы релизов](https://github.com/rwarx/kontur-code/releases). Это
+Скачайте установщик со [страницы релизов](https://github.com/rwarx/aqvenor/releases). Это
 установка NSIS для одного пользователя — права администратора не нужны.
 
 Первый релиз — **альфа**. Он опубликован потому, что форма уже достаточно устоялась, чтобы
@@ -203,8 +203,8 @@ CodeMirror 6 с грамматиками десяти языков, встрое
 <summary>Собрать самому</summary>
 
 ```bash
-git clone https://github.com/rwarx/kontur-code.git
-cd kontur-code
+git clone https://github.com/rwarx/aqvenor.git
+cd aqvenor
 
 # The sidecar has to be published next to where Electron looks for it
 dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar
