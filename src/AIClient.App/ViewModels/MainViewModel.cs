@@ -463,6 +463,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (Chat.ConversationId == conversationId)
         {
             Chat.StartNewConversation();
+            Chat.ForgetDraft(conversationId);
             Sessions.ActiveConversationId = null;
         }
     }

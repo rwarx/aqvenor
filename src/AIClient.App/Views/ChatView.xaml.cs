@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using AIClient.App.Canvas;
 using AIClient.App.ViewModels;
 
 namespace AIClient.App.Views;
@@ -124,7 +125,9 @@ public partial class ChatView : UserControl
 
     private void OnFilesDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent(GraphCanvas.NodeDataFormat)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -132,7 +135,19 @@ public partial class ChatView : UserControl
     {
         // async void is unavoidable on a routed event handler; the awaited call handles
         // its own failures and reports them through the ViewModel's banner.
-        if (_viewModel is null || e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (e.Data.GetData(GraphCanvas.NodeDataFormat) is string nodeId)
+        {
+            e.Handled = true;
+            await _viewModel.AddDroppedNodeAsync(nodeId).ConfigureAwait(true);
+            return;
+        }
+
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
         {
             return;
         }

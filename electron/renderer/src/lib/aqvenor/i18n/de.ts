@@ -30,7 +30,6 @@ export const de: Dictionary = {
   "language": "Sprache",
 
   /* main / title bar */
-  "main.searchPlaceholder": "Aqvenor durchsuchen",
   "main.inspector": "Inspektor",
   "main.exportImport": "Export / Import",
   "main.noWorkspace": "Kein Arbeitsbereich",
@@ -88,7 +87,12 @@ export const de: Dictionary = {
 
   /* chat */
   "chat.empty.title": "Wobei kann ich helfen?",
-  "chat.empty.subtitle": "Stell eine Frage, füg Code ein oder häng eine Datei an.",
+  "chat.empty.tagline.0": "Der Canvas ist kartiert. Zeig mir das Chaos.",
+  "chat.empty.tagline.1": "Frag irgendwas — ich lese Code schneller als du scrollst.",
+  "chat.empty.tagline.2": "Wirf eine Datei herein. Oder einen Ordner. Nur zu.",
+  "chat.empty.tagline.3": "Neuer Chat, leeres Blatt, voller Kontext.",
+  "chat.empty.tagline.4": "Dein Graph ist meine Karte. Wohin?",
+  "chat.empty.tagline.5": "Pläne, Code, Fragen — in beliebiger Reihenfolge.",
   "chat.greeting.morning": "Guten Morgen",
   "chat.greeting.afternoon": "Guten Tag",
   "chat.greeting.evening": "Guten Abend",

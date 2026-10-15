@@ -244,6 +244,8 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: "#131417",
+    // Taskbar / Alt-Tab mark (dev and packaged alike).
+    icon: path.join(__dirname, "..", "build", "icon.ico"),
     autoHideMenuBar: true,
     frame: false,
     webPreferences: {

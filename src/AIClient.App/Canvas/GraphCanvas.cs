@@ -107,6 +107,20 @@ public class GraphCanvas : FrameworkElement
     private bool _dragMoved;
     private Rect _currentMarquee;
 
+    /// <summary>
+    /// Drag payload for pulling a node out of the canvas (Alt+drag onto the chat
+    /// composer pins its file). Carries the node's stable graph id as a string.
+    /// </summary>
+    /// <remarks>
+    /// Alt is the modifier because a plain left-drag already means "move the
+    /// node" — the one gesture must not swallow the other, and a handle per
+    /// card would fight the move hit-testing it sits on top of.
+    /// </remarks>
+    public const string NodeDataFormat = "AqvenorCanvasNode";
+
+    /// <summary>Latched once a drag-out starts, so the blocking DoDragDrop call below is not re-entered while the button is still down.</summary>
+    private bool _dragOutStarted;
+
     public GraphCanvas()
     {
         ClipToBounds = true;
@@ -658,6 +672,7 @@ public class GraphCanvas : FrameworkElement
         _pointerDownPosition = e.GetPosition(this);
         _pointerLastPosition = _pointerDownPosition;
         _dragMoved = false;
+        _dragOutStarted = false;
 
         var world = _controller.ScreenToWorld(_pointerDownPosition);
         var hitEdge = _scene.HitEdge(world, _attachedEdges, _controller.Zoom);
@@ -722,6 +737,23 @@ public class GraphCanvas : FrameworkElement
             // previous interface panned this way (its camera added the raw delta to its pan),
             // and inverting it makes a hand tool behave like a scrollbar.
             _controller.PanBy(delta);
+            e.Handled = true;
+            return;
+        }
+
+        // Alt+drag pulls the node out of the canvas (onto the chat composer)
+        // instead of moving it. Runs before the move branch and neutralises it:
+        // DoDragDrop blocks until the drop lands, and the release afterwards
+        // must commit nothing.
+        if (_isNodeDragActive && _dragMoved && !_dragOutStarted
+            && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)
+            && _controller.HoverNodeId is { } dragNodeId)
+        {
+            _dragOutStarted = true;
+            _isNodeDragActive = false;
+            _dragMoved = false;
+            ReleaseMouseCapture();
+            DragDrop.DoDragDrop(this, new DataObject(NodeDataFormat, dragNodeId), DragDropEffects.Copy);
             e.Handled = true;
             return;
         }
@@ -791,6 +823,7 @@ public class GraphCanvas : FrameworkElement
         _isNodeDragActive = false;
         _isMarqueeActive = false;
         _isPanActive = false;
+        _dragOutStarted = false;
         _currentMarquee = Rect.Empty;
         _controller.SetLiveMarquee(null, null);
         RenderOverlay();

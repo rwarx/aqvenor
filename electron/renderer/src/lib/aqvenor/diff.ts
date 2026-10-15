@@ -7,9 +7,12 @@ import type { DiffLine } from "./types";
    content and renders through the chat DiffView component.
    ============================================================ */
 
-/** Split text into lines, dropping a single trailing newline. */
-function toLines(text: string): string[] {
-  const body = text.endsWith("\n") ? text.slice(0, -1) : text;
+/** Split text into lines, dropping a single trailing newline.
+ *  Null-tolerant: rehydrated file entries lose their content (persist strips
+ *  bodies), so callers may hand over undefined — diff against empty. */
+function toLines(text: string | null | undefined): string[] {
+  const src = text ?? "";
+  const body = src.endsWith("\n") ? src.slice(0, -1) : src;
   return body.length ? body.split("\n") : [];
 }
 
@@ -55,7 +58,7 @@ const CONTEXT = 3; /* context lines around each change */
  * Computes a unified diff (old → new) as DiffLine[] with
  * `header` hunk markers in git style. Empty when identical.
  */
-export function computeUnifiedDiff(oldText: string, newText: string): DiffLine[] {
+export function computeUnifiedDiff(oldText: string | null | undefined, newText: string | null | undefined): DiffLine[] {
   const a = toLines(oldText);
   const b = toLines(newText);
   if (a.join("\n") === b.join("\n")) return [];
@@ -164,7 +167,7 @@ export interface Hunk {
 }
 
 /** Ordered hunks between the two texts. Empty when identical. */
-export function computeHunks(oldText: string, newText: string): Hunk[] {
+export function computeHunks(oldText: string | null | undefined, newText: string | null | undefined): Hunk[] {
   const ops = lcsOps(toLines(oldText), toLines(newText));
   const hunks: Hunk[] = [];
   let oldNo = 0;
@@ -201,7 +204,7 @@ export function computeHunks(oldText: string, newText: string): Hunk[] {
  * whose index is in `accepted` (rejected hunks fall back to the old lines).
  * With all hunks accepted the result equals `newText`; with none, `oldText`.
  */
-export function applyHunkSelection(oldText: string, newText: string, accepted: Set<number>): string {
+export function applyHunkSelection(oldText: string | null | undefined, newText: string | null | undefined, accepted: Set<number>): string {
   const ops = lcsOps(toLines(oldText), toLines(newText));
   const out: string[] = [];
   let hunkIdx = -1;
@@ -223,7 +226,7 @@ export function applyHunkSelection(oldText: string, newText: string, accepted: S
     if (accepted.has(hunkIdx)) out.push(...adds);
     else out.push(...dels);
   }
-  const keepNewline = accepted.size > 0 ? newText.endsWith("\n") : oldText.endsWith("\n");
+  const keepNewline = accepted.size > 0 ? (newText ?? "").endsWith("\n") : (oldText ?? "").endsWith("\n");
   return out.join("\n") + (out.length && keepNewline ? "\n" : "");
 }
 

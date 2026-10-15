@@ -11,6 +11,8 @@ import { isServerMode, openWorkspaceDialog } from "@/lib/aqvenor/sync";
 import { MessageItem, FoldedNotice } from "./MessageItem";
 import { ApprovalGate } from "./ApprovalGate";
 import { Composer } from "./Composer";
+import brandMark from "../../../assets/aqvenor-mark.png";
+import brandMarkLg from "../../../assets/aqvenor-mark-lg.png";
 
 const SUGGESTIONS = [
   { icon: FileSearch, key: "chat.suggest.tokens", text: "Find every refresh-token usage and explain the flow" },
@@ -63,7 +65,28 @@ function DayDivider({ ts, label }: { ts: number; label: string }) {
   );
 }
 
-function StartScreen({ targetSessionId }: { targetSessionId?: string }) {
+/* Neon corner ticks around the brand mark — staggered pulse while working. */
+function NeonCorners() {
+  const corners = [
+    "left-0 top-0 border-l-2 border-t-2 rounded-tl-md",
+    "right-0 top-0 border-r-2 border-t-2 rounded-tr-md",
+    "bottom-0 left-0 border-b-2 border-l-2 rounded-bl-md",
+    "bottom-0 right-0 border-b-2 border-r-2 rounded-br-md",
+  ];
+  return (
+    <span aria-hidden className="pointer-events-none absolute -inset-4">
+      {corners.map((pos, i) => (
+        <span
+          key={pos}
+          style={{ animationDelay: `${i * 0.2}s` }}
+          className={`absolute h-5 w-5 animate-neon-corner border-accent ${pos}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function StartScreen({ targetSessionId, generating }: { targetSessionId?: string; generating?: boolean }) {
   const t = useT();
   /* suggestions in a pinned panel send into the pinned session — targeted,
      no session switch, sibling chats keep streaming. */
@@ -82,6 +105,14 @@ function StartScreen({ targetSessionId }: { targetSessionId?: string }) {
     if (h < 18) return t("chat.greeting.afternoon");
     return t("chat.greeting.evening");
   })();
+  /* Rotating taglines — one per day, deterministic (no flicker between
+     re-renders, same line all day in every panel). */
+  const TAGLINES = 6;
+  const tagline = useMemo(() => {
+    const now = new Date();
+    const day = Math.floor(now.getTime() / 86_400_000);
+    return t(`chat.empty.tagline.${day % TAGLINES}`);
+  }, [t]);
   const openWorkspace = () => {
     if (!isServerMode() || !window.aqvenor) {
       pushToast(t("settings.workspace.toast"));
@@ -96,14 +127,20 @@ function StartScreen({ targetSessionId }: { targetSessionId?: string }) {
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
       <div className="relative z-10 mb-6 flex flex-col items-center text-center">
-        {/* spark mark */}
-        <span className="mb-4 animate-rise text-accent" aria-hidden>
-          <svg width="38" height="38" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1.5c.35 5.4 4.7 9.75 10.5 10.5-5.8.75-10.15 5.1-10.5 10.5-.35-5.4-4.7-9.75-10.5-10.5C7.3 11.25 11.65 6.9 12 1.5Z" />
-          </svg>
+        {/* brand mark: recedes into shadow and gains neon corners while working */}
+        <span className="relative mb-4 animate-rise" aria-hidden>
+          {generating && <NeonCorners />}
+          <img
+            src={brandMark}
+            alt=""
+            draggable={false}
+            className={`h-[104px] w-[104px] select-none object-contain transition-all duration-500 ${
+              generating ? "scale-95 opacity-40 brightness-[0.55]" : "opacity-100"
+            }`}
+          />
         </span>
         <h1 className="animate-rise text-[26px] font-semibold tracking-[-0.015em] text-fg-1">{greeting}</h1>
-        <p className="mt-1.5 animate-rise text-[13px] text-fg-3">{t("chat.empty.subtitle")}</p>
+        <p className="mt-1.5 animate-rise text-[13px] text-fg-3">{tagline}</p>
       </div>
       {/* project button — only in code mode; chat & cowork need no project */}
       {isServerMode() && workMode === "code" && (
@@ -241,14 +278,30 @@ export function ChatView({ sessionId }: { sessionId?: string } = {}) {
           <p className="text-[13px] text-fg-3">{t("chat.pinnedMissing")}</p>
         </div>
       ) : messages.length === 0 ? (
-        <StartScreen targetSessionId={effectiveId} />
+        <StartScreen targetSessionId={effectiveId} generating={generating} />
       ) : (
         <>
       <div className="relative min-h-0 flex-1">
+        {/* backdrop brand mark: a large pulsing shadow behind the transcript */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden"
+        >
+          <img
+            src={brandMarkLg}
+            alt=""
+            draggable={false}
+            className={`h-[380px] w-[380px] select-none object-contain brightness-0 transition-all duration-700 sm:h-[440px] sm:w-[440px] ${
+              generating
+                ? "scale-105 animate-logo-breath [animation-duration:1.8s]"
+                : "scale-100 opacity-45"
+            }`}
+          />
+        </div>
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="h-full overflow-y-auto"
+          className="relative z-10 h-full overflow-y-auto"
           role="log"
           aria-label={t("nav.chat")}
         >

@@ -29,7 +29,6 @@ export const en: Record<string, string> = {
   "language": "Language",
 
   /* main / title bar */
-  "main.searchPlaceholder": "Search Aqvenor",
   "main.inspector": "Inspector",
   "main.exportImport": "Export / Import",
   "main.noWorkspace": "No workspace",
@@ -87,7 +86,12 @@ export const en: Record<string, string> = {
 
   /* chat */
   "chat.empty.title": "What can I help you with?",
-  "chat.empty.subtitle": "Ask a question, paste some code, or attach a file.",
+  "chat.empty.tagline.0": "The canvas is mapped. Point at the mess.",
+  "chat.empty.tagline.1": "Ask anything — I read code faster than you scroll.",
+  "chat.empty.tagline.2": "Drop a file in. Or a folder. Go on.",
+  "chat.empty.tagline.3": "New chat, clean slate, full context.",
+  "chat.empty.tagline.4": "Your graph is my map. Where to?",
+  "chat.empty.tagline.5": "Plans, code, questions — in any order.",
   "chat.greeting.morning": "Good morning",
   "chat.greeting.afternoon": "Good afternoon",
   "chat.greeting.evening": "Good evening",

@@ -50,6 +50,7 @@ public sealed partial class ChatViewModel : ObservableObject
     private readonly IWorkspaceService _workspace;
     private readonly IConversationService _conversations;
     private readonly IAttachmentService _attachments;
+    private readonly IGraphService _graph;
     private readonly IExportService _exportService;
     private readonly ISettingsService _settings;
     private readonly IDialogService _dialogs;
@@ -95,6 +96,17 @@ public sealed partial class ChatViewModel : ObservableObject
 
     [ObservableProperty]
     private string _draft = string.Empty;
+
+    /// <summary>
+    /// Unsent input stashed per conversation, so switching chats neither wipes
+    /// the words nor pours one chat's draft into another's composer.
+    /// </summary>
+    /// <remarks>
+    /// An unsaved new chat has no id yet; it stashes under
+    /// <see cref="Guid.Empty"/>, of which a single pane holds at most one.
+    /// Attachments are immutable records shared by reference, never copied.
+    /// </remarks>
+    private readonly ConversationDrafts _drafts = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSend))]
@@ -261,6 +273,7 @@ public sealed partial class ChatViewModel : ObservableObject
         IWorkspaceService workspace,
         IConversationService conversations,
         IAttachmentService attachments,
+        IGraphService graph,
         IExportService exportService,
         ISettingsService settings,
         IDialogService dialogs,
@@ -275,6 +288,7 @@ public sealed partial class ChatViewModel : ObservableObject
         _workspace = workspace;
         _conversations = conversations;
         _attachments = attachments;
+        _graph = graph;
         _exportService = exportService;
         _settings = settings;
         _dialogs = dialogs;
@@ -414,6 +428,8 @@ public sealed partial class ChatViewModel : ObservableObject
                 await StopDictationAsync().ConfigureAwait(true);
             }
 
+            SaveDraftState();
+
             var detail = await _conversations.GetAsync(id, cancellationToken).ConfigureAwait(true);
 
             if (detail is null)
@@ -446,13 +462,38 @@ public sealed partial class ChatViewModel : ObservableObject
                 Messages.Add(view);
             }
 
-            ClearPendingAttachments();
+            RestoreDraftState(detail.Id);
             RequestScrollToEnd();
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>Stashes the pane's input under the current conversation (or the empty key).</summary>
+    private void SaveDraftState() =>
+        _drafts.Save(
+            ConversationId ?? Guid.Empty,
+            Draft,
+            PendingAttachments.Select(a => a.Attachment).ToList());
+
+    /// <summary>Drops stashed input for a deleted conversation.</summary>
+    public void ForgetDraft(Guid conversationId) => _drafts.Forget(conversationId);
+
+    /// <summary>Restores stashed input into the composer and the tray.</summary>
+    private void RestoreDraftState(Guid key)
+    {
+        var (text, attachments) = _drafts.Restore(key);
+        PendingAttachments.Clear();
+        foreach (var attachment in attachments)
+        {
+            PendingAttachments.Add(new PendingAttachment(attachment));
+        }
+
+        Draft = text;
+        OnPropertyChanged(nameof(CanSend));
+        SendCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Resets the pane to an unsaved new chat. The row is created on first send.</summary>
@@ -467,15 +508,18 @@ public sealed partial class ChatViewModel : ObservableObject
         }
 
         CancelTurn();
+        SaveDraftState();
 
         ConversationId = null;
         Title = Localization.T("S.Sidebar.NewChat");
         BannerMessage = null;
 
         Messages.Clear();
-        ClearPendingAttachments();
-        Draft = string.Empty;
         IsScrolledAway = false;
+
+        // The unsaved slot is shared, so this restores whatever was typed in it —
+        // words are never lost to the New button, only moved aside per chat.
+        RestoreDraftState(Guid.Empty);
 
         FocusInputRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -859,6 +903,41 @@ public sealed partial class ChatViewModel : ObservableObject
 
         OnPropertyChanged(nameof(CanSend));
         SendCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Accepts a canvas node dropped onto the input area (Alt+drag from the canvas).
+    /// A file node pins its file through the same pipeline as an OS file drop; a note
+    /// node appends its text to the draft, since notes are words, not files.
+    /// </summary>
+    public async Task AddDroppedNodeAsync(string nodeId)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId))
+        {
+            return;
+        }
+
+        var node = _graph.Current.Nodes.FirstOrDefault(
+            n => string.Equals(n.Id, nodeId, StringComparison.Ordinal));
+
+        if (node is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.Path)
+            && _workspace.Root is { Length: > 0 } root)
+        {
+            await AddDroppedFilesAsync([Path.Combine(root, node.Path)]).ConfigureAwait(true);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.Detail))
+        {
+            Draft = string.IsNullOrWhiteSpace(Draft)
+                ? node.Detail
+                : Draft + Environment.NewLine + Environment.NewLine + node.Detail;
+        }
     }
 
     /// <summary>Accepts files dropped onto the input area.</summary>

@@ -200,6 +200,8 @@
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-pulse-ring: pulse-ring 1.6s ease-out infinite;
   --animate-progress-line: progress-line 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-neon-corner: neon-corner 1.6s ease-in-out infinite;
+  --animate-logo-breath: logo-breath 4.5s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
@@ -238,6 +240,16 @@
 @keyframes progress-line {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
+}
+/* Neon corner ticks around the brand mark while the model works. */
+@keyframes neon-corner {
+  0%, 100% { opacity: 0.25; filter: drop-shadow(0 0 2px var(--aq-accent)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 7px var(--aq-accent)); }
+}
+/* Backdrop brand mark: a black silhouette breathing behind the transcript. */
+@keyframes logo-breath {
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.55; }
 }
 
 @layer base {

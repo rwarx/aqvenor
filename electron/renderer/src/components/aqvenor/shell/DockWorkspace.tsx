@@ -169,19 +169,61 @@ export function DockWorkspace() {
   /* live panel count for the hover-close visibility (DockCountContext) */
   const [panelCount, setPanelCount] = useState(1);
 
+  /* Plain open (sidebar click): focus when present, else tile right of the
+     active panel. Tiling (not stacking) is the point: this dock has no tab
+     strip, so a same-group open would hide the new panel behind no
+     affordance — the "surfaces won't dock" trap. An empty dock (fresh
+     buildDefault) still fills whole. */
   const addSurface = useCallback(
-    (api: DockviewApi, id: string, splitRight = false) => {
+    (
+      api: DockviewApi,
+      id: string,
+      splitRight = false,
+      params?: { surface: string; sessionId?: string },
+    ) => {
       const existing = api.getPanel(id);
       if (existing) return existing;
+      const ref =
+        api.activePanel && api.activePanel.id !== "context"
+          ? api.activePanel
+          : api.panels[0];
       return api.addPanel({
         id,
         component: "surface",
         title: panelTitle(id, locale),
-        params: { surface: id },
-        ...(splitRight ? { position: { direction: "right" as const } } : {}),
+        params: params ?? { surface: id },
+        ...(ref
+          ? { position: { referencePanel: ref.id, direction: "right" as const } }
+          : splitRight
+            ? { position: { direction: "right" as const } }
+            : {}),
       });
     },
     [locale],
+  );
+
+  /* Heal stacked layouts: this dock has no tab strip, so a group holding two
+     panels hides one behind no affordance — panels open but never appear side
+     by side ("won't dock"). Old saved layouts and tab-drops can still carry
+     stacks; pop the extras out tiled. Panel ids encode their params by
+     convention. Close+reopen (never clear()) because clearing a live dock
+     tears down its portals into a blank renderer. */
+  const unstackDock = useCallback(
+    (api: DockviewApi) => {
+      const extras: { id: string; params: { surface: string; sessionId?: string } }[] = [];
+      for (const group of api.groups) {
+        const members = group.panels.map((m) => m.id);
+        for (const pid of members.slice(1)) {
+          const sid = pinnedSessionOf(pid);
+          extras.push(sid ? { id: pid, params: { surface: "chat", sessionId: sid } } : { id: pid, params: { surface: pid } });
+        }
+      }
+      if (extras.length === 0) return;
+      for (const extra of extras) api.getPanel(extra.id)?.api.close();
+      for (const extra of extras) addSurface(api, extra.id, false, extra.params);
+      api.panels[0]?.api.setActive();
+    },
+    [addSurface],
   );
 
   /* Open a surface in a new group beside the reference panel (sidebar split:
@@ -283,6 +325,7 @@ export function DockWorkspace() {
           api.fromJSON(stripFloats(saved as Record<string, unknown>) as unknown as Parameters<DockviewApi["fromJSON"]>[0]);
           restoringRef.current = false;
           if (api.panels.length === 0) buildDefault(api, mode);
+          else unstackDock(api);
         } catch {
           restoringRef.current = false;
           buildDefault(api, mode);
@@ -296,7 +339,7 @@ export function DockWorkspace() {
         useAqvenor.getState().setSurface(active as Surface, { noHistory: true });
       }
     },
-    [buildDefault],
+    [buildDefault, unstackDock],
   );
 
   const scheduleSave = useCallback(() => {

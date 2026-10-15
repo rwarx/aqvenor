@@ -20,14 +20,14 @@ import {
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { useModel } from "@/lib/aqvenor/useModel";
-import { AqToolButton, StatusDot } from "@/components/aqvenor/ui";
+import { AqToolButton } from "@/components/aqvenor/ui";
 import { ModelPicker } from "@/components/aqvenor/chat/ModelPicker";
+import brandMark from "../../../assets/aqvenor-mark.png";
 
 export function TitleBar() {
   const t = useT();
   const surface = useAqvenor((s) => s.surface);
   const runnerStatus = useAqvenor((s) => s.runner.status);
-  const runnerLabel = useAqvenor((s) => s.runner.label);
   const ui = useAqvenor((s) => s.ui);
   const toggleSidebar = useAqvenor((s) => s.toggleSidebar);
   const toggleContextPanel = useAqvenor((s) => s.toggleContextPanel);
@@ -40,14 +40,6 @@ export function TitleBar() {
   const modelRef = useRef<HTMLDivElement>(null);
 
   const model = useModel(ui.selectedModelId);
-  const aiWorking = runnerStatus === "running" || runnerStatus === "awaiting-approval";
-  const aiStateText = runnerStatus === "awaiting-approval"
-    ? t("main.ai.waitingApproval")
-    : runnerStatus === "running"
-      ? (runnerLabel || t("main.ai.working"))
-      : runnerStatus === "done"
-        ? t("main.ai.idle")
-        : t("main.ai.idle");
 
   useEffect(() => {
     if (!modelOpen) return;
@@ -75,37 +67,21 @@ export function TitleBar() {
         <AqToolButton onClick={toggleSidebar} active={!ui.sidebarCollapsed} aria-label={t("shortcuts.sidebar")} className="hidden lg:flex">
           {ui.sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
         </AqToolButton>
-        <div className="ml-1 flex h-7 w-7 items-center justify-center rounded-sm bg-accent text-on-accent" aria-hidden>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-            <path d="M4 19V9l8-5 8 5v10" />
-            <path d="M9 19v-6h6v6" />
-          </svg>
-        </div>
+        <span
+          aria-hidden
+          className="ml-1 flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-[7px] border border-white/15 bg-gradient-to-b from-surface-3 to-sunken p-[3px] shadow-[0_0_10px_var(--aq-accent-glow,rgba(255,255,255,0.08))]"
+        >
+          <img
+            src={brandMark}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="h-full w-full object-contain"
+          />
+        </span>
         <span className="ml-0.5 shrink-0 text-[13px] font-semibold tracking-[-0.01em] text-fg-1">
           {t("app.name")}
         </span>
-        <div
-          role="status"
-          aria-live="polite"
-          className={`ml-1.5 flex h-[26px] shrink-0 items-center gap-2 rounded-sm border px-2.5 ${
-            aiWorking ? "border-accent-border/40 bg-sunken" : "border-line bg-sunken/60"
-          }`}
-        >
-          {aiWorking ? (
-            <span className="animate-pulse-ring rounded-full" aria-hidden>
-              <StatusDot color="accent" pulse size={6} />
-            </span>
-          ) : (
-            <StatusDot color="muted" size={6} />
-          )}
-          <span
-            className={`max-w-[140px] truncate text-[12px] ${
-              aiWorking ? "font-medium text-fg-1" : "text-fg-3"
-            }`}
-          >
-            {aiStateText}
-          </span>
-        </div>
       </div>
 
       {/* center — history arrows + the command-palette search, centered. */}
@@ -135,7 +111,6 @@ export function TitleBar() {
           className="aq-focus-ring group hidden h-[26px] w-[200px] items-center gap-2 rounded-sm border border-line bg-sunken px-2.5 text-fg-3 transition-all duration-150 hover:border-line-strong hover:text-fg-2 active:scale-[0.995] sm:flex lg:w-[240px] xl:w-[280px]"
         >
           <Search size={12} className="shrink-0 transition-colors group-hover:text-fg-2" />
-          <span className="truncate text-[12px]">{t("main.searchPlaceholder")}</span>
           <span className="ml-auto flex items-center gap-0.5 opacity-70 transition-opacity duration-150 group-hover:opacity-100">
             <span className="aq-keycap">Ctrl</span>
             <span className="aq-keycap">Shift</span>

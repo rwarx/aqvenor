@@ -30,7 +30,6 @@ export const ru: Dictionary = {
   "language": "Язык",
 
   /* main / title bar */
-  "main.searchPlaceholder": "Поиск в Aqvenor",
   "main.inspector": "Инспектор",
   "main.exportImport": "Экспорт / импорт",
   "main.noWorkspace": "Нет рабочего каталога",
@@ -88,7 +87,12 @@ export const ru: Dictionary = {
 
   /* chat */
   "chat.empty.title": "Чем могу помочь?",
-  "chat.empty.subtitle": "Задайте вопрос, вставьте код или прикрепите файл.",
+  "chat.empty.tagline.0": "Канвас размечен. Покажи, где болит.",
+  "chat.empty.tagline.1": "Спроси что угодно — код я читаю быстрее, чем ты скроллишь.",
+  "chat.empty.tagline.2": "Кинь файл. Или папку. Я не осуждаю.",
+  "chat.empty.tagline.3": "Новый чат, чистый лист, полный контекст.",
+  "chat.empty.tagline.4": "Твой граф — моя карта. Куда идём?",
+  "chat.empty.tagline.5": "Планы, код, вопросы — в любом порядке.",
   "chat.greeting.morning": "Доброе утро",
   "chat.greeting.afternoon": "Добрый день",
   "chat.greeting.evening": "Добрый вечер",

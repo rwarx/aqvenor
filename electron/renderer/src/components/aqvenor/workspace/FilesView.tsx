@@ -160,9 +160,12 @@ export default function FilesView() {
       return next;
     });
 
-  const allLines = file ? file.content.replace(/\n$/, "").split("\n") : [];
+  /* content can be absent after a persist rehydrate (bodies are stripped);
+     treat it as empty rather than crashing the preview. */
+  const content = file?.content ?? "";
+  const allLines = file ? content.replace(/\n$/, "").split("\n") : [];
   const truncated = allLines.length > PREVIEW_LINES;
-  const preview = truncated ? allLines.slice(0, PREVIEW_LINES).join("\n") : (file?.content ?? "");
+  const preview = truncated ? allLines.slice(0, PREVIEW_LINES).join("\n") : content;
 
   const fileName = file ? file.path.slice(file.path.lastIndexOf("/") + 1) : "";
 
@@ -228,7 +231,7 @@ export default function FilesView() {
               </span>
               {file.modified && <AqBadge tone="warning">{t("files.modified")}</AqBadge>}
               <span className="min-w-0 truncate font-mono text-[11px] text-fg-3">{file.path}</span>
-              <span className="shrink-0 font-mono text-[10.5px] text-fg-3">{formatSize(file.content, t.locale)}</span>
+              <span className="shrink-0 font-mono text-[10.5px] text-fg-3">{formatSize(content, t.locale)}</span>
               {baseline != null && (
                 <span className="shrink-0">
                   <button

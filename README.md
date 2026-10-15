@@ -95,6 +95,12 @@ in your own database.
 
 - **Streaming chat.** Tokens arrive as they are produced. Stop keeps the partial answer. Regenerate
   replaces it in place, optionally on a different model.
+- **Parallel chats.** Pin chats side by side, each with its own draft, files, model and autonomy
+  setting. Runs stream concurrently; a chat that finishes out of sight knocks with a toast and a
+  sidebar badge.
+- **Drag both ways.** Drag canvas nodes into the composer to pin their files to the turn; drag a chat
+  onto the canvas to file it as a linked note. Plain sidebar clicks tile surfaces side by side —
+  nothing ever hides behind a missing tab.
 - **Three work modes.** *Chat* for conversation, *Cowork* for analysis, and *Code* — where the agent
   gets a workspace and a tool loop. The mode is a property of the message, not of the app, so "plan
   this, then build it" is two messages rather than two trips to Settings.
@@ -260,11 +266,12 @@ Full reasoning, including the two doors to the file system and the two canvas re
 
 ```bash
 dotnet build AIClient.slnx     # warnings are errors — that is deliberate
-dotnet test                    # 917 tests, no network and no API key needed
+dotnet test                    # 987 tests, no network and no API key needed
 
 cd electron
 npm install
 npm run typecheck
+npm test                       # 21 vitest suites for drag-drop, i18n plurals, multitask store
 npm run dev                    # renderer against a seeded demo workspace, no backend needed
 ```
 
@@ -316,8 +323,9 @@ Third-party components keep their own licences — 40-odd bundled packages plus 
 
 `0.1.1-alpha`. Published as a prerelease, deliberately.
 
-**Works:** streaming chat, both hosts, the spatial graph and canvas, the agent tool loop with its
-approval gate, the editor, git, sessions and bundles, three languages.
+**Works:** streaming chat, parallel chats with per-chat models, both hosts, the spatial graph and
+canvas, the agent tool loop with its approval gate, the editor, git, sessions and bundles, three
+languages.
 
 **Fixed since `0.1.0-alpha`** — two security holes in the out-of-project file door, and two ways of
 losing your work:
