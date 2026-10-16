@@ -53,7 +53,7 @@ export const ru: Dictionary = {
   "sidebar.section.sessions": "Сессии",
   "sidebar.rail.search": "Поиск",
   "sidebar.rail.workflows": "Сценарии",
-  "sidebar.rail.marketplace": "Маркетплейс",
+  "sidebar.rail.models": "Модели",
   "sidebar.view.grouped": "По датам",
   "sidebar.view.recent": "Недавние",
   "sidebar.section.tools": "Инструменты",
@@ -106,7 +106,7 @@ export const ru: Dictionary = {
   "chat.jumpToLatest": "К последнему сообщению",
   "chat.stopped": "Генерация остановлена. Частичный ответ сохранён.",
   "chat.voice.listening": "Слушаю…",
-  "chat.voice.hint": "Голосовой ввод (прототип: вставляет демо-фразу)",
+  "chat.voice.hint": "Голосовой ввод",
   "chat.folded": "{0} старых сообщений свёрнуто в краткое резюме",
   "chat.folded.one": "{0} старое сообщение свёрнуто в краткое резюме",
   "chat.folded.few": "{0} старых сообщения свёрнуты в краткое резюме",
@@ -324,7 +324,8 @@ export const ru: Dictionary = {
   /* trajectory */
   "trajectory.title": "Траектория",
   "trajectory.subtitle": "Каждый шаг запуска агента — планирование, инструменты, субагенты, проверка.",
-  "trajectory.empty": "Событий пока нет. Запустите демо из чата.",
+  "trajectory.empty": "Событий пока нет.",
+  "trajectory.openChat": "Открыть чат",
   "trajectory.filter": "Фильтр событий",
   "trajectory.checkpointGraph": "снимок графа · узлов: {0}",
   "trajectory.checkpointGraph.one": "снимок графа · узел: {0}",
@@ -427,10 +428,8 @@ export const ru: Dictionary = {
   "palette.k.toggleTheme": "тёмная светлая оформление тема",
   "palette.k.toggleLocale": "язык английский русский немецкий",
 
-  /* demo */
+  /* demo (только офлайн-превью — никогда с бэкендом) */
   "demo.run": "Запустить демо-сценарий",
-  "demo.badge": "Прототип",
-  "demo.note": "Интерактивный прототип редизайна — сценарное воспроизведение агента поверх реального набора функций.",
 
   /* misc */
   "time.justNow": "только что",
@@ -497,7 +496,7 @@ export const ru: Dictionary = {
   "settings.maxTokens": "Максимум токенов",
   "settings.workspace": "Рабочий каталог",
   "settings.workspace.openFolder": "Открыть каталог",
-  "settings.workspace.toast": "В прототипе используется демо-каталог",
+  "settings.workspace.toast": "Нет подключения к бэкенду — выберите каталог из десктопного приложения",
   "settings.workspace.none": "Папка не открыта",
   "settings.workspace.noneHint": "Откройте папку для работы агента",
   "settings.workspace.opened": "Рабочая папка открыта: {0}",
@@ -598,7 +597,7 @@ export const ru: Dictionary = {
   "canvas.zoomReset": "Сбросить масштаб",
   "canvas.minimap": "Мини-карта",
   "canvas.selectedCount": "выбрано: {0}",
-  "canvas.open.toast": "Выбор каталога в прототипе не подключён.",
+  "canvas.open.toast": "Выбору каталога нужно запущенное десктопное приложение.",
   "canvas.askAi.toastTitle": "Спросить ИИ о канвасе",
   "canvas.askAi.toastBody": "Агент посмотрит на выбранные узлы.",
   "canvas.askAi.prompt": "Посмотри на эти файлы с канваса и объясни, как они связаны: {0}",
@@ -621,8 +620,6 @@ export const ru: Dictionary = {
   /* live model + voice dictation (Tasks 5–6) */
   "chat.live.badge": "Живой ИИ",
   "chat.live.errorToast": "Живая модель недоступна",
-  "chat.live.fallbackToast": "Показан заготовленный ответ.",
-  "chat.live.offline": "Живая модель недоступна — показан заготовленный ответ.",
   "chat.live.stopped": "Живой ответ остановлен.",
   "chat.live.title": "Ответила реальная модель через живой бэкенд",
   "chat.live.summaryEvent": "итоговое резюме сгенерировано моделью",
@@ -630,8 +627,7 @@ export const ru: Dictionary = {
   "chat.voice.interim": "Слушаю…",
   "chat.voice.live": "Живая транскрипция",
   "chat.voice.stop": "Остановить диктовку",
-  "chat.voice.unsupported": "Распознавание речи недоступно — имитируем диктовку.",
-  "demo.liveNote": "В режиме «Выключен» отвечает реальная модель.",
+  "chat.voice.unsupported": "Распознавание речи здесь недоступно.",
   "nav.workflows": "Сценарии",
 
   /* workflows surface (Task 4) */
@@ -1034,6 +1030,9 @@ export const ru: Dictionary = {
   "run.busy.desc": "Остановите его перед отправкой нового сообщения.",
   "run.noBackend.title": "Бэкенд недоступен",
   "run.noBackend.desc": "Сообщение не отправлено.",
+  "run.offline.title": "Сайдкар недоступен",
+  "run.offline.desc": "Запуски невозможны, пока бэкенд не вернётся.",
+  "run.offline.retry": "Повторить",
   "run.completed.title": "Запуск завершён",
   "run.completed.desc": "Сборка успешна · тесты 3/3 · цель достигнута.",
   "run.stop.stepLimit": "Достигнут лимит шагов",

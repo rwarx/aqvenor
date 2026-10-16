@@ -87,7 +87,6 @@ export function CommandPalette() {
   const setUi = useAqvenor((s) => s.setUi);
   const ui = useAqvenor((s) => s.ui);
   const currentSessionId = useAqvenor((s) => s.currentSessionId);
-  const runnerStatus = useAqvenor((s) => s.runner.status);
   const setRunner = useAqvenor((s) => s.setRunner);
   const sendMessageRef = useRef<((text: string) => void) | null>(null);
   const [query, setQuery] = useState("");
@@ -106,14 +105,19 @@ export function CommandPalette() {
 
   const commands: PaletteCommand[] = useMemo(() => {
     const go = (s: Surface) => () => setSurface(s);
-    const canRunDemo = runnerStatus === "idle" || runnerStatus === "done" || runnerStatus === "stopped";
     const cmds: PaletteCommand[] = [
       { id: "new-chat", group: t("sidebar.section.sessions"), label: t("sidebar.newChat"), icon: Plus, shortcut: ["Ctrl", "N"], run: () => newSession() },
-      { id: "demo", group: t("sidebar.section.sessions"), label: t("demo.run"), icon: Play, keywords: t("palette.k.demo"), run: () => {
-        setRunner({ status: "idle", label: undefined });
-        setSurface("chat");
-        sendMessageRef.current?.("Users get logged out after about an hour — fix the refresh token renewal");
-      } },
+      // Scripted theater is an offline-preview affordance only: with a backend
+      // the same words go to the real model through the composer instead.
+      ...(!isServerMode()
+        ? [{
+            id: "demo", group: t("sidebar.section.sessions"), label: t("demo.run"), icon: Play, keywords: t("palette.k.demo"), run: () => {
+              setRunner({ status: "idle", label: undefined });
+              setSurface("chat");
+              sendMessageRef.current?.("Users get logged out after about an hour — fix the refresh token renewal");
+            },
+          }]
+        : []),
       { id: "fork", group: t("sidebar.section.sessions"), label: t("sidebar.fork"), icon: GitFork, keywords: t("palette.k.fork"), run: () => forkSession(currentSessionId) },
       { id: "import-bundle", group: t("sidebar.section.sessions"), label: t("import.palette"), icon: FileDown, keywords: t("palette.k.importBundle"), run: () => openBundleImport() },
       { id: "compact", group: t("sidebar.section.sessions"), label: t("context.compact"), icon: FoldVertical, keywords: t("palette.k.compact"), run: () => compactSession() },
@@ -251,7 +255,7 @@ export function CommandPalette() {
       } },
     ];
     return cmds.filter((c) => c.label);
-  }, [t, ui.theme, ui.locale, setSurface, newSession, toggleSidebar, toggleContextPanel, forkSession, compactSession, setUi, pushToast, currentSessionId, runnerStatus, setRunner, showCheckpointJump, setCheckpointJumpOpen]);
+  }, [t, ui.theme, ui.locale, setSurface, newSession, toggleSidebar, toggleContextPanel, forkSession, compactSession, setUi, pushToast, currentSessionId, setRunner, showCheckpointJump, setCheckpointJumpOpen]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;

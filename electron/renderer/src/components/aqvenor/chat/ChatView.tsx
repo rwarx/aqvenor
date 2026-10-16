@@ -7,7 +7,8 @@ import { markChatVisible, unmarkChatVisible, useAqvenor } from "@/lib/aqvenor/st
 import { useT } from "@/lib/aqvenor/useT";
 import { fmtDay, fmtTimeShort } from "@/lib/aqvenor/format";
 import { sendMessage } from "@/lib/aqvenor/scenario";
-import { isServerMode, openWorkspaceDialog } from "@/lib/aqvenor/sync";
+import { isServerMode, openWorkspaceDialog, syncWorkspaceFiles } from "@/lib/aqvenor/sync";
+import { checkBackend } from "@/lib/aqvenor/backend";
 import { MessageItem, FoldedNotice } from "./MessageItem";
 import { ApprovalGate } from "./ApprovalGate";
 import { Composer } from "./Composer";
@@ -256,11 +257,40 @@ export function ChatView({ sessionId }: { sessionId?: string } = {}) {
     return map;
   }, [messages]);
 
+  const backendReachable = useAqvenor((s) => s.backendReachable);
+  const retryBackend = () => {
+    void (async () => {
+      if (await checkBackend()) {
+        await syncWorkspaceFiles().catch(() => undefined);
+      }
+    })();
+  };
+
   return (
     <div
       className="relative flex h-full flex-col"
       onFocusCapture={() => setFocusedChat(effectiveId ?? currentSessionId)}
     >
+      {/* honest offline state: the sidecar is unreachable, so no run can
+         start. Retry re-probes and resyncs; theater never fills the gap. */}
+      {backendReachable === false && (
+        <div
+          role="alert"
+          className="flex shrink-0 items-center gap-2 border-b border-warning/40 bg-warning-soft/40 px-3.5 py-1.5"
+        >
+          <span className="min-w-0 flex-1 truncate text-[11.5px] text-fg-2">
+            <span className="font-medium text-warning">{t("run.offline.title")}</span>
+            <span className="text-fg-3"> · {t("run.offline.desc")}</span>
+          </span>
+          <button
+            type="button"
+            onClick={retryBackend}
+            className="aq-focus-ring shrink-0 rounded-xs border border-line-faint px-2 py-0.5 text-[11px] font-medium text-fg-2 transition-colors hover:border-line-strong hover:text-fg-1"
+          >
+            {t("run.offline.retry")}
+          </button>
+        </div>
+      )}
       {/* new chat — relocated here from the global header corner (Turn 3). Lives
          in the chat's own top-right corner and stays wired to newSession(). */}
       <button

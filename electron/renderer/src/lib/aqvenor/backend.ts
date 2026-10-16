@@ -54,17 +54,24 @@ export function isBackendKnownAvailable(): boolean | null {
 }
 
 export async function checkBackend(): Promise<boolean> {
+  let ok = false;
   try {
     const base = await getBackendUrl();
     // /api/health is the one route that is deliberately anonymous, so this probe needs no token and
     // is also the right place to learn whether one can be had at all.
     const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(4000) });
-    backendAvailable = res.ok;
-    return res.ok;
+    ok = res.ok;
   } catch {
-    backendAvailable = false;
-    return false;
+    ok = false;
   }
+  backendAvailable = ok;
+  // Mirror into the store (no import cycle: the store never imports this module).
+  try {
+    (await import("./store")).useAqvenor.getState().setBackendReachable(ok);
+  } catch {
+    /* store unavailable (tests) — the module flag above still answers */
+  }
+  return ok;
 }
 
 /** Default ceiling for a single request, so a wedged sidecar surfaces as an error and not a hang. */

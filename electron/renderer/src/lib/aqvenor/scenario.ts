@@ -12,7 +12,7 @@ import type {
 import { engineModeFor, sessionModeOf, useAqvenor, waitForApproval, newId } from "./store";
 import { abortLiveChat, runLiveChat, runLiveSummary } from "./live";
 import { isAgentRunActive, runAgentConversation, stopAgentRun } from "./agent-live";
-import { isServerId, isServerMode, newLocalSession } from "./sync";
+import { isServerId, isServerMode } from "./sync";
 import { conversations } from "./backend";
 import { translate } from "./i18n";
 import { computeUnifiedDiff, diffStats } from "./diff";
@@ -852,11 +852,6 @@ async function liveSummaryOrScripted(
    Generic replies for free-typed messages
    ============================================================ */
 
-const OFF_REPLIES = [
-  "Here's the short version: the demo workspace is a four-project .NET solution. **Domain** holds the entities and contracts, **Application** the services, **Infrastructure** the clock/store/JWT pieces, and **Tests** the xUnit facts.\n\nThe interesting seam is `ITokenService` — `TokenService` implements it and `AuthService` consumes it, which is exactly where the demo bug lives.\n\nAsk in **Build** mode if you want me to actually change something.",
-  "Good question. In this prototype the agent has 15 tools (read/search/edit files, run allowed programs, git status/diff/commit/checkout/revert) gated by three risk levels: *read* runs freely, *write* needs a diff approval, *execute* asks every time.\n\nPlans land on the canvas in **Plan + canvas** mode, and every step is recorded in the **Trajectory** surface.",
-];
-
 const PLAN_STEPS_GENERIC = ["Read the relevant sources", "Map the affected calls", "Propose the change"];
 
 export async function runGenericScenario(userText: string, mode: AgentMode) {
@@ -885,14 +880,16 @@ export async function runGenericScenario(userText: string, mode: AgentMode) {
       /* live model first — real streaming from the backend */
       const result = await runLiveChat(msgId);
       if (result === "completed" || result === "stopped") return;
-      /* backend unavailable → canned fallback so the demo still works */
+      /* backend unavailable → say so in the transcript. No canned reply:
+         a scripted answer wearing the model's name is exactly the lie the
+         offline banner and the honest toasts exist to avoid. */
       const locale = store.ui.locale;
       store.updateMessage(msgId, { live: false });
-      store.pushToast(translate(locale, "chat.live.errorToast"), translate(locale, "chat.live.fallbackToast"));
-      await delay(600);
-      const reply = OFF_REPLIES[userText.length % OFF_REPLIES.length];
-      await streamText(msgId, `*${translate(locale, "chat.live.offline")}*\n\n${reply}`);
-      finish(msgId, { inputTokens: 3200, outputTokens: 480, ms: 21000 });
+      await streamText(
+        msgId,
+        `**${translate(locale, "run.offline.title")}**\n\n${translate(locale, "run.offline.desc")}`,
+      );
+      finish(msgId, { inputTokens: 0, outputTokens: 0, ms: 0 });
       return;
     }
 
@@ -1054,8 +1051,10 @@ export function sendMessage(text: string, opts?: { sessionId?: string }) {
   // Pinned panels address their own chat (following upgrade aliases);
   // everything else targets the current one.
   const sid = (opts?.sessionId && store.resolveSession(opts.sessionId)?.id) || store.currentSessionId;
-  if (isServerMode() && !isDemoRequest(trimmed)) {
-    // Real backend: chat + agent modes all stream from the sidecar.
+  if (isServerMode()) {
+    // Real backend, always — even for "run demo": scripted theater must never
+    // impersonate the agent where a backend exists. Offline preview below is
+    // the only stage it ever plays on.
     // Targeted — no session switch, so sibling chats keep streaming.
     // The engine mode comes from the TARGET chat's own mode + autonomy,
     // so a pinned cowork chat builds while the main chat just answers.
@@ -1067,7 +1066,8 @@ export function sendMessage(text: string, opts?: { sessionId?: string }) {
     void runAgentConversation(trimmed, engine, { sessionId: sid });
     return;
   }
-  // Demo theater is single-session by design — join the chat before playing.
+  // Offline browser preview only from here down: scripted theater, and it is
+  // single-session by design — join the chat before playing.
   if (sid !== store.currentSessionId) store.selectSession(sid);
   // Composer attachments shown on the user bubble (server mode threads the
   // full text through runAgentConversation, which clears the tray itself).
@@ -1077,9 +1077,6 @@ export function sendMessage(text: string, opts?: { sessionId?: string }) {
     : undefined;
   if (isDemoRequest(trimmed)) {
     // Scripted showcase in a local session — demo theater never touches server data.
-    if (isServerMode() && isServerId(S().currentSessionId)) {
-      newLocalSession("Demo scenario");
-    }
     S().addMessage({
       id: newId("m"),
       role: "user",
@@ -1163,7 +1160,12 @@ export function regenerate(sessionId?: string) {
       } catch {
         /* server may have already rolled the failed turn back */
       }
-      void runAgentConversation(text, S().ui.agentMode, { rebindUserId: lastUser.id, sessionId: sid });
+      const target = S().resolveSession(sid);
+      const engine = engineModeFor(
+        sessionModeOf(target ?? { mode: S().ui.workMode }),
+        target?.method ?? S().ui.workMethod,
+      );
+      void runAgentConversation(text, engine, { rebindUserId: lastUser.id, sessionId: sid });
     })();
     return;
   }
@@ -1178,6 +1180,17 @@ export function regenerate(sessionId?: string) {
   useAqvenor.setState((prev) => ({
     sessions: prev.sessions.map((s) => (s.id === sid ? { ...s, ...patch } : s)),
   }));
+  if (isServerMode()) {
+    // Real backend, always — scripted theater never impersonates the agent
+    // where a backend exists. Engine mode comes from the retried chat itself.
+    const target = store.resolveSession(sid);
+    const engine = engineModeFor(
+      sessionModeOf(target ?? { mode: store.ui.workMode }),
+      target?.method ?? store.ui.workMethod,
+    );
+    void runAgentConversation(lastUser.content, engine, { rebindUserId: lastUser.id, sessionId: sid });
+    return;
+  }
   /* demo theater is single-session by design — join the chat before playing */
   if (sid !== S().currentSessionId) S().selectSession(sid);
   if (isDemoRequest(lastUser.content)) {

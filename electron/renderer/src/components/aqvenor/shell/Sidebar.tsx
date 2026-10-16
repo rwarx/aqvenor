@@ -767,10 +767,10 @@ export function Sidebar() {
 
   const body = (
     <div className="flex h-full flex-col bg-surface-1">
-      {/* rail — workflows / marketplace (palette lives on its shortcuts) */}
+      {/* rail — workflows / models (palette lives on its shortcuts) */}
       <nav className={`flex flex-col gap-px ${collapsed ? "px-1.5" : "px-2"} pb-1.5 pt-2`}>
         <NavItem surface="workflows" icon={Workflow} label={t("sidebar.rail.workflows")} collapsed={collapsed} onClick={() => setSurface("workflows")} />
-        <NavItem surface="models" icon={Store} label={t("sidebar.rail.marketplace")} collapsed={collapsed} onClick={() => setSurface("models")} />
+        <NavItem surface="models" icon={Store} label={t("sidebar.rail.models")} collapsed={collapsed} onClick={() => setSurface("models")} />
       </nav>
 
       <div className={`mx-3 h-px bg-line-faint ${collapsed ? "mx-2" : ""}`} />

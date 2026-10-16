@@ -53,7 +53,7 @@ export const de: Dictionary = {
   "sidebar.section.sessions": "Sitzungen",
   "sidebar.rail.search": "Suche",
   "sidebar.rail.workflows": "Workflows",
-  "sidebar.rail.marketplace": "Marktplatz",
+  "sidebar.rail.models": "Modelle",
   "sidebar.view.grouped": "Gruppiert",
   "sidebar.view.recent": "Zuletzt",
   "sidebar.section.tools": "Werkzeuge",
@@ -106,7 +106,7 @@ export const de: Dictionary = {
   "chat.jumpToLatest": "Zum neuesten Beitrag",
   "chat.stopped": "Generierung gestoppt. Teilantwort bleibt erhalten.",
   "chat.voice.listening": "Hört zu…",
-  "chat.voice.hint": "Spracheingabe (Prototyp: fügt eine Demo-Phrase ein)",
+  "chat.voice.hint": "Spracheingabe",
   "chat.folded": "{0} ältere Nachrichten zusammengefasst",
   "chat.folded.one": "{0} ältere Nachricht zusammengefasst",
   "chat.suggest.explain": "Architektur erklären",
@@ -314,7 +314,8 @@ export const de: Dictionary = {
   /* trajectory */
   "trajectory.title": "Verlauf",
   "trajectory.subtitle": "Jeder Schritt des Agentenlaufs — Planung, Werkzeuge, Subagenten, Prüfung.",
-  "trajectory.empty": "Noch keine Ereignisse. Starte die Demo im Chat.",
+  "trajectory.empty": "Noch keine Ereignisse.",
+  "trajectory.openChat": "Chat öffnen",
   "trajectory.filter": "Ereignisse filtern",
   "trajectory.checkpointGraph": "Graph-Snapshot · {0} Knoten",
   "trajectory.checkpointGraph.one": "Graph-Snapshot · {0} Knoten",
@@ -409,10 +410,8 @@ export const de: Dictionary = {
   "palette.k.toggleTheme": "dunkel hell erscheinungsbild design",
   "palette.k.toggleLocale": "sprache englisch russisch deutsch",
 
-  /* demo */
+  /* demo (nur Offline-Vorschau — nie mit Backend) */
   "demo.run": "Demo-Szenario starten",
-  "demo.badge": "Prototyp",
-  "demo.note": "Interaktiver Redesign-Prototyp — geskriptete Agentenwiedergabe über dem echten Funktionsumfang.",
 
   /* misc */
   "time.justNow": "gerade eben",
@@ -475,7 +474,7 @@ export const de: Dictionary = {
   "settings.maxTokens": "Max. Tokens",
   "settings.workspace": "Arbeitsbereich",
   "settings.workspace.openFolder": "Ordner öffnen",
-  "settings.workspace.toast": "Der Prototyp nutzt einen Demo-Arbeitsbereich",
+  "settings.workspace.toast": "Kein Backend verbunden — Ordner aus der Desktop-App wählen",
   "settings.workspace.none": "Kein Ordner offen",
   "settings.workspace.noneHint": "Ordner zum Arbeiten öffnen",
   "settings.workspace.opened": "Arbeitsbereich geöffnet: {0}",
@@ -572,7 +571,7 @@ export const de: Dictionary = {
   "canvas.zoomReset": "Zoom zurücksetzen",
   "canvas.minimap": "Minimap",
   "canvas.selectedCount": "{0} ausgewählt",
-  "canvas.open.toast": "Die Ordnerauswahl ist in diesem Prototyp nicht angebunden.",
+  "canvas.open.toast": "Die Ordnerauswahl braucht die laufende Desktop-App.",
   "canvas.askAi.toastTitle": "KI zum Canvas fragen",
   "canvas.askAi.toastBody": "Der Agent sieht sich die ausgewählten Knoten an.",
   "canvas.askAi.prompt": "Sieh dir diese Dateien aus dem Canvas an und erkläre, wie sie zusammenhängen: {0}",
@@ -595,8 +594,6 @@ export const de: Dictionary = {
   /* live model + voice dictation (Tasks 5–6) */
   "chat.live.badge": "Live-KI",
   "chat.live.errorToast": "Live-Modell fehlgeschlagen",
-  "chat.live.fallbackToast": "Eine vorbereitete Antwort wird angezeigt.",
-  "chat.live.offline": "Live-Modell nicht verfügbar — vorbereitete Antwort.",
   "chat.live.stopped": "Live-Antwort gestoppt.",
   "chat.live.title": "Beantwortet von einem echten Modell über das Live-Backend",
   "chat.live.summaryEvent": "Abschlusszusammenfassung vom Modell generiert",
@@ -604,8 +601,7 @@ export const de: Dictionary = {
   "chat.voice.interim": "Höre zu…",
   "chat.voice.live": "Live-Transkription",
   "chat.voice.stop": "Diktat stoppen",
-  "chat.voice.unsupported": "Spracherkennung hier nicht verfügbar — Diktat wird simuliert.",
-  "demo.liveNote": "Im Aus-Modus antwortet ein echtes Modell.",
+  "chat.voice.unsupported": "Spracherkennung hier nicht verfügbar.",
   "nav.workflows": "Workflows",
 
   /* workflows surface (Task 4) */
@@ -994,6 +990,9 @@ export const de: Dictionary = {
   "run.busy.desc": "Stoppe ihn, bevor du eine weitere Nachricht sendest.",
   "run.noBackend.title": "Backend nicht verfügbar",
   "run.noBackend.desc": "Die Nachricht wurde nicht gesendet.",
+  "run.offline.title": "Sidecar nicht erreichbar",
+  "run.offline.desc": "Keine Läufe möglich, bis das Backend zurück ist.",
+  "run.offline.retry": "Wiederholen",
   "run.completed.title": "Lauf abgeschlossen",
   "run.completed.desc": "Build erfolgreich · Tests 3/3 · Ziel erreicht.",
   "run.stop.stepLimit": "Schrittlimit erreicht",

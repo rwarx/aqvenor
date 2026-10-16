@@ -297,6 +297,10 @@ interface AqvenorState {
   canvasOverlayActive: boolean;
   /** unsent input per chat session (text + staged file tray) */
   drafts: Record<string, SessionDraft>;
+  /** sidecar reachability: null = not probed yet, false = runs can't start.
+   *  Mirrored from backend.checkBackend so the UI can say so honestly. */
+  backendReachable: boolean | null;
+  setBackendReachable: (ok: boolean) => void;
   /** chat panel under keyboard focus (main or pinned) — prompt actions
    *  (canvas Ask AI, context panel) address this chat, not always current.
    *  Null until anything is focused; falls back to the current session. */
@@ -745,6 +749,7 @@ export const useAqvenor = create<AqvenorState>()(
       canvasOverlayActive: false,
       drafts: {},
       focusedChatSessionId: null,
+      backendReachable: null,
       recording: false,
       sidebarOpenMobile: false,
       ui: defaultUi,
@@ -880,6 +885,10 @@ export const useAqvenor = create<AqvenorState>()(
       draftOf: (sessionId) => {
         const id = sessionId ?? get().currentSessionId;
         return get().drafts[id] ?? emptyDraft();
+      },
+      setBackendReachable: (ok) => {
+        if (get().backendReachable === ok) return;
+        set({ backendReachable: ok });
       },
       /* Which chat a prompt action should address: the focused panel when it
          still exists, else the current chat. Resolves upgrade aliases. */

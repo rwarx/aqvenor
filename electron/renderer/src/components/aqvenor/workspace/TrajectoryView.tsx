@@ -20,7 +20,6 @@ import {
   ListChecks,
   LoaderCircle,
   MessageSquare,
-  Play,
   Search,
   ShieldAlert,
   Terminal,
@@ -589,8 +588,8 @@ export default function TrajectoryView() {
                 <p className="mt-3 text-[13px] leading-[1.5] text-fg-2">{t("trajectory.empty")}</p>
                 <div className="mt-4 flex justify-center">
                   <AqGhostButton onClick={() => setSurface("chat")}>
-                    <Play size={13} />
-                    {t("demo.run")}
+                    <MessageSquare size={13} />
+                    {t("trajectory.openChat")}
                   </AqGhostButton>
                 </div>
               </AqCard>

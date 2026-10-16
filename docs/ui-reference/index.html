@@ -1,0 +1,1374 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aqvenor — референс интерфейса</title>
+<style>
+/* ============================================================
+   Aqvenor UI reference. Frontend only, invented data.
+   Direction: the codebase as a nautical chart. Navy "sea",
+   lighter "land" regions with depth contours, the agent's plan
+   plotted as a chart-magenta course. Aqua marks selection and
+   what is in the model's context. Glass only on floating layers.
+   ============================================================ */
+:root {
+  --font-ui: "Bahnschrift", "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+  --font-dense: "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI", sans-serif;
+  --font-code: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
+  --r-s: 6px; --r-m: 10px; --r-l: 14px;
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+[data-theme="dark"] {
+  --chrome:   oklch(0.235 0.042 250);
+  --pane:     oklch(0.268 0.045 250);
+  --pane-2:   oklch(0.300 0.045 250);
+  --sea:      oklch(0.250 0.050 246);
+  --land:     oklch(0.318 0.040 236);
+  --contour:  oklch(0.420 0.040 232);
+  --node:     oklch(0.355 0.040 245);
+  --node-hi:  oklch(0.400 0.045 245);
+  --line:     oklch(0.520 0.030 245);
+  --line-hi:  oklch(0.760 0.030 245);
+  --rule:     oklch(0.340 0.035 250);
+  --text:     oklch(0.940 0.010 240);
+  --text-2:   oklch(0.760 0.020 240);
+  --text-3:   oklch(0.620 0.025 240);
+  --route:    oklch(0.700 0.200 345);
+  --route-tx: oklch(0.800 0.150 345);
+  --aqua:     oklch(0.800 0.110 200);
+  --aqua-soft:oklch(0.800 0.110 200 / .16);
+  --ok:       oklch(0.780 0.140 152);
+  --wait:     oklch(0.820 0.140 78);
+  --bad:      oklch(0.700 0.180 25);
+  --glass:    oklch(0.300 0.045 250 / .72);
+  --glass-rule: oklch(0.800 0.030 240 / .16);
+  --shadow:   0 18px 48px oklch(0.120 0.040 250 / .55);
+  --on-accent:oklch(0.200 0.040 250);
+}
+[data-theme="light"] {
+  --chrome:   oklch(0.955 0.010 235);
+  --pane:     oklch(0.985 0.006 235);
+  --pane-2:   oklch(0.945 0.012 235);
+  --sea:      oklch(0.965 0.014 228);
+  --land:     oklch(0.925 0.020 95);
+  --contour:  oklch(0.800 0.030 95);
+  --node:     oklch(0.995 0.004 235);
+  --node-hi:  oklch(0.975 0.010 235);
+  --line:     oklch(0.640 0.030 245);
+  --line-hi:  oklch(0.400 0.040 245);
+  --rule:     oklch(0.885 0.015 235);
+  --text:     oklch(0.250 0.035 250);
+  --text-2:   oklch(0.420 0.030 250);
+  --text-3:   oklch(0.540 0.030 250);
+  --route:    oklch(0.560 0.220 345);
+  --route-tx: oklch(0.500 0.200 345);
+  --aqua:     oklch(0.560 0.110 210);
+  --aqua-soft:oklch(0.560 0.110 210 / .14);
+  --ok:       oklch(0.560 0.140 152);
+  --wait:     oklch(0.640 0.150 70);
+  --bad:      oklch(0.560 0.190 25);
+  --glass:    oklch(0.990 0.006 235 / .74);
+  --glass-rule: oklch(0.300 0.030 250 / .14);
+  --shadow:   0 18px 44px oklch(0.400 0.040 250 / .20);
+  --on-accent:oklch(0.990 0.006 235);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 400 14px/1.45 var(--font-ui);
+  color: var(--text); background: var(--chrome);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; border-radius: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- app frame ---------- */
+.app { display: grid; height: 100vh; grid-template-rows: 44px 1fr 28px; grid-template-columns: 252px 1fr; grid-template-areas: "title title" "side main" "status status"; }
+.titlebar { grid-area: title; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 8px 0 12px; border-bottom: 1px solid var(--rule); }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand img { width: 22px; height: 22px; object-fit: contain; }
+.brand b { font-weight: 600; font-size: 15px; letter-spacing: .01em; }
+.activity { display: flex; gap: 4px; margin-left: 10px; }
+.act { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; color: var(--text-2); }
+.act:hover { background: var(--pane-2); color: var(--text); }
+.search-trigger { display: flex; align-items: center; gap: 10px; width: min(440px, 40vw); height: 30px; padding: 0 10px; border-radius: 8px; background: var(--pane); border: 1px solid var(--rule); color: var(--text-3); }
+.search-trigger:hover { border-color: var(--line); color: var(--text-2); }
+.search-trigger kbd { margin-left: auto; }
+kbd { font: 500 11px var(--font-ui); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--rule); color: var(--text-3); background: var(--chrome); }
+.title-right { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--pane); border: 1px solid var(--rule); }
+.seg button { height: 24px; padding: 0 11px; border-radius: 6px; color: var(--text-2); font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--pane-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--rule); }
+.icon-btn { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 7px; color: var(--text-2); }
+.icon-btn:hover { background: var(--pane-2); color: var(--text); }
+.win { display: flex; margin-left: 6px; }
+.win span { width: 38px; height: 30px; display: grid; place-items: center; color: var(--text-3); }
+
+/* ---------- status glyphs (shape + colour, never colour alone) ---------- */
+.st { width: 10px; height: 10px; flex: none; display: inline-block; position: relative; }
+.st.run  { border-radius: 50%; border: 2px solid var(--route); }
+.st.run::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid var(--route); opacity: 0; animation: ping 1.8s var(--ease) infinite; }
+.st.wait { transform: rotate(45deg) scale(.82); background: var(--wait); border-radius: 2px; }
+.st.done { border-radius: 50%; background: var(--ok); }
+.st.bad  { border-radius: 2px; background: var(--bad); clip-path: polygon(20% 0,50% 30%,80% 0,100% 20%,70% 50%,100% 80%,80% 100%,50% 70%,20% 100%,0 80%,30% 50%,0 20%); }
+.st.idle { border-radius: 50%; border: 2px solid var(--text-3); }
+@keyframes ping { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+
+/* ---------- sidebar ---------- */
+.side { grid-area: side; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--rule); background: var(--chrome); }
+.proj { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; }
+.proj-name { font-weight: 600; }
+.proj-branch { font-size: 12.5px; color: var(--text-3); }
+.new-task { margin: 2px 12px 10px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px; background: var(--pane); border: 1px solid var(--rule); color: var(--text); }
+.new-task:hover { border-color: var(--line); }
+.new-task kbd { margin-left: auto; }
+.groups { overflow: auto; padding: 0 8px 12px; flex: 1; }
+.group h3 { display: flex; align-items: center; gap: 8px; margin: 14px 6px 6px; font: 600 12.5px var(--font-ui); color: var(--text-3); }
+.group h3 .n { margin-left: auto; font-weight: 500; }
+.sess { width: 100%; display: grid; grid-template-columns: 14px 1fr; gap: 2px 10px; align-items: center; text-align: left; padding: 7px 8px; border-radius: 8px; }
+.sess:hover { background: var(--pane); }
+.sess[aria-current="true"] { background: var(--pane-2); box-shadow: inset 2px 0 0 var(--aqua); }
+.sess .t { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess .s { grid-column: 2; font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-foot { display: flex; gap: 2px; padding: 8px; border-top: 1px solid var(--rule); }
+
+/* ---------- main / workspace ---------- */
+.main { grid-area: main; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--chrome); }
+.ws-head { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 14px; }
+.ws-title { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-head .seg { margin-left: auto; }
+.panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(330px, 400px) 1fr minmax(310px, 360px); gap: 6px; padding: 0 6px 6px; }
+.pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--pane); border: 1px solid var(--rule); border-radius: var(--r-m); overflow: hidden; }
+.tabs { display: flex; align-items: center; gap: 2px; height: 38px; padding: 0 6px; border-bottom: 1px solid var(--rule); flex: none; }
+.tab { height: 28px; padding: 0 10px; border-radius: 6px; color: var(--text-3); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.tab[aria-selected="true"] { color: var(--text); background: var(--pane-2); }
+.tab .c { color: var(--text-3); font-size: 12px; }
+.tabs .grow { flex: 1; }
+
+/* ---------- chat ---------- */
+.chat { flex: 1; overflow: auto; padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+.msg-user { align-self: flex-end; max-width: 88%; background: var(--pane-2); border-radius: 12px 12px 4px 12px; padding: 9px 12px; }
+.msg-user .att { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+.who { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3); margin-bottom: 6px; }
+.who b { color: var(--text-2); font-weight: 600; }
+.think { font-size: 12.5px; color: var(--text-3); display: inline-flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.think:hover { color: var(--text-2); }
+.msg-ai p { margin: 0 0 8px; color: var(--text); max-width: 64ch; }
+.msg-ai code, .code { font-family: var(--font-code); font-size: 12.5px; }
+.msg-ai p code { background: var(--pane-2); padding: 1px 5px; border-radius: 4px; }
+.steps { display: flex; flex-direction: column; margin: 4px 0 10px; border-left: 1px solid var(--rule); padding-left: 12px; }
+.step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); padding: 3px 0; }
+.step .d { margin-left: auto; color: var(--text-3); font-size: 12px; }
+.plus { color: var(--ok); } .minus { color: var(--bad); }
+
+/* the plan as a route sheet, not a card */
+.route-sheet { border-top: 2px solid var(--route); background: var(--pane-2); border-radius: 0 0 var(--r-m) var(--r-m); padding: 10px 12px 8px; margin: 2px 0 10px; }
+.route-sheet header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.route-sheet header b { font-weight: 600; }
+.route-sheet header button { margin-left: auto; font-size: 12.5px; color: var(--route-tx); }
+.wp-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; padding: 5px 4px; border-radius: 6px; font-size: 13px; }
+.wp-row:hover { background: var(--pane); }
+.wp-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 1.5px solid var(--text-3); color: var(--text-2); }
+.wp-row[data-s="done"] .wp-n { background: var(--ok); border-color: var(--ok); color: var(--on-accent); }
+.wp-row[data-s="run"] .wp-n { border-color: var(--route); color: var(--route-tx); }
+.wp-row[data-s="wait"] .wp-n { border-color: var(--wait); color: var(--wait); }
+.wp-row .sv { font-size: 12px; color: var(--text-3); }
+.wp-row[data-s="done"] .t { color: var(--text-2); }
+
+/* approval: the one place that asks for a decision */
+.approval { border: 1px solid var(--wait); border-radius: var(--r-m); padding: 12px; background: oklch(from var(--wait) l c h / .07); }
+.approval h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.approval p { margin: 0 0 10px; color: var(--text-2); font-size: 13px; }
+.approval .files { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; font-size: 13px; }
+.approval .files span { display: flex; gap: 8px; }
+.approval .why { font-size: 12px; color: var(--text-3); margin: 8px 0 0; }
+.btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn { height: 30px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--rule); background: var(--pane); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--line); }
+.btn.primary { background: var(--aqua); border-color: var(--aqua); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.quiet { border-color: transparent; color: var(--text-2); }
+.resolved { font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+
+/* ---------- composer ---------- */
+.composer { flex: none; margin: 0 10px 10px; border: 1px solid var(--rule); border-radius: var(--r-l); background: var(--pane-2); }
+.tray { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 8px 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 8px; border-radius: 6px; background: var(--pane); border: 1px solid var(--rule); font-size: 12.5px; }
+.chip .w { color: var(--text-3); }
+.chip.node { box-shadow: inset 2px 0 0 var(--aqua); }
+.chip button { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; color: var(--text-3); }
+.chip button:hover { background: var(--pane-2); color: var(--text); }
+.composer textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; padding: 10px 12px 4px; min-height: 52px; max-height: 160px; }
+.composer textarea::placeholder { color: var(--text-3); }
+.comp-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; }
+.pick { height: 28px; padding: 0 9px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 12.5px; }
+.pick:hover { background: var(--pane); color: var(--text); }
+.pick .m { color: var(--text); }
+.meter { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); height: 28px; padding: 0 8px; border-radius: 7px; }
+.meter:hover { background: var(--pane); }
+.meter .bar { width: 44px; height: 4px; border-radius: 2px; background: var(--rule); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; background: var(--aqua); }
+.send { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--aqua); color: var(--on-accent); }
+</style>
+<style>
+/* ---------- canvas / chart ---------- */
+.chart-pane { position: relative; }
+.viewport { position: relative; flex: 1; overflow: hidden; background-color: var(--sea); cursor: grab; touch-action: none;
+  background-image: radial-gradient(circle, oklch(from var(--text) l c h / .10) 1px, transparent 1.2px); }
+.viewport.panning { cursor: grabbing; }
+.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.world svg.layer { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.region-land { fill: var(--land); stroke: var(--contour); stroke-width: 1; }
+.region-contour { fill: none; stroke: var(--contour); stroke-width: 1; stroke-dasharray: 2 5; opacity: .7; }
+.region-label { font: 500 16px var(--font-dense); fill: var(--text-2); letter-spacing: .01em; }
+.region-count { font: 400 12px var(--font-ui); fill: var(--text-3); }
+.lod-0 .region-label { font-size: 26px; }
+.edge { fill: none; stroke: var(--line); stroke-width: 1.4; transition: stroke .15s, opacity .15s; }
+.edge.depends { stroke-dasharray: 5 4; }
+.edge.proposed { stroke: var(--route); stroke-dasharray: 6 5; stroke-width: 1.6; }
+.edge.plan { stroke: var(--route); stroke-width: 1.2; stroke-dasharray: 1 5; opacity: .85; }
+.edge-label { font: 500 11.5px var(--font-ui); fill: var(--text-3); }
+.edge-label.proposed { fill: var(--route-tx); }
+.edge.hot { stroke: var(--line-hi); }
+.dim .edge:not(.hot):not(.plan), .dim .edge-label:not(.hot), .dim .node:not(.hot) { opacity: .28; }
+.route-line { fill: none; stroke: var(--route); stroke-width: 2.2; }
+.route-line.ahead { stroke-dasharray: 7 6; opacity: .75; }
+.route-line.reveal { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1s var(--ease) .25s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.agg-edge { fill: none; stroke: var(--line); stroke-linecap: round; opacity: .75; }
+
+.node { position: absolute; width: 176px; border-radius: var(--r-m); background: var(--node); border: 1px solid var(--rule);
+  padding: 7px 10px 8px 13px; cursor: pointer; transition: border-color .12s, opacity .15s, box-shadow .12s; }
+.node::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; background: var(--k, var(--line)); }
+.node:hover { border-color: var(--line); background: var(--node-hi); }
+.node .nt { font: 600 14px/1.2 var(--font-dense); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node .ns { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.node .sym { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--rule); font: 12px/1.6 var(--font-code); color: var(--text-2); }
+.lod-2 .node .sym { display: block; }
+.lod-0 .node { display: none; }
+.node[aria-pressed="true"] { border-color: var(--aqua); box-shadow: 0 0 0 1.5px var(--aqua), 0 0 0 6px var(--aqua-soft); }
+.node.inctx::after { content: ""; position: absolute; right: -1px; top: -1px; width: 14px; height: 14px; border-top-right-radius: var(--r-m);
+  background: linear-gradient(225deg, var(--aqua) 50%, transparent 50%); }
+.node.hl { box-shadow: 0 0 0 1.5px var(--route), 0 0 0 7px oklch(from var(--route) l c h / .16); }
+
+.wp { position: absolute; display: flex; align-items: center; gap: 9px; width: 210px; padding: 7px 10px; border-radius: 22px;
+  background: var(--pane); border: 1px solid var(--rule); cursor: pointer; font-size: 13px; transition: border-color .2s; }
+.wp .wp-n { flex: none; }
+.wp .wt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp[data-s="done"] .wp-n { background: var(--ok); border-color: var(--ok); color: var(--on-accent); }
+.wp[data-s="run"] { border-color: var(--route); }
+.wp[data-s="run"] .wp-n { border-color: var(--route); color: var(--route-tx); }
+.wp[data-s="wait"] { border-color: var(--wait); }
+.wp[data-s="wait"] .wp-n { border-color: var(--wait); color: var(--wait); }
+.wp[data-s="done"] .wt { color: var(--text-2); }
+
+.vessel { position: absolute; display: flex; align-items: center; gap: 8px; transition: transform .8s var(--ease); pointer-events: none; }
+.vessel .hull { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--route); color: var(--on-accent); position: relative; }
+.vessel .hull::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--route); opacity: 0; }
+.vessel[data-s="run"] .hull::after { animation: ping 1.8s var(--ease) infinite; }
+.vessel[data-s="wait"] .hull { background: var(--wait); }
+.vessel[data-s="done"] .hull { background: var(--ok); }
+.vessel .vl { font-size: 12.5px; line-height: 1.25; }
+.vessel .vl b { display: block; font-weight: 600; }
+.vessel .vl span { color: var(--text-3); }
+.vessel.intro { animation: arrive .45s var(--ease) 1.1s both; }
+@keyframes arrive { from { opacity: 0; scale: .6; } }
+
+/* ---------- glass: floating layers only ---------- */
+.glass { background: var(--glass); border: 1px solid var(--glass-rule); box-shadow: var(--shadow);
+  backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
+.float { position: absolute; z-index: 5; border-radius: var(--r-m); }
+.zoombar { left: 12px; bottom: 12px; display: flex; align-items: center; gap: 2px; padding: 3px; }
+.zoombar .z { min-width: 46px; text-align: center; font-size: 12.5px; color: var(--text-2); }
+.legend { left: 12px; bottom: 56px; padding: 10px 12px; font-size: 12.5px; color: var(--text-2); display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.legend[hidden] { display: none; }
+.legend svg { width: 28px; height: 8px; }
+.minimap { right: 12px; bottom: 12px; width: 188px; height: 122px; padding: 6px; cursor: pointer; }
+.minimap svg { width: 100%; height: 100%; display: block; }
+.selpop { z-index: 6; display: flex; align-items: center; gap: 4px; padding: 5px; transform: translate(-50%, calc(-100% - 12px)); }
+.selpop[hidden] { display: none; }
+.selpop .n { padding: 0 8px; font-size: 12.5px; color: var(--text-2); }
+.ctxpop { position: fixed; z-index: 40; width: 300px; padding: 12px; border-radius: var(--r-m); }
+.ctxpop[hidden] { display: none; }
+.ctxpop h4 { margin: 0 0 8px; font-size: 13.5px; }
+.ctxpop .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: var(--text-2); }
+.ctxpop .row b { color: var(--text); font-weight: 500; }
+.ctxpop .stack { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 6px 0 10px; background: var(--rule); }
+
+/* ---------- review ---------- */
+.review { flex: 1; overflow: auto; }
+.scrub { padding: 12px 14px 10px; border-bottom: 1px solid var(--rule); }
+.scrub .lbl { font-size: 12.5px; color: var(--text-3); display: flex; justify-content: space-between; }
+.track { position: relative; height: 26px; margin-top: 4px; }
+.track::before { content: ""; position: absolute; left: 6px; right: 6px; top: 12px; height: 2px; background: var(--rule); }
+.tick { position: absolute; top: 6px; width: 14px; height: 14px; border-radius: 50%; background: var(--pane); border: 2px solid var(--line); transform: translateX(-7px); }
+.tick.now { border-color: var(--route); background: var(--route); }
+.tick:hover { border-color: var(--aqua); }
+.rv-list { padding: 6px 8px; }
+.rv-file { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; font-size: 13px; }
+.rv-file:hover { background: var(--pane-2); }
+.rv-file .p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-file .d { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.rv-file[aria-expanded="true"] { background: var(--pane-2); }
+.hunk { margin: 4px 0 10px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.hunk pre { margin: 0; padding: 8px 0; font: 12px/1.55 var(--font-code); overflow-x: auto; background: var(--chrome); }
+.hunk pre span { display: block; padding: 0 10px; white-space: pre; }
+.hunk .a { background: oklch(from var(--ok) l c h / .12); }
+.hunk .r { background: oklch(from var(--bad) l c h / .12); }
+.hunk .h { color: var(--text-3); }
+.hunk footer { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--text-3); }
+.hunk footer .btns { margin-left: auto; }
+.hunk[data-v="ok"] footer .state { color: var(--ok); }
+.hunk[data-v="no"] { opacity: .55; }
+.gchange { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 8px; border-radius: 7px; font-size: 13px; }
+.gchange:hover { background: var(--pane-2); }
+.gchange .k { font-size: 12px; color: var(--text-3); }
+.cmd { display: flex; gap: 8px; align-items: center; padding: 8px; font-size: 13px; }
+.cmd .code { color: var(--text); }
+.cmd .d { margin-left: auto; font-size: 12px; color: var(--text-3); }
+.rv-foot { flex: none; padding: 10px 12px; border-top: 1px solid var(--rule); display: flex; gap: 6px; align-items: center; }
+.rv-foot .note { font-size: 12px; color: var(--text-3); }
+.rv-foot .btns { margin-left: auto; }
+
+/* ---------- mission control ---------- */
+.mission { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 360px; gap: 6px; padding: 0 6px 6px; }
+.board { overflow: auto; padding: 4px 8px 16px; }
+.board-intro { padding: 4px 8px 6px; color: var(--text-2); max-width: 70ch; font-size: 13.5px; }
+.lane h3 { display: flex; align-items: center; gap: 8px; margin: 18px 8px 6px; font: 600 13.5px var(--font-ui); }
+.lane h3 .n { color: var(--text-3); font-weight: 500; }
+.berth { display: grid; grid-template-columns: 14px minmax(180px, 1.3fr) minmax(150px, 1fr) 120px 64px 56px auto; gap: 14px; align-items: center;
+  padding: 10px 10px; border-top: 1px solid var(--rule); }
+.berth:hover { background: var(--pane); }
+.berth .bt { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.berth .bb { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.berth .now { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.berth .num { font-size: 12.5px; color: var(--text-3); text-align: right; }
+.minitrack { display: flex; align-items: center; }
+.minitrack i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text-3); flex: none; }
+.minitrack b { height: 2px; flex: 1; min-width: 6px; background: var(--rule); }
+.minitrack i.done { background: var(--ok); border-color: var(--ok); }
+.minitrack i.run { border-color: var(--route); background: var(--route); }
+.minitrack i.wait { border-color: var(--wait); background: var(--wait); }
+.minitrack i.bad { border-color: var(--bad); background: var(--bad); }
+.minitrack b.done { background: var(--ok); }
+.inbox { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.inbox h3 { margin: 2px 2px 2px; font: 600 14px var(--font-ui); }
+.inbox .approval .who { margin-bottom: 4px; }
+.failcard { border: 1px solid var(--bad); border-radius: var(--r-m); padding: 12px; }
+.failcard h4 { margin: 0 0 4px; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+.failcard p { margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+
+/* ---------- status bar, palette, toast ---------- */
+.status { grid-area: status; display: flex; align-items: center; gap: 18px; padding: 0 12px; font-size: 12.5px; color: var(--text-3); border-top: 1px solid var(--rule); white-space: nowrap; overflow: hidden; }
+.status span { display: inline-flex; align-items: center; gap: 6px; }
+.status .ref { margin-left: auto; color: var(--route-tx); }
+.scrim { position: fixed; inset: 0; z-index: 50; background: oklch(0.15 0.03 250 / .35); display: grid; justify-items: center; align-items: start; padding-top: 12vh; }
+.scrim[hidden] { display: none; }
+.palette { width: min(620px, 92vw); border-radius: var(--r-l); overflow: hidden; }
+.palette input { width: 100%; height: 50px; border: 0; outline: 0; background: transparent; padding: 0 18px; font-size: 16px; border-bottom: 1px solid var(--glass-rule); }
+.palette ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.palette li.g { font-size: 12px; color: var(--text-3); padding: 8px 10px 4px; }
+.palette li.it { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.palette li.it[aria-selected="true"] { background: var(--aqua-soft); }
+.palette li.it .h { margin-left: auto; font-size: 12px; color: var(--text-3); }
+.toast { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 60; padding: 10px 14px; border-radius: var(--r-m); font-size: 13px; max-width: 520px; }
+.toast[hidden] { display: none; }
+.mob-tabs { display: none; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1280px) {
+  .panes { grid-template-columns: minmax(320px, 380px) 1fr; }
+  .panes .review-pane { position: fixed; right: 8px; top: 96px; bottom: 36px; width: 360px; z-index: 20; box-shadow: var(--shadow); display: none; }
+  body.show-review .panes .review-pane { display: flex; }
+  .mission { grid-template-columns: 1fr; }
+  .berth { grid-template-columns: 14px 1fr 120px auto; }
+  .berth .now, .berth .num { display: none; }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; grid-template-areas: "title" "main" "status"; }
+  .side { position: fixed; left: 0; top: 44px; bottom: 28px; width: 270px; z-index: 30; transform: translateX(-100%); transition: transform .2s var(--ease); }
+  body.show-side .side { transform: none; box-shadow: var(--shadow); }
+  .search-trigger { width: 40px; } .search-trigger .lbl, .search-trigger kbd, .activity .lbl { display: none; }
+  .panes { grid-template-columns: 1fr; }
+  .panes > .pane { display: none; }
+  .panes > .pane.mob-on { display: flex; }
+  body.show-review .panes .review-pane { position: static; width: auto; box-shadow: none; }
+  .mob-tabs { display: flex; gap: 4px; padding: 0 6px 6px; }
+  .mob-tabs button { flex: 1; height: 34px; border-radius: 8px; background: var(--pane); border: 1px solid var(--rule); color: var(--text-2); }
+  .mob-tabs button[aria-pressed="true"] { color: var(--text); border-color: var(--aqua); }
+  .status .hide-sm { display: none; }
+  .ws-head .seg { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .route-line.reveal { stroke-dashoffset: 0; }
+}
+</style>
+<style>
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.view[hidden] { display: none; }
+.mob-only { display: none; }
+.review-toggle { display: none !important; }
+@media (max-width: 1280px) { .review-toggle { display: inline-flex !important; } }
+@media (max-width: 900px) { .mob-only { display: inline-grid; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-node" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="3"/><path d="M4 10h16" opacity=".5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 5-6 3-11 7"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-ask" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.3 11 15.7 7M8.3 13l7.4 4"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><path d="m5 8 4 4-4 4M12 16h7"/></symbol>
+  <symbol id="i-legend" viewBox="0 0 24 24"><path d="M4 7h3M10 7h10M4 12h3M10 12h10M4 17h3M10 17h10"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.4 3 7.7 7 9 4-1.3 7-4.6 7-9V6z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><path d="M12 3 7 21l5-4 5 4z"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V14a4 4 0 0 0 4 4h5.5M18 15.5V10a4 4 0 0 0-4-4H8.5"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="titlebar">
+    <div class="brand">
+      <button class="icon-btn mob-only" id="sideToggle" aria-label="Показать задачи"><svg class="i"><use href="#i-menu"/></svg></button>
+      <img src="../../electron/renderer/src/assets/aqvenor-mark.png" alt="">
+      <b>Aqvenor</b>
+      <div class="activity" id="activity"></div>
+    </div>
+    <button class="search-trigger" id="openPalette" aria-label="Открыть поиск и команды">
+      <svg class="i"><use href="#i-search"/></svg><span class="lbl">Найти задачу, узел или команду</span><kbd>Ctrl K</kbd>
+    </button>
+    <div class="title-right">
+      <div class="seg" role="group" aria-label="Вид">
+        <button data-view="workspace" aria-pressed="true">Пространство</button>
+        <button data-view="agents" aria-pressed="false">Агенты</button>
+      </div>
+      <button class="icon-btn" id="themeBtn" aria-label="Сменить тему"><svg class="i"><use href="#i-theme"/></svg></button>
+      <div class="win" aria-hidden="true"><span>&#x2014;</span><span>&#x25A2;</span><span>&#x2715;</span></div>
+    </div>
+  </header>
+
+  <aside class="side" id="side" aria-label="Задачи">
+    <div class="proj">
+      <div><div class="proj-name">aqvenor</div><div class="proj-branch">main, 3 рабочие копии</div></div>
+    </div>
+    <button class="new-task" id="newTask"><svg class="i"><use href="#i-plus"/></svg>Новая задача<kbd>Ctrl N</kbd></button>
+    <div class="groups" id="groups"></div>
+    <div class="side-foot">
+      <button class="icon-btn" aria-label="Настройки" data-note="Настройки: ключи, модели, методы по умолчанию, MCP-серверы и правила проекта."><svg class="i"><use href="#i-gear"/></svg></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="view" id="view-workspace" aria-label="Пространство задачи">
+      <div class="ws-head">
+        <div class="ws-title" id="wsTitle">Канва в контексте агента</div>
+        <div class="seg" role="group" aria-label="Режим задачи" id="modeSeg">
+          <button data-mode="Разговор" aria-pressed="false" title="Ответы без доступа к проекту">Разговор</button>
+          <button data-mode="Исследование" aria-pressed="false" title="Читает проект и пишет отчёт, но не меняет файлы">Исследование</button>
+          <button data-mode="Код" aria-pressed="true" title="Меняет проект с вашего разрешения">Код</button>
+        </div>
+      </div>
+      <div class="mob-tabs" role="group" aria-label="Панель">
+        <button data-mob="chat" aria-pressed="true">Чат</button>
+        <button data-mob="chart" aria-pressed="false">Карта</button>
+        <button data-mob="review" aria-pressed="false">Ревью</button>
+      </div>
+      <div class="panes">
+        <section class="pane chat-pane mob-on" data-pane="chat" aria-label="Чат">
+          <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Чат</button><button class="tab" role="tab" aria-selected="false" data-note="Файлы, редактор, git и траектория открываются вкладками в любой панели. В референсе показаны чат, карта и ревью.">Файлы</button><button class="icon-btn" aria-label="Добавить панель" data-note="Любую поверхность можно открыть вкладкой или перетащить в отдельную панель.">  <svg class="i"><use href="#i-plus"/></svg></button></div>
+          <div class="chat" id="chat" aria-live="polite"></div>
+          <div class="composer">
+            <div class="tray" id="tray" aria-label="Что уйдёт в контекст"></div>
+            <label class="sr" for="prompt">Сообщение агенту</label>
+            <textarea id="prompt" rows="2" placeholder="Опишите задачу. Через @ можно сослаться на файл, узел или символ"></textarea>
+            <div class="comp-row">
+              <button class="pick" title="Режим и метод" data-note="Метод решает, когда агент спрашивает: перед каждым изменением, только перед программами или никогда внутри своей ветки."><span class="m">Код</span><span>спрашивать перед изменениями</span><svg class="i"><use href="#i-down"/></svg></button>
+              <button class="pick" title="Модель" data-note="Облачные и локальные модели в одном списке. Локальные помечены и ничего не отправляют наружу."><span class="m">Claude Opus 5.5</span><svg class="i"><use href="#i-down"/></svg></button>
+              <button class="meter" id="meterBtn" aria-haspopup="dialog" aria-label="Сколько занято в контексте"><span id="meterTxt"></span><span class="bar"><i id="meterBar"></i></span></button>
+              <button class="icon-btn" aria-label="Диктовка" data-note="Диктовка распознаётся на устройстве, звук никуда не уходит."><svg class="i"><use href="#i-mic"/></svg></button>
+              <button class="send" aria-label="Отправить, Ctrl Enter" data-note="В референсе сообщения не отправляются. Попробуйте сценарий с разрешением в чате."><svg class="i"><use href="#i-send"/></svg></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="pane chart-pane" data-pane="chart" aria-label="Карта проекта">
+          <div class="tabs">
+            <button class="tab" aria-selected="true">Карта проекта</button>
+            <span class="grow"></span>
+            <div class="seg" role="group" aria-label="Детальность карты" id="lodSeg">
+              <button data-lod="0" aria-pressed="false">Области</button>
+              <button data-lod="1" aria-pressed="true">Модули</button>
+              <button data-lod="2" aria-pressed="false">Символы</button>
+            </div>
+            <button class="icon-btn" id="legendBtn" aria-label="Легенда" aria-expanded="false"><svg class="i"><use href="#i-legend"/></svg></button>
+            <button class="icon-btn review-toggle" id="reviewToggle" aria-label="Показать ревью"><svg class="i"><use href="#i-review"/></svg></button>
+          </div>
+          <div class="viewport" id="viewport" tabindex="0" aria-label="Карта: перетаскивайте, колесо меняет масштаб, F вписывает всё">
+            <div class="world" id="world"></div>
+            <div class="float glass selpop" id="selpop" hidden></div>
+          </div>
+          <div class="float glass zoombar">
+            <button class="icon-btn" id="zOut" aria-label="Отдалить"><svg class="i"><use href="#i-minus"/></svg></button>
+            <span class="z" id="zLbl">100%</span>
+            <button class="icon-btn" id="zIn" aria-label="Приблизить"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="icon-btn" id="zFit" aria-label="Вписать всё"><svg class="i"><use href="#i-fit"/></svg></button>
+          </div>
+          <div class="float glass legend" id="legend" hidden></div>
+          <div class="float glass minimap" id="minimap" aria-label="Мини-карта, нажмите, чтобы перейти"></div>
+        </section>
+
+        <section class="pane review-pane" data-pane="review" aria-label="Ревью задачи">
+          <div class="tabs" role="tablist" id="rvTabs"></div>
+          <div class="scrub">
+            <div class="lbl"><span>Точки возврата</span><span id="scrubNow"></span></div>
+            <div class="track" id="track"></div>
+          </div>
+          <div class="review" id="review"></div>
+          <div class="rv-foot" id="rvFoot"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-agents" aria-label="Агенты" hidden>
+      <div class="ws-head"><div class="ws-title">Агенты проекта aqvenor</div>
+        <button class="btn primary" style="margin-left:auto" id="newTask2"><svg class="i"><use href="#i-plus"/></svg>Новая задача</button></div>
+      <div class="mission">
+        <div class="pane"><div class="board" id="board"></div></div>
+        <div class="pane"><div class="inbox" id="inbox"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="status">
+    <span><svg class="i"><use href="#i-branch"/></svg><span id="sbBranch">agent/canvas-context</span></span>
+    <span class="hide-sm">Изолировано в своей рабочей копии</span>
+    <span class="hide-sm"><svg class="i"><use href="#i-plug"/></svg>MCP подключено: 3</span>
+    <span class="hide-sm">Локальная модель готова</span>
+    <span id="sbCost">Потрачено $0,42</span>
+    <span class="ref">Референс интерфейса, данные вымышлены</span>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="palette glass" role="dialog" aria-modal="true" aria-label="Поиск и команды">
+    <input id="pin" placeholder="Задача, узел карты или команда" autocomplete="off" aria-controls="plist">
+    <ul id="plist" role="listbox"></ul>
+  </div>
+</div>
+<div class="ctxpop glass" id="ctxpop" role="dialog" aria-label="Состав контекста" hidden></div>
+<div class="toast glass" id="toast" role="status" hidden></div>
+<script>
+/* ================= data (invented, mirrors the real architecture) ================= */
+const REGIONS = [
+  { id: "r", name: "Рендерер" }, { id: "s", name: "Сайдкар" }, { id: "a", name: "Приложение" },
+  { id: "d", name: "Домен" }, { id: "i", name: "Инфраструктура" },
+];
+const KIND = { comp: "oklch(0.72 0.12 262)", mod: "oklch(0.74 0.09 215)", svc: "oklch(0.75 0.11 168)",
+               ep: "oklch(0.80 0.11 92)", model: "oklch(0.72 0.12 305)", io: "oklch(0.72 0.10 45)" };
+const KIND_NAME = { comp: "компонент", mod: "модуль", svc: "сервис", ep: "эндпоинты", model: "модель", io: "ввод-вывод" };
+const NODES = [
+  { id: "canvasview", t: "CanvasView", s: "canvas/CanvasView.tsx", r: "r", k: "comp", x: 160, y: 380, tok: 9.8, sym: ["render()", "onPointerDown()", "fitToView()"] },
+  { id: "store", t: "store", s: "lib/aqvenor/store.ts", r: "r", k: "mod", x: 160, y: 480, tok: 7.1, sym: ["useAqvenor", "setSurface()", "persist()"] },
+  { id: "agentlive", t: "agent-live", s: "lib/aqvenor/agent-live.ts", r: "r", k: "mod", x: 160, y: 580, tok: 4.6, sym: ["startRun()", "onFrame()", "canvasSelection"] },
+  { id: "runregistry", t: "RunRegistry", s: "Server/RunRegistry.cs", r: "s", k: "svc", x: 420, y: 380, tok: 1.2, sym: ["TryAdd()", "Remove()"] },
+  { id: "runep", t: "RunEndpoints", s: "Endpoints/RunEndpoints.cs", r: "s", k: "ep", x: 420, y: 480, tok: 2.8, sym: ["POST /api/runs", "GET /api/runs/{id}"] },
+  { id: "dataep", t: "DataEndpoints", s: "Endpoints/DataEndpoints.cs", r: "s", k: "ep", x: 420, y: 640, tok: 5.9, sym: ["GET /api/graph", "POST /api/graph/apply"] },
+  { id: "prompt", t: "AgentPrompt", s: "Services/AgentPrompt.cs", r: "a", k: "svc", x: 680, y: 380, tok: 3.1, sym: ["Build(mode)", "Canvas"] },
+  { id: "agent", t: "AgentService", s: "Services/AgentService.cs", r: "a", k: "svc", x: 680, y: 480, tok: 8.4, sym: ["RunAsync()", "ExecuteCall()", "StepLimit"] },
+  { id: "graphsvc", t: "GraphService", s: "Graph/GraphService.cs", r: "a", k: "svc", x: 680, y: 640, tok: 3.3, sym: ["ApplyAsync()", "UndoAsync()", "SnapshotChanged"] },
+  { id: "ctx", t: "ContextBuilder", s: "Services/ContextBuilder.cs", r: "a", k: "svc", x: 920, y: 460, tok: 2.1, sym: ["Build(request)", "Trim(budget)"] },
+  { id: "gctx", t: "GraphContextSource", s: "Graph/GraphContextSource.cs", r: "a", k: "svc", x: 920, y: 560, tok: 3.4, sym: ["BuildContext(selection)", "Describe(node)"] },
+  { id: "model", t: "GraphModel", s: "Graph/GraphModel.cs", r: "d", k: "model", x: 680, y: 790, tok: 4.0, sym: ["Apply(changeSet)", "Restore()"] },
+  { id: "changes", t: "GraphChangeSet", s: "Graph/GraphChangeSet.cs", r: "d", k: "model", x: 920, y: 790, tok: 1.9, sym: ["AddNode", "SetNodeStatus"] },
+  { id: "providers", t: "ProviderRegistry", s: "Providers/ProviderRegistry.cs", r: "i", k: "io", x: 1180, y: 380, tok: 2.6, sym: ["Resolve(id)", "LoadCustom()"] },
+  { id: "anthropic", t: "AnthropicProvider", s: "Providers/AnthropicProvider.cs", r: "i", k: "io", x: 1180, y: 480, tok: 3.7, sym: ["StreamAsync()", "cache_control"] },
+  { id: "jsonstore", t: "JsonGraphStore", s: "Graph/JsonGraphStore.cs", r: "i", k: "io", x: 1180, y: 640, tok: 2.2, sym: ["SaveAsync()", "LoadAsync()"] },
+];
+const EDGES = [
+  ["agentlive", "runep", "calls", "HTTP"], ["canvasview", "store", "depends"], ["agentlive", "store", "depends"],
+  ["runep", "runregistry", "calls"], ["runep", "agent", "calls"], ["dataep", "graphsvc", "calls"],
+  ["agent", "prompt", "depends"], ["agent", "ctx", "calls"], ["agent", "providers", "depends"],
+  ["providers", "anthropic", "depends"], ["gctx", "graphsvc", "depends"], ["graphsvc", "model", "calls"],
+  ["graphsvc", "jsonstore", "depends"], ["model", "changes", "depends"],
+];
+const ROUTE_Y = 215;
+const ROUTE = [
+  { n: 1, t: "Найти, где собирается контекст", x: 200, targets: ["ctx", "gctx"] },
+  { n: 2, t: "Передать выделение в запрос", x: 440, targets: ["agentlive", "runep"] },
+  { n: 3, t: "Подключить карту к контексту", x: 680, targets: ["ctx", "gctx", "runep"] },
+  { n: 4, t: "Описать инструменты карты", x: 920, targets: ["prompt"] },
+  { n: 5, t: "Прогнать тесты графа", x: 1160, targets: ["gctx", "graphsvc"] },
+];
+/* one row per stage of the main task: waypoint states, where the agent is, what it is doing */
+const STAGES = [
+  { wp: ["done", "done", "wait", "idle", "idle"], at: 2, s: "wait", now: "Просит изменить 3 файла" },
+  { wp: ["done", "done", "run", "idle", "idle"], at: 2, s: "run", now: "Правит ContextBuilder.cs" },
+  { wp: ["done", "done", "done", "run", "idle"], at: 3, s: "run", now: "Дописывает AgentPrompt.cs" },
+  { wp: ["done", "done", "done", "done", "wait"], at: 4, s: "wait", now: "Просит запустить dotnet test" },
+  { wp: ["done", "done", "done", "done", "run"], at: 4, s: "run", now: "Выполняет тесты графа" },
+  { wp: ["done", "done", "done", "done", "done"], at: 4, s: "done", now: "Готово к ревью" },
+];
+const OTHERS = [
+  { id: "a2", t: "Семантический индекс C#", s: "run", br: "agent/roslyn-index", model: "Claude Sonnet 5.5", wps: 6, at: 3, now: "Разбирает 214 файлов через Roslyn", cost: 1.18, time: "23 мин" },
+  { id: "a3", t: "Цвета интерфейса в OKLCH", s: "run", br: "agent/oklch-tokens", model: "Kimi K3", wps: 4, at: 1, now: "Правит globals.css", cost: 0.09, time: "4 мин" },
+  { id: "a4", t: "Настройки в SQLite", s: "wait", br: "agent/settings-sqlite", model: "Qwen3 Coder в Ollama", wps: 5, at: 2, now: "Просит запустить миграцию базы", cost: 0, time: "11 мин", cmd: "dotnet ef database update" },
+  { id: "a5", t: "Обновить dockview до 9", s: "bad", br: "agent/dockview-9", model: "Claude Sonnet 5.5", wps: 4, at: 3, now: "Упали 3 теста в DockWorkspace", cost: 0.31, time: "17 мин" },
+  { id: "a6", t: "Убрать демо-движок", s: "done", br: "agent/remove-demo", model: "Claude Opus 5.5", wps: 4, at: 4, now: "Готово к ревью, 7 файлов", cost: 0.57, time: "38 мин" },
+];
+const HISTORY = [{ t: "Починить авто-заголовок", s: "Вчера" }, { t: "Докируемое пространство", s: "2 дня назад" }];
+const FILES = [
+  { id: "f1", p: "Services/ContextBuilder.cs", add: 18, del: 2, from: 1, hunk: [
+    ["h", "@@ -41,6 +41,14 @@ public sealed class ContextBuilder"],
+    [" ", "    parts.Add(BuildSystemPrompt(request));"],
+    ["a", "    if (request.CanvasSelection is { Count: > 0 } selection)"],
+    ["a", "    {"],
+    ["a", "        // Selected nodes and their neighbours, as one block."],
+    ["a", "        parts.Add(_graphContext.BuildContext(selection, depth: 1));"],
+    ["a", "    }"],
+    [" ", "    parts.AddRange(BuildHistory(request));"]] },
+  { id: "f2", p: "Endpoints/RunEndpoints.cs", add: 9, del: 1, from: 1, hunk: [
+    ["h", "@@ -88,7 +88,9 @@ static IResult StartRun(StartRunRequest req, ...)"],
+    ["r", "    var run = new AgentRunRequest(req.ConversationId, req.Text, mode);"],
+    ["a", "    var run = new AgentRunRequest(req.ConversationId, req.Text, mode)"],
+    ["a", "    {"],
+    ["a", "        CanvasSelection = req.CanvasSelection ?? [],"],
+    ["a", "    };"]] },
+  { id: "f3", p: "lib/aqvenor/agent-live.ts", add: 6, del: 0, from: 1 },
+  { id: "f4", p: "Services/AgentPrompt.cs", add: 12, del: 0, from: 2 },
+];
+const HISTORY_TOK = 31.2, WINDOW_TOK = 200;
+
+/* ================= state ================= */
+const state = {
+  view: "workspace", lod: 1, zoom: 0.78, panX: 30, panY: -60, stage: 0, denied: false,
+  selected: new Set(), hover: null, rvTab: "files", openFile: "f1", hunks: {},
+  ctx: new Map([
+    ["ctx", { kind: "node", label: "ContextBuilder", tok: 2.1 }],
+    ["gctx", { kind: "node", label: "GraphContextSource", tok: 3.4 }],
+    ["rules", { kind: "rules", label: "AGENTS.md", tok: 0.6 }],
+    ["mcp", { kind: "mcp", label: "github, инструменты MCP", tok: 0.9 }],
+  ]),
+};
+
+/* ================= helpers ================= */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const k1 = (n) => n.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const money = (n) => "$" + n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ic = (id) => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const glyph = (s) => `<span class="st ${s}" aria-hidden="true"></span>`;
+const SNAME = { run: "работает", wait: "ждёт вас", done: "готово", bad: "ошибка", idle: "в очереди" };
+const node = (id) => NODES.find((n) => n.id === id);
+const stage = () => STAGES[state.stage];
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 3200);
+}
+function mainAgent() {
+  const st = stage();
+  const s = state.denied ? "wait" : st.s;
+  const now = state.denied ? "Ждёт новых указаний" : st.now;
+  return { id: "a1", t: "Канва в контексте агента", s, br: "agent/canvas-context", model: "Claude Opus 5.5", wps: 5, at: st.at,
+           wpStates: st.wp, now, cost: 0.42 + state.stage * 0.06, time: 6 + state.stage + " мин", current: true };
+}
+const allAgents = () => [mainAgent(), ...OTHERS];
+</script>
+<script>
+/* ================= title bar, sidebar, mission control ================= */
+function renderActivity() {
+  const a = allAgents();
+  const need = a.filter((x) => x.s === "wait" || x.s === "bad").length;
+  const run = a.filter((x) => x.s === "run").length;
+  $("#activity").innerHTML =
+    `<button class="act" data-go="agents" title="Открыть пульт агентов">${glyph("wait")}<span>${need}</span><span class="lbl">ждут вас</span></button>` +
+    `<button class="act" data-go="agents" title="Открыть пульт агентов">${glyph("run")}<span>${run}</span><span class="lbl">работают</span></button>`;
+}
+
+function renderSidebar() {
+  const a = allAgents();
+  const groups = [
+    { name: "Ждут вас", items: a.filter((x) => x.s === "wait" || x.s === "bad") },
+    { name: "Работают", items: a.filter((x) => x.s === "run") },
+    { name: "Готово", items: a.filter((x) => x.s === "done") },
+  ];
+  let html = "";
+  for (const g of groups) {
+    const extra = g.name === "Готово" ? HISTORY : [];
+    if (!g.items.length && !extra.length) continue;
+    html += `<div class="group"><h3>${g.name}<span class="n">${g.items.length + extra.length}</span></h3>`;
+    for (const x of g.items) {
+      html += `<button class="sess" data-agent="${x.id}" ${x.current ? 'aria-current="true"' : ""}>
+        ${glyph(x.s)}<span class="t">${esc(x.t)}</span><span class="s">${esc(x.now)}</span>
+        <span class="sr">, ${SNAME[x.s]}</span></button>`;
+    }
+    for (const h of extra) {
+      html += `<button class="sess" data-history>${glyph("done")}<span class="t">${esc(h.t)}</span><span class="s">${h.s}</span></button>`;
+    }
+    html += `</div>`;
+  }
+  $("#groups").innerHTML = html;
+}
+
+function miniTrack(x) {
+  const states = x.wpStates || Array.from({ length: x.wps }, (_, i) =>
+    i < x.at ? "done" : i === x.at ? (x.s === "done" ? "done" : x.s) : "");
+  return `<span class="minitrack" aria-label="Шаг ${Math.min(x.at + 1, x.wps)} из ${x.wps}">` +
+    states.map((s, i) => (i ? `<b class="${states[i - 1] === "done" && s === "done" ? "done" : ""}"></b>` : "") + `<i class="${s}"></i>`).join("") +
+    `</span>`;
+}
+
+function renderMission() {
+  const a = allAgents();
+  const lanes = [
+    { name: "Ждут вашего решения", f: (x) => x.s === "wait" || x.s === "bad" },
+    { name: "Работают", f: (x) => x.s === "run" },
+    { name: "Готовы к ревью", f: (x) => x.s === "done" },
+  ];
+  let html = `<p class="board-intro">Каждый агент работает в своей рабочей копии репозитория и в своей ветке, поэтому агенты не мешают ни друг другу, ни вам. В main ничего не попадает без вашего ревью.</p>`;
+  for (const l of lanes) {
+    const items = a.filter(l.f);
+    if (!items.length) continue;
+    html += `<section class="lane"><h3>${l.name}<span class="n">${items.length}</span></h3>`;
+    for (const x of items) {
+      const action = x.s === "done" ? "Открыть ревью" : x.s === "bad" ? "Показать лог" : "Открыть";
+      html += `<div class="berth">
+        ${glyph(x.s)}
+        <div style="min-width:0"><div class="bt">${esc(x.t)}</div><div class="bb">${esc(x.br)}, ${esc(x.model)}</div></div>
+        <div class="now">${esc(x.now)}</div>
+        ${miniTrack(x)}
+        <div class="num">${x.time}</div>
+        <div class="num">${money(x.cost)}</div>
+        <div class="btns"><button class="btn" data-agent="${x.id}">${action}</button>
+          ${x.s === "run" ? `<button class="icon-btn" data-stop="${x.id}" aria-label="Остановить ${esc(x.t)}">${ic("stop")}</button>` : ""}</div>
+      </div>`;
+    }
+    html += `</section>`;
+  }
+  $("#board").innerHTML = html;
+
+  let inbox = `<h3>Ваши решения</h3>`;
+  const m = mainAgent();
+  if (!state.denied && (state.stage === 0 || state.stage === 3)) inbox += approvalHtml("inbox");
+  const a4 = OTHERS.find((x) => x.id === "a4");
+  inbox += `<div class="approval"><div class="who">${glyph("wait")}<b>${esc(a4.t)}</b></div>
+    <h4>${ic("term")}Запустить программу</h4>
+    <p><span class="code">${esc(a4.cmd)}</span> в рабочей копии ${esc(a4.br)}. Программы спрашивают разрешение на каждый запуск.</p>
+    <div class="btns"><button class="btn primary" data-demo-ok>Разрешить один раз</button><button class="btn quiet" data-demo-ok>Отклонить</button></div></div>`;
+  inbox += `<div class="failcard"><div class="who">${glyph("bad")}<b>Обновить dockview до 9</b></div>
+    <h4>Тесты не прошли</h4><p>3 теста в DockWorkspace ждут старого API restoreLayout. Агент остановился и не стал их отключать.</p>
+    <div class="btns"><button class="btn" data-demo-ok>Показать лог</button><button class="btn quiet" data-demo-ok>Поручить исправить</button></div></div>`;
+  $("#inbox").innerHTML = inbox;
+  void m;
+}
+</script>
+<script>
+/* ================= the chart ================= */
+const NODE_W = 176, WP_W = 210, WP_H = 38;
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+const box = { };
+let firstRender = true;
+
+function rectEdge(b, tx, ty) {
+  const dx = tx - b.cx, dy = ty - b.cy;
+  if (!dx && !dy) return [b.cx, b.cy];
+  const sx = dx ? (b.w / 2 + 4) / Math.abs(dx) : Infinity, sy = dy ? (b.h / 2 + 4) / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return [b.cx + dx * s, b.cy + dy * s];
+}
+function curve(a, b) {
+  const [x1, y1] = rectEdge(a, b.cx, b.cy), [x2, y2] = rectEdge(b, a.cx, a.cy);
+  const dx = x2 - x1, dy = y2 - y1;
+  const c = Math.abs(dx) > Math.abs(dy)
+    ? `C ${x1 + dx * .5} ${y1}, ${x2 - dx * .5} ${y2}` : `C ${x1} ${y1 + dy * .5}, ${x2} ${y2 - dy * .5}`;
+  return { d: `M ${x1} ${y1} ${c}, ${x2} ${y2}`, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
+}
+
+function renderChart() {
+  const world = $("#world");
+  const st = stage();
+  world.className = "world lod-" + state.lod;
+  // 1. nodes first, so their real heights drive regions and edge anchors
+  let html = "";
+  for (const n of NODES) {
+    const inctx = state.ctx.has(n.id);
+    html += `<button class="node${inctx ? " inctx" : ""}" data-id="${n.id}" style="--k:${KIND[n.k]};left:${n.x - NODE_W / 2}px"
+      aria-pressed="${state.selected.has(n.id)}" aria-label="${esc(n.t)}, ${KIND_NAME[n.k]}${inctx ? ", в контексте" : ""}">
+      <div class="nt">${esc(n.t)}</div><div class="ns">${esc(n.s)}</div>
+      <div class="sym">${n.sym.map(esc).join("<br>")}</div></button>`;
+  }
+  ROUTE.forEach((w, i) => {
+    const s = state.denied && i === st.at ? "wait" : st.wp[i];
+    html += `<button class="wp" data-wp="${i}" data-s="${s}" style="left:${w.x - WP_W / 2}px;top:${ROUTE_Y - WP_H / 2}px"
+      aria-label="Шаг ${w.n}: ${esc(w.t)}, ${SNAME[s]}"><span class="wp-n">${s === "done" ? "&#10003;" : w.n}</span><span class="wt">${esc(w.t)}</span></button>`;
+  });
+  const vs = state.denied ? "wait" : st.s;
+  html += `<div class="vessel${firstRender ? " intro" : ""}" id="vessel" data-s="${vs}"><div class="hull">${ic("compass")}</div>
+    <div class="vl"><b>Агент</b><span>Claude Opus 5.5</span></div></div>`;
+  world.innerHTML = `<svg class="layer" id="lands" width="1" height="1"></svg><svg class="layer" id="lines" width="1" height="1"></svg>` + html;
+
+  for (const el of world.querySelectorAll(".node")) {
+    const n = node(el.dataset.id);
+    const h = state.lod === 0 ? 52 : el.offsetHeight;
+    el.style.top = n.y - h / 2 + "px";
+    box[n.id] = { cx: n.x, cy: n.y, w: NODE_W, h };
+  }
+  ROUTE.forEach((w, i) => (box["wp" + i] = { cx: w.x, cy: ROUTE_Y, w: WP_W, h: WP_H }));
+  const at = ROUTE[st.at];
+  moveVessel(`translate(${at.x - 17}px, ${ROUTE_Y + 30}px)`);
+
+  // 2. land: one region per layer of the architecture, with a depth contour
+  let lands = "";
+  const rb = {};
+  for (const r of REGIONS) {
+    const ms = NODES.filter((n) => n.r === r.id).map((n) => box[n.id]);
+    const x0 = Math.min(...ms.map((b) => b.cx - b.w / 2)) - 26, x1 = Math.max(...ms.map((b) => b.cx + b.w / 2)) + 26;
+    const y0 = Math.min(...ms.map((b) => b.cy - b.h / 2)) - 46, y1 = Math.max(...ms.map((b) => b.cy + b.h / 2)) + 24;
+    rb[r.id] = { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, n: ms.length };
+    lands += `<rect class="region-contour" x="${x0 - 9}" y="${y0 - 9}" width="${x1 - x0 + 18}" height="${y1 - y0 + 18}" rx="34"/>
+      <rect class="region-land" x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="26"/>`;
+    const lx = state.lod === 0 ? (x0 + x1) / 2 : x0 + 18, anchor = state.lod === 0 ? "middle" : "start";
+    const ly = state.lod === 0 ? (y0 + y1) / 2 : y0 + 27;
+    lands += `<text class="region-label" x="${lx}" y="${ly}" text-anchor="${anchor}">${r.name}</text>`;
+    if (state.lod === 0) lands += `<text class="region-count" x="${lx}" y="${ly + 24}" text-anchor="middle">${ms.length} ${plural(ms.length, "модуль", "модуля", "модулей")}</text>`;
+  }
+  $("#lands").innerHTML = lands;
+
+  // 3. lines: dependencies, the agent's proposal, the plotted course
+  const mk = (id, v) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9z" style="fill:${v}"/></marker>`;
+  let lines = `<defs>${mk("m-n", "var(--line)")}${mk("m-p", "var(--route)")}</defs>`;
+  if (state.lod === 0) {
+    const agg = {};
+    for (const [a, b] of EDGES) {
+      const ra = node(a).r, rb2 = node(b).r;
+      if (ra === rb2) continue;
+      const key = [ra, rb2].sort().join("");
+      agg[key] = (agg[key] || 0) + 1;
+    }
+    for (const [key, cnt] of Object.entries(agg)) {
+      const A = rb[key[0]], B = rb[key[1]];
+      lines += `<path class="agg-edge" d="M ${A.cx} ${A.cy} L ${B.cx} ${B.cy}" style="stroke-width:${2 + cnt * 1.6}"/>
+        <text class="edge-label" x="${(A.cx + B.cx) / 2}" y="${(A.cy + B.cy) / 2 - 8}" text-anchor="middle" style="paint-order:stroke;stroke:var(--sea);stroke-width:5px">${cnt} ${plural(cnt, "связь", "связи", "связей")}</text>`;
+    }
+  } else {
+    const list = EDGES.map(([a, b, k, l]) => ({ a, b, k, l }));
+    if (state.g1 !== "no") list.push({ a: "ctx", b: "gctx", k: state.g1 === "ok" ? "depends" : "proposed", l: state.g1 === "ok" ? "" : "предложено агентом" });
+    for (const e of list) {
+      const c = curve(box[e.a], box[e.b]);
+      lines += `<path class="edge ${e.k}" data-a="${e.a}" data-b="${e.b}" d="${c.d}" marker-end="url(#${e.k === "proposed" ? "m-p" : "m-n"})"/>`;
+      if (e.l) lines += `<text class="edge-label${e.k === "proposed" ? " proposed" : ""}" data-a="${e.a}" data-b="${e.b}" x="${c.mx + 10}" y="${c.my}" style="paint-order:stroke;stroke:var(--sea);stroke-width:5px">${e.l}</text>`;
+    }
+    for (const t of ROUTE[st.at].targets) {
+      if (st.s === "done") break;
+      const c = curve(box["wp" + st.at], box[t]);
+      lines += `<path class="edge plan" d="${c.d}"/>`;
+    }
+  }
+  // the course: done part solid (drawn in once on load), the rest dashed
+  const pts = ROUTE.map((w) => [w.x, ROUTE_Y]);
+  const doneUpTo = st.wp.lastIndexOf("done");
+  const seg = (from, to) => pts.slice(from, to + 1).map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join(" ");
+  const reach = Math.max(doneUpTo, st.at);
+  if (reach < pts.length - 1) lines += `<path class="route-line ahead" d="${seg(reach, pts.length - 1)}"/>`;
+  if (reach > 0) {
+    const len = pts[reach][0] - pts[0][0];
+    lines += `<path class="route-line${firstRender ? " reveal" : ""}" style="--len:${len}" d="${seg(0, reach)}"/>`;
+  }
+  $("#lines").innerHTML = lines;
+  firstRender = false;
+  bindChart();
+  renderMinimap(rb);
+  applyTransform();
+}
+
+function bindChart() {
+  const world = $("#world");
+  for (const el of world.querySelectorAll(".node")) {
+    el.addEventListener("click", (e) => {
+      const id = el.dataset.id;
+      if (e.shiftKey || e.ctrlKey || e.metaKey) state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id);
+      else if (state.selected.size === 1 && state.selected.has(id)) state.selected.clear();
+      else { state.selected.clear(); state.selected.add(id); }
+      syncSelection();
+    });
+    el.addEventListener("mouseenter", () => hot(el.dataset.id));
+    el.addEventListener("mouseleave", () => hot(null));
+  }
+  for (const el of world.querySelectorAll(".wp")) {
+    el.addEventListener("mouseenter", () => highlightTargets(+el.dataset.wp, true));
+    el.addEventListener("mouseleave", () => highlightTargets(+el.dataset.wp, false));
+  }
+}
+function hot(id) {
+  const world = $("#world");
+  world.classList.toggle("dim", !!id);
+  for (const el of world.querySelectorAll(".hot")) el.classList.remove("hot");
+  if (!id) return;
+  world.querySelector(`.node[data-id="${id}"]`)?.classList.add("hot");
+  for (const el of world.querySelectorAll(`[data-a="${id}"], [data-b="${id}"]`)) {
+    el.classList.add("hot");
+    const other = el.dataset.a === id ? el.dataset.b : el.dataset.a;
+    world.querySelector(`.node[data-id="${other}"]`)?.classList.add("hot");
+  }
+}
+function highlightTargets(i, on) {
+  for (const t of ROUTE[i].targets) $(`#world .node[data-id="${t}"]`)?.classList.toggle("hl", on);
+  $(`.wp-row[data-wp="${i}"]`)?.classList.toggle("is-hl", on);
+}
+function syncSelection() {
+  for (const el of document.querySelectorAll("#world .node")) el.setAttribute("aria-pressed", state.selected.has(el.dataset.id));
+  const pop = $("#selpop");
+  if (!state.selected.size) { pop.hidden = true; return; }
+  const n = state.selected.size;
+  const all = [...state.selected].every((id) => state.ctx.has(id));
+  pop.innerHTML = `<span class="n">${n === 1 ? esc(node([...state.selected][0]).t) : "Выбрано: " + n}</span>
+    <button class="btn" data-sel="ask">${ic("ask")}Спросить</button>
+    <button class="btn" data-sel="ctx">${ic(all ? "minus" : "plus")}${all ? "Убрать из контекста" : "В контекст"}</button>
+    <button class="btn quiet" data-sel="rel">${ic("link")}Связи</button>`;
+  pop.hidden = false;
+  placePopover();
+}
+function placePopover() {
+  const pop = $("#selpop");
+  if (pop.hidden) return;
+  const bs = [...state.selected].map((id) => box[id]).filter(Boolean);
+  if (!bs.length) return;
+  const cx = (Math.min(...bs.map((b) => b.cx - b.w / 2)) + Math.max(...bs.map((b) => b.cx + b.w / 2))) / 2;
+  const top = Math.min(...bs.map((b) => b.cy - b.h / 2));
+  pop.style.left = cx * state.zoom + state.panX + "px";
+  pop.style.top = top * state.zoom + state.panY + "px";
+}
+
+/* ---- pan, zoom, fit, minimap ---- */
+function bounds() {
+  const xs = NODES.map((n) => n.x).concat(ROUTE.map((w) => w.x)), ys = NODES.map((n) => n.y).concat([ROUTE_Y]);
+  return { x0: Math.min(...xs) - 150, x1: Math.max(...xs) + 150, y0: Math.min(...ys) - 70, y1: Math.max(...ys) + 90 };
+}
+function applyTransform() {
+  const z = state.zoom, vp = $("#viewport");
+  $("#world").style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${z})`;
+  vp.style.backgroundSize = `${24 * z}px ${24 * z}px`;
+  vp.style.backgroundPosition = `${state.panX}px ${state.panY}px`;
+  $("#zLbl").textContent = Math.round(z * 100) + "%";
+  const v = $("#mmView");
+  if (v) {
+    v.setAttribute("x", -state.panX / z); v.setAttribute("y", -state.panY / z);
+    v.setAttribute("width", vp.clientWidth / z); v.setAttribute("height", vp.clientHeight / z);
+  }
+  placePopover();
+}
+function zoomAt(f, cx, cy) {
+  const z0 = state.zoom, z = Math.min(2.2, Math.max(0.32, z0 * f));
+  state.panX = cx - (cx - state.panX) * (z / z0);
+  state.panY = cy - (cy - state.panY) * (z / z0);
+  state.zoom = z;
+  const lod = state.lod;
+  if (lod === 1 && z < 0.5) setLod(0); else if (lod === 0 && z > 0.56) setLod(1);
+  else if (lod === 1 && z > 1.35) setLod(2); else if (lod === 2 && z < 1.25) setLod(1);
+  applyTransform();
+}
+function fit() {
+  const vp = $("#viewport"), b = bounds();
+  const z = Math.min(vp.clientWidth / (b.x1 - b.x0), vp.clientHeight / (b.y1 - b.y0));
+  state.zoom = Math.min(1.2, Math.max(0.32, z));
+  state.panX = (vp.clientWidth - (b.x1 - b.x0) * state.zoom) / 2 - b.x0 * state.zoom;
+  state.panY = (vp.clientHeight - (b.y1 - b.y0) * state.zoom) / 2 - b.y0 * state.zoom;
+  const want = state.zoom < 0.5 ? 0 : 1;
+  if (want !== state.lod && state.lod !== 2) setLod(want); else applyTransform();
+}
+function setLod(l) {
+  state.lod = l;
+  for (const b of document.querySelectorAll("#lodSeg button")) b.setAttribute("aria-pressed", +b.dataset.lod === l);
+  renderChart(); syncSelection();
+}
+function renderMinimap(rb) {
+  const b = bounds();
+  let s = `<svg viewBox="${b.x0} ${b.y0} ${b.x1 - b.x0} ${b.y1 - b.y0}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">`;
+  for (const r of Object.values(rb)) s += `<rect x="${r.x0}" y="${r.y0}" width="${r.w}" height="${r.h}" rx="22" style="fill:var(--land)"/>`;
+  for (const n of NODES) s += `<rect x="${n.x - 80}" y="${n.y - 20}" width="160" height="40" rx="8" style="fill:${state.ctx.has(n.id) ? "var(--aqua)" : "var(--node-hi)"}"/>`;
+  s += `<polyline points="${ROUTE.map((w) => w.x + "," + ROUTE_Y).join(" ")}" style="fill:none;stroke:var(--route);stroke-width:8"/>`;
+  s += `<rect id="mmView" style="fill:none;stroke:var(--aqua);stroke-width:7" rx="10"/></svg>`;
+  $("#minimap").innerHTML = s;
+}
+function renderLegend() {
+  const line = (st, dash = "") => `<svg viewBox="0 0 28 8"><path d="M1 4 H27" style="stroke:${st};stroke-width:2;${dash ? "stroke-dasharray:" + dash : ""}"/></svg>`;
+  $("#legend").innerHTML =
+    line("var(--line)") + "<span>вызывает</span>" + line("var(--line)", "5 4") + "<span>зависит от</span>" +
+    line("var(--route)") + "<span>маршрут агента</span>" + line("var(--route)", "6 5") + "<span>предложено агентом</span>" +
+    `<svg viewBox="0 0 28 8"><path d="M18 0 H28 V8z" style="fill:var(--aqua)"/></svg><span>в контексте модели</span>` +
+    `${glyph("run")}<span>работает</span>${glyph("wait")}<span>ждёт вашего решения</span>${glyph("done")}<span>готово</span>`;
+}
+</script>
+<script>
+/* ================= chat, composer, review ================= */
+state.hist = HISTORY_TOK; state.g1 = "pending";
+
+function approvalHtml(where) {
+  const who = where === "inbox" ? `<div class="who">${glyph("wait")}<b>Канва в контексте агента</b></div>` : "";
+  if (state.stage === 0) {
+    const fs = FILES.filter((f) => f.from <= 1);
+    return `<div class="approval">${who}<h4>${ic("shield")}Изменить ${fs.length} файла</h4>
+      <div class="files">${fs.map((f) => `<span>${ic("file")}${esc(f.p)}<span class="plus">+${f.add}</span><span class="minus">${f.del ? "−" + f.del : ""}</span></span>`).join("")}</div>
+      <div class="btns"><button class="btn primary" data-approve="yes">Разрешить</button>
+        <button class="btn" data-approve="yes">Разрешать до конца задачи</button>
+        <button class="btn quiet" data-approve="no">Отклонить</button></div>
+      <p class="why">Вы выбрали метод «спрашивать перед изменениями». Правки попадут в ветку agent/canvas-context, main останется прежним.</p></div>`;
+  }
+  return `<div class="approval">${who}<h4>${ic("term")}Запустить программу</h4>
+    <p><span class="code">dotnet test --filter Graph</span> в рабочей копии агента.</p>
+    <div class="btns"><button class="btn primary" data-approve="yes">Разрешить один раз</button>
+      <button class="btn quiet" data-approve="no">Отклонить</button></div>
+    <p class="why">Программы спрашивают разрешение на каждый запуск, постоянного «да» для них нет.</p></div>`;
+}
+
+function renderChat() {
+  const st = stage();
+  const rows = ROUTE.map((w, i) => {
+    const s = state.denied && i === st.at ? "wait" : st.wp[i];
+    return `<div class="wp-row" data-wp="${i}" data-s="${s}"><span class="wp-n">${s === "done" ? "&#10003;" : w.n}</span><span class="t">${esc(w.t)}</span><span class="sv">${SNAME[s]}</span></div>`;
+  }).join("");
+  let h = `<div class="msg-user">Сделай так, чтобы выделенные на карте узлы попадали в контекст агента
+      <div class="att"><span class="chip node">${ic("node")}ContextBuilder</span><span class="chip node">${ic("node")}GraphContextSource</span></div></div>
+    <div class="msg-ai">
+      <div class="who">${ic("compass")}<b>Агент</b><span>Claude Opus 5.5</span></div>
+      <button class="think" data-think aria-expanded="false">${ic("down")}Размышления, 14 с</button>
+      <p id="thinkText" hidden style="color:var(--text-2)">Выделение живёт только в рендерере. GraphContextSource умеет описывать узлы, но его вызывает лишь WPF-хост. Значит, нужно поле в запросе и вызов в сборке контекста.</p>
+      <p>Сейчас модель не видит карту: сборку контекста из графа вызывает только WPF-хост. Передам выделение в запрос и подключу <code>GraphContextSource</code> в сайдкаре.</p>
+      <div class="steps">
+        <div class="step">${ic("check")}Прочитал карту<span class="d">16 узлов</span></div>
+        <div class="step">${ic("check")}Прочитал GraphContextSource.cs<span class="d">418 строк</span></div>
+        <div class="step">${ic("check")}Нашёл вызов в MainViewModel.cs<span class="d">строка 544</span></div>
+      </div>
+      <div class="route-sheet"><header><b>План</b><span class="sv" style="color:var(--text-3);font-size:12.5px">${st.wp.filter((s) => s === "done").length} из 5 готово</span>
+        <button data-showroute>Показать на карте</button></header>${rows}</div>
+    </div>`;
+  if (state.denied) {
+    h += `<div class="resolved">${ic("x")}Вы отклонили изменение файлов</div>
+      <div class="msg-ai"><p>Понял, файлы не трогаю. Могу расписать изменения текстом или попробовать путь без правки RunEndpoints.</p></div>`;
+  } else {
+    if (state.stage === 0) h += approvalHtml("chat");
+    if (state.stage >= 1) h += `<div class="resolved">${ic("check")}Разрешено изменить 3 файла</div>`;
+    if (state.stage >= 2) h += `<div class="steps"><div class="step">${ic("check")}Изменил ContextBuilder.cs<span class="d"><span class="plus">+18</span> <span class="minus">−2</span></span></div>
+      <div class="step">${ic("check")}Собрал сайдкар<span class="d">4,2 с</span></div></div>`;
+    if (state.stage === 3) h += approvalHtml("chat");
+    if (state.stage >= 4) h += `<div class="resolved">${ic("check")}Разрешён один запуск dotnet test</div>`;
+    if (state.stage === 5) h += `<div class="msg-ai"><p>Готово. Модель получает выделенные узлы и их соседей одним блоком, это около 0,3 тыс. токенов на узел. Все 42 теста графа прошли. Изменения ждут вашего ревью справа.</p></div>`;
+  }
+  const chat = $("#chat");
+  chat.innerHTML = h;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderTray() {
+  const icons = { node: "node", rules: "book", mcp: "plug", file: "file" };
+  let h = "";
+  for (const [id, c] of state.ctx) {
+    h += `<span class="chip${c.kind === "node" ? " node" : ""}">${ic(icons[c.kind])}<span>${esc(c.label)}</span><span class="w">${k1(c.tok)} тыс.</span>
+      <button data-unctx="${id}" aria-label="Убрать ${esc(c.label)} из контекста">${ic("x")}</button></span>`;
+  }
+  $("#tray").innerHTML = h;
+  const total = state.hist + [...state.ctx.values()].reduce((s, c) => s + c.tok, 0);
+  $("#meterTxt").textContent = `${k1(total)} тыс. из ${WINDOW_TOK} тыс.`;
+  $("#meterBar").style.width = Math.min(100, (total / WINDOW_TOK) * 100) + "%";
+}
+
+function renderCtxPop() {
+  const sum = (k) => [...state.ctx.values()].filter((c) => c.kind === k).reduce((s, c) => s + c.tok, 0);
+  const parts = [["История разговора", state.hist, "var(--text-3)"], ["Узлы и файлы", sum("node") + sum("file"), "var(--aqua)"],
+                 ["Правила проекта", sum("rules"), "var(--ok)"], ["Инструменты MCP", sum("mcp"), "var(--wait)"]];
+  const total = parts.reduce((s, p) => s + p[1], 0);
+  $("#ctxpop").innerHTML = `<h4>Что получит модель в следующем сообщении</h4>
+    <div class="stack">${parts.map((p) => `<i style="width:${(p[1] / total) * 100}%;background:${p[2]}"></i>`).join("")}</div>
+    ${parts.map((p) => `<div class="row"><span>${p[0]}</span><b>${k1(p[1])} тыс.</b></div>`).join("")}
+    <div class="row"><span>Свободно в окне модели</span><b>${k1(WINDOW_TOK - total)} тыс.</b></div>
+    <div class="btns" style="margin-top:10px"><button class="btn" data-compact>Сжать историю</button></div>`;
+}
+
+function renderReview() {
+  const s = state.stage;
+  const files = FILES.filter((f) => f.from <= Math.max(s, 1));
+  const cmds = [];
+  if (s >= 2) cmds.push({ c: "dotnet build src/AIClient.Server", st: "done", d: "4,2 с" });
+  if (s >= 3) cmds.push({ c: "dotnet test --filter Graph", st: s === 3 ? "wait" : s === 4 ? "run" : "done", d: s === 3 ? "ждёт разрешения" : s === 4 ? "выполняется" : "42 теста прошли, 6,8 с" });
+  const tabs = [["files", "Файлы", files.length], ["graph", "Граф", state.g1 === "pending" ? 1 : 0], ["cmds", "Команды", cmds.length]];
+  $("#rvTabs").innerHTML = tabs.map(([id, n, c]) => `<button class="tab" role="tab" data-rv-tab="${id}" aria-selected="${state.rvTab === id}">${n}<span class="c">${c}</span></button>`).join("");
+
+  let h = `<div class="rv-list">`;
+  if (state.rvTab === "files") {
+    h += `<p style="margin:4px 8px 8px;font-size:12.5px;color:var(--text-3)">${s === 0 ? "Предпросмотр. Файлы ещё не изменены, агент ждёт разрешения." : "Изменено в ветке agent/canvas-context."}</p>`;
+    for (const f of files) {
+      const open = state.openFile === f.id && f.hunk;
+      h += `<button class="rv-file" data-file="${f.id}" aria-expanded="${!!open}">${ic("file")}<span class="p">${esc(f.p)}</span>
+        <span class="d"><span class="plus">+${f.add}</span> <span class="minus">${f.del ? "−" + f.del : ""}</span></span></button>`;
+      if (open) {
+        const v = state.hunks[f.id] || "";
+        h += `<div class="hunk" data-v="${v}"><pre>${f.hunk.map(([t, l]) => `<span class="${t === "a" ? "a" : t === "r" ? "r" : t === "h" ? "h" : ""}">${t === "a" ? "+" : t === "r" ? "−" : " "} ${esc(l)}</span>`).join("")}</pre>
+          <footer><span class="state">${s === 0 ? "Решение станет доступно после разрешения" : v === "ok" ? "Принято" : v === "no" ? "Отклонено, будет откачено" : "Ждёт решения"}</span>
+          ${s === 0 ? "" : `<span class="btns"><button class="btn" data-hunk="${f.id}:no">Отклонить</button><button class="btn primary" data-hunk="${f.id}:ok">Принять</button></span>`}</footer></div>`;
+      }
+    }
+  } else if (state.rvTab === "graph") {
+    const g = state.g1;
+    h += `<div class="gchange">${ic("link")}<div><div>Связь ContextBuilder и GraphContextSource</div><div class="k">${g === "pending" ? "зависимость, предложена агентом" : g === "ok" ? "принята, теперь на карте" : "отклонена"}</div></div>
+      ${g === "pending" ? `<span class="btns"><button class="icon-btn" data-g="no" aria-label="Отклонить связь">${ic("x")}</button><button class="icon-btn" data-g="ok" aria-label="Принять связь">${ic("check")}</button></span>` : "<span></span>"}</div>
+      <div class="gchange">${ic("compass")}<div><div>Статусы шагов плана</div><div class="k">агент обновляет их сам, они откатываются вместе с задачей</div></div><span></span></div>`;
+  } else {
+    if (!cmds.length) h += `<p style="margin:8px;color:var(--text-3);font-size:13px">Агент ещё не запускал программ.</p>`;
+    for (const c of cmds) h += `<div class="cmd">${glyph(c.st)}<span class="code">${esc(c.c)}</span><span class="d">${c.d}</span></div>`;
+  }
+  $("#review").innerHTML = h + `</div>`;
+
+  const ticks = ["Начало"].concat(ROUTE.filter((_, i) => stage().wp[i] === "done").map((w) => "После шага " + w.n));
+  $("#track").innerHTML = ticks.map((t, i) => `<button class="tick${i === ticks.length - 1 ? " now" : ""}" data-tick="${esc(t)}" style="left:calc(6px + ${(i / 5) * 100}% - ${(i / 5) * 12}px)" aria-label="Вернуться: ${esc(t)}"></button>`).join("");
+  $("#scrubNow").textContent = ticks[ticks.length - 1];
+  $("#rvFoot").innerHTML = s === 5
+    ? `<span class="note">Все шаги готовы, main не тронут</span><span class="btns"><button class="btn primary" data-foot="commit">Создать коммит в ветке</button></span>`
+    : `<span class="note">main не тронут</span><span class="btns"><button class="btn quiet" data-foot="reject">Отклонить всё</button><button class="btn" data-foot="accept">Принять всё</button></span>`;
+}
+
+/* ================= the approval scenario ================= */
+let timers = [];
+const later = (fn, ms = 2600) => timers.push(setTimeout(fn, ms));
+function approve(yes) {
+  if (!yes) { state.denied = true; renderAll(); toast("Агент получил отказ и ждёт новых указаний"); return; }
+  if (state.stage === 0) { state.stage = 1; renderAll(); later(() => { state.stage = 2; renderAll(); later(() => { state.stage = 3; renderAll(); }); }); }
+  else if (state.stage === 3) { state.stage = 4; renderAll(); later(() => { state.stage = 5; renderAll(); toast("Задача готова к ревью"); }); }
+}
+function resetScenario() {
+  timers.forEach(clearTimeout); timers = [];
+  Object.assign(state, { stage: 0, denied: false, g1: "pending", hunks: {}, hist: HISTORY_TOK });
+  firstRender = true; renderAll();
+}
+
+function renderAll() {
+  renderActivity(); renderSidebar(); renderChat(); renderTray(); renderChart(); syncSelection(); renderReview(); renderMission();
+  $("#sbCost").textContent = "Потрачено " + money(mainAgent().cost);
+}
+</script>
+<script>
+/* ================= navigation ================= */
+let lastVesselT = null;
+function moveVessel(t) {
+  const v = $("#vessel");
+  if (lastVesselT && lastVesselT !== t) {
+    v.style.transform = lastVesselT;
+    requestAnimationFrame(() => requestAnimationFrame(() => (v.style.transform = t)));
+  } else v.style.transform = t;
+  lastVesselT = t;
+}
+function setView(v) {
+  state.view = v;
+  $("#view-workspace").hidden = v !== "workspace";
+  $("#view-agents").hidden = v !== "agents";
+  for (const b of document.querySelectorAll("[data-view]")) b.setAttribute("aria-pressed", b.dataset.view === v);
+  if (v === "workspace") requestAnimationFrame(applyTransform);
+}
+function openAgent(id) {
+  document.body.classList.remove("show-side");
+  if (id === "a1") return setView("workspace");
+  const a = OTHERS.find((x) => x.id === id);
+  toast(`В референсе подробно проработана одна задача, «Канва в контексте агента». «${a.t}» показана на пульте агентов.`);
+}
+function showPane(p) {
+  for (const el of document.querySelectorAll(".panes > .pane")) el.classList.toggle("mob-on", el.dataset.pane === p);
+  for (const b of document.querySelectorAll("[data-mob]")) b.setAttribute("aria-pressed", b.dataset.mob === p);
+  document.body.classList.toggle("show-review", p === "review" && innerWidth <= 1280);
+  if (p === "chart") requestAnimationFrame(applyTransform);
+}
+function focusNode(id) {
+  setView("workspace"); showPane("chart");
+  requestAnimationFrame(() => {
+    const vp = $("#viewport"), n = node(id);
+    state.panX = vp.clientWidth / 2 - n.x * state.zoom;
+    state.panY = vp.clientHeight / 2 - n.y * state.zoom;
+    state.selected = new Set([id]); syncSelection(); applyTransform();
+  });
+}
+function toggleTheme() {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark";
+}
+
+/* ================= palette ================= */
+let pSel = 0, pList = [];
+function paletteItems() {
+  const tasks = allAgents().map((a) => ({ g: "Задачи", t: a.t, h: SNAME[a.s], run: () => openAgent(a.id) }));
+  const nodes = NODES.map((n) => ({ g: "Узлы карты", t: n.t, h: n.s, run: () => focusNode(n.id) }));
+  const acts = [
+    { t: "Показать пульт агентов", run: () => setView("agents") },
+    { t: "Показать пространство задачи", run: () => setView("workspace") },
+    { t: "Сменить тему", run: toggleTheme },
+    { t: "Карта: только области", run: () => setLod(0) },
+    { t: "Карта: модули", run: () => setLod(1) },
+    { t: "Карта: символы", run: () => setLod(2) },
+    { t: "Вписать карту", h: "F", run: fit },
+    { t: "Начать сценарий заново", run: resetScenario },
+  ].map((a) => ({ g: "Действия", ...a }));
+  return [...tasks, ...nodes, ...acts];
+}
+function renderPalette() {
+  const q = $("#pin").value.trim().toLowerCase();
+  pList = paletteItems().filter((i) => !q || i.t.toLowerCase().includes(q) || (i.h || "").toLowerCase().includes(q));
+  pSel = Math.min(pSel, Math.max(0, pList.length - 1));
+  let h = "", g = "";
+  pList.forEach((it, i) => {
+    if (it.g !== g) { g = it.g; h += `<li class="g" role="presentation">${g}</li>`; }
+    h += `<li class="it" role="option" data-pi="${i}" aria-selected="${i === pSel}">${esc(it.t)}<span class="h">${esc(it.h || "")}</span></li>`;
+  });
+  $("#plist").innerHTML = h || `<li class="g">Ничего не нашлось. Попробуйте имя файла, узла или задачи.</li>`;
+  $("#plist").querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+}
+function openPalette() { $("#scrim").hidden = false; $("#pin").value = ""; pSel = 0; renderPalette(); $("#pin").focus(); }
+function closePalette() { $("#scrim").hidden = true; }
+function runPalette(i) { const it = pList[i]; closePalette(); it && it.run(); }
+$("#pin").addEventListener("input", () => { pSel = 0; renderPalette(); });
+$("#pin").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { pSel = Math.min(pList.length - 1, pSel + 1); renderPalette(); e.preventDefault(); }
+  if (e.key === "ArrowUp") { pSel = Math.max(0, pSel - 1); renderPalette(); e.preventDefault(); }
+  if (e.key === "Enter") runPalette(pSel);
+});
+$("#scrim").addEventListener("click", (e) => { if (e.target.id === "scrim") closePalette(); });
+
+/* ================= canvas input ================= */
+const vp = $("#viewport");
+let drag = null;
+vp.addEventListener("pointerdown", (e) => {
+  if (e.target.closest(".node, .wp, .float")) return;
+  drag = { x: e.clientX, y: e.clientY, px: state.panX, py: state.panY, moved: false };
+  vp.setPointerCapture(e.pointerId); vp.classList.add("panning");
+});
+vp.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+  state.panX = drag.px + dx; state.panY = drag.py + dy; applyTransform();
+});
+vp.addEventListener("pointerup", () => {
+  if (drag && !drag.moved && state.selected.size) { state.selected.clear(); syncSelection(); }
+  drag = null; vp.classList.remove("panning");
+});
+vp.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = vp.getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+vp.addEventListener("keydown", (e) => {
+  const c = [vp.clientWidth / 2, vp.clientHeight / 2];
+  if ("fFаА".includes(e.key)) fit();
+  if (e.key === "+" || e.key === "=") zoomAt(1.2, ...c);
+  if (e.key === "-") zoomAt(1 / 1.2, ...c);
+});
+$("#minimap").addEventListener("click", (e) => {
+  const svg = $("#minimap svg"), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const w = pt.matrixTransform(svg.getScreenCTM().inverse());
+  state.panX = vp.clientWidth / 2 - w.x * state.zoom; state.panY = vp.clientHeight / 2 - w.y * state.zoom;
+  applyTransform();
+});
+$("#zIn").onclick = () => zoomAt(1.2, vp.clientWidth / 2, vp.clientHeight / 2);
+$("#zOut").onclick = () => zoomAt(1 / 1.2, vp.clientWidth / 2, vp.clientHeight / 2);
+$("#zFit").onclick = fit;
+$("#legendBtn").onclick = (e) => { const l = $("#legend"); l.hidden = !l.hidden; e.currentTarget.setAttribute("aria-expanded", !l.hidden); };
+$("#reviewToggle").onclick = () => document.body.classList.toggle("show-review");
+$("#themeBtn").onclick = toggleTheme;
+$("#openPalette").onclick = openPalette;
+$("#sideToggle").onclick = () => document.body.classList.toggle("show-side");
+$("#newTask").onclick = $("#newTask2").onclick = () => toast("Новая задача откроется в своей рабочей копии и ветке. В референсе она не создаётся.");
+$("#meterBtn").onclick = () => {
+  const p = $("#ctxpop");
+  if (!p.hidden) { p.hidden = true; return; }
+  renderCtxPop(); p.hidden = false;
+  const r = $("#meterBtn").getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left - 120, innerWidth - 310)) + "px";
+  p.style.top = r.top - p.offsetHeight - 8 + "px";
+};
+
+/* ================= delegated clicks ================= */
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#ctxpop, #meterBtn")) $("#ctxpop").hidden = true;
+  const t = e.target.closest("button, [data-pi]");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.note) return toast(d.note);
+  if (d.mode) {
+    for (const b of document.querySelectorAll("#modeSeg button")) b.setAttribute("aria-pressed", b === t);
+    const what = { "Разговор": "Агент отвечает, не открывая проект.", "Исследование": "Агент читает проект и пишет отчёт рядом с чатом, файлы не меняет.", "Код": "Агент меняет проект в своей ветке и спрашивает разрешения по вашему методу." };
+    return toast(`Режим «${d.mode}». ${what[d.mode]}`);
+  }
+  if (d.approve) return approve(d.approve === "yes");
+  if (d.view) return setView(d.view);
+  if (d.go) return setView(d.go);
+  if (d.unctx) { state.ctx.delete(d.unctx); renderTray(); renderChart(); syncSelection(); return; }
+  if (d.sel === "ctx") {
+    const ids = [...state.selected], all = ids.every((id) => state.ctx.has(id));
+    for (const id of ids) all ? state.ctx.delete(id) : state.ctx.set(id, { kind: "node", label: node(id).t, tok: node(id).tok });
+    renderTray(); renderChart(); syncSelection(); return;
+  }
+  if (d.sel === "ask") {
+    const p = $("#prompt");
+    p.value = [...state.selected].map((id) => "@" + node(id).t).join(" ") + " ";
+    showPane("chat"); p.focus(); return;
+  }
+  if (d.sel === "rel") { hot([...state.selected][0]); setTimeout(() => hot(null), 2500); return; }
+  if (d.agent) return openAgent(d.agent);
+  if ("history" in d) return toast("Завершённые задачи открываются только для чтения. В референсе они пустые.");
+  if ("demoOk" in d) return toast("Это решение другой задачи. В референсе проработан сценарий «Канва в контексте агента».");
+  if (d.stop) return toast("Агент остановится после текущего шага и оставит точку возврата.");
+  if (d.rvTab) { state.rvTab = d.rvTab; return renderReview(); }
+  if (d.file) { state.openFile = state.openFile === d.file ? null : d.file; return renderReview(); }
+  if (d.hunk) { const [f, v] = d.hunk.split(":"); state.hunks[f] = v; return renderReview(); }
+  if (d.g) { state.g1 = d.g; renderReview(); renderChart(); return; }
+  if (d.tick) return toast(`Точка возврата «${d.tick}». В приложении сюда откатываются и файлы, и карта.`);
+  if (d.foot) return toast(d.foot === "commit" ? "Коммит создаётся в ветке агента. В референсе ничего не записывается." : d.foot === "accept" ? "Все изменения приняты." : "Изменения откатятся к началу задачи.");
+  if ("think" in d) { const p = $("#thinkText"); p.hidden = !p.hidden; t.setAttribute("aria-expanded", !p.hidden); return; }
+  if ("showroute" in d) { showPane("chart"); highlightTargets(stage().at, true); setTimeout(() => highlightTargets(stage().at, false), 1800); return; }
+  if ("compact" in d) { state.hist = 9.8; renderTray(); renderCtxPop(); return toast("История сжата в сводку: было 31,2 тыс., стало 9,8 тыс."); }
+  if (d.pi !== undefined) return runPalette(+d.pi);
+  if (d.lod !== undefined) return setLod(+d.lod);
+  if (d.mob) return showPane(d.mob);
+});
+document.addEventListener("mouseover", (e) => { const r = e.target.closest(".wp-row"); if (r && !r.contains(e.relatedTarget)) highlightTargets(+r.dataset.wp, true); });
+document.addEventListener("mouseout", (e) => { const r = e.target.closest(".wp-row"); if (r && !r.contains(e.relatedTarget)) highlightTargets(+r.dataset.wp, false); });
+document.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && (k === "k" || k === "л" || (e.shiftKey && (k === "p" || k === "з")))) { e.preventDefault(); openPalette(); return; }
+  if ((e.ctrlKey || e.metaKey) && (k === "n" || k === "т")) { e.preventDefault(); $("#newTask").click(); return; }
+  if (e.key === "Escape") {
+    if (!$("#scrim").hidden) return closePalette();
+    if (!$("#ctxpop").hidden) { $("#ctxpop").hidden = true; return; }
+    document.body.classList.remove("show-side", "show-review");
+    if (state.selected.size) { state.selected.clear(); syncSelection(); }
+  }
+});
+addEventListener("resize", () => applyTransform());
+
+/* ================= start ================= */
+renderLegend();
+renderAll();
+requestAnimationFrame(fit);
+</script>
+</body>
+</html>

@@ -41,8 +41,6 @@ const METHODS: { id: WorkMethod; labelKey: string; hintKey: string; icon: React.
   { id: "full", labelKey: "work.method.full", hintKey: "work.method.full.hint", icon: Zap },
 ];
 
-const DICTATED = "Check how the refresh token is issued and fix the expiry";
-
 /* ---------- Web Speech API (typed minimal shims) ---------- */
 interface SpeechResultChunk {
   isFinal: boolean;
@@ -116,7 +114,6 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   const dictatingRef = useRef(false);
   const baseDraftRef = useRef("");
   const finalRef = useRef("");
-  const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const generating = runnerStatus === "running" || runnerStatus === "awaiting-approval";
   /* Autonomy of THIS panel's chat (own method or the global default). */
@@ -251,41 +248,9 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
     return () => window.removeEventListener("mousedown", onDown);
   }, [modelOpen]);
 
-  /* ---------- dictation (real Web Speech when available, simulated otherwise) ---------- */
-
-  const clearSim = () => {
-    if (simTimerRef.current) {
-      clearInterval(simTimerRef.current);
-      simTimerRef.current = null;
-    }
-  };
-
-  /** simulated fallback playback — used when Web Speech is missing or hard-fails */
-  const runSimulated = () => {
-    clearSim();
-    const full = DICTATED;
-    let i = 0;
-    const current = useAqvenor.getState().draftOf(resolvedId).text;
-    dictatingRef.current = true;
-    setDictating(true);
-    setLiveSpeech(false);
-    setRecording(true);
-    simTimerRef.current = setInterval(() => {
-      i += 2;
-      setDraftFor(current ? `${current} ${full.slice(0, i)}` : full.slice(0, i));
-      setInterim(full.slice(Math.min(i, full.length), Math.min(i + 14, full.length)));
-      if (i >= full.length) {
-        clearSim();
-        dictatingRef.current = false;
-        setDictating(false);
-        setRecording(false);
-        setInterim("");
-      }
-    }, 45);
-  };
+  /* ---------- dictation (real Web Speech only — no simulated typing) ---------- */
 
   const stopDictation = () => {
-    clearSim();
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     dictatingRef.current = false;
@@ -299,9 +264,8 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
     if (dictatingRef.current) return;
     const Ctor = getSpeechCtor();
     if (!Ctor) {
-      /* no Web Speech API at all */
-      pushToast(t("chat.voice.listening"), t("chat.voice.unsupported"));
-      runSimulated();
+      /* no Web Speech API at all — say so instead of typing for the user */
+      pushToast(t("chat.voice.listening"), t("chat.voice.unsupported"), "destructive");
       return;
     }
     const rec = new Ctor();
@@ -349,9 +313,9 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
       /* detach so the follow-up onend no-ops */
       if (recognitionRef.current === rec) recognitionRef.current = null;
       if (hard) {
-        /* Web Speech present but unusable (headless, no mic, blocked) → simulate */
-        pushToast(t("chat.voice.listening"), t("chat.voice.unsupported"));
-        runSimulated();
+        /* Web Speech present but unusable (headless, no mic, blocked).
+           Surface it — typing a canned phrase would be the app lying. */
+        pushToast(t("chat.voice.listening"), t("chat.voice.unsupported"), "destructive");
       } else {
         dictatingRef.current = false;
         setDictating(false);
@@ -368,7 +332,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
       setRecording(true);
     } catch {
       recognitionRef.current = null;
-      runSimulated();
+      pushToast(t("chat.voice.listening"), t("chat.voice.unsupported"), "destructive");
     }
   };
 
@@ -397,7 +361,6 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   /* stop everything on unmount */
   useEffect(() => {
     return () => {
-      clearSim();
       recognitionRef.current?.stop();
       // Clear the flag this component owns. Without it, switching away from Chat while
       // recording left `recording` true in the store with no component left to clear it,
