@@ -1,5 +1,6 @@
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
+using AIClient.Application.Graph;
 using AIClient.Application.Interfaces;
 using AIClient.Application.Services;
 using AIClient.Domain.Enums;
@@ -207,7 +208,10 @@ public sealed class CompactionServiceTests : IAsyncLifetime
 
         await service.CompactAsync(Request(keepRecent: 4), Token);
 
-        var builder = new ContextBuilder(_conversations, NullLogger<ContextBuilder>.Instance);
+        var builder = new ContextBuilder(
+            _conversations,
+            new GraphContextSource(new StubGraphService()),
+            NullLogger<ContextBuilder>.Instance);
 
         var context = await builder.BuildAsync(
             new ContextBuildRequest

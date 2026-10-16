@@ -614,7 +614,7 @@ export interface RunAttachment {
 
 export const runs = {
   chatSend: (
-    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; attachments?: RunAttachment[] },
+    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; attachments?: RunAttachment[]; focusNodeIds?: string[] },
     onFrame: (f: StreamFrame) => void | Promise<void>,
     signal?: AbortSignal,
   ) => streamNdjsonWithRetry(`/api/chat/send`, body, onFrame, signal),
@@ -624,7 +624,7 @@ export const runs = {
     signal?: AbortSignal,
   ) => streamNdjsonWithRetry(`/api/chat/regenerate`, body, onFrame, signal),
   agentRun: (
-    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; mode: string; attachments?: RunAttachment[] },
+    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; mode: string; attachments?: RunAttachment[]; focusNodeIds?: string[] },
     onFrame: (f: StreamFrame) => void | Promise<void>,
     signal?: AbortSignal,
   ) => streamNdjsonWithRetry(`/api/agent/run`, body, onFrame, signal),

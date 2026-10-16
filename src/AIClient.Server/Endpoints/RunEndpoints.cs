@@ -42,7 +42,8 @@ public static class RunEndpoints
         string Content,
         string ProviderId,
         string ModelId,
-        IReadOnlyList<AttachmentIn>? Attachments);
+        IReadOnlyList<AttachmentIn>? Attachments,
+        IReadOnlyList<string>? FocusNodeIds);
 
     private sealed record ChatRegenerateRequest(
         Guid? RunId,
@@ -59,7 +60,8 @@ public static class RunEndpoints
         string ProviderId,
         string ModelId,
         string Mode,
-        IReadOnlyList<AttachmentIn>? Attachments);
+        IReadOnlyList<AttachmentIn>? Attachments,
+        IReadOnlyList<string>? FocusNodeIds);
 
     private sealed record ApprovalAnswerRequest(Guid ApprovalId, string Outcome, string? Reason);
 
@@ -223,6 +225,7 @@ public static class RunEndpoints
                     ProviderId = req.ProviderId,
                     ModelId = req.ModelId,
                     Attachments = ToAttachments(req.Attachments),
+                    FocusNodeIds = req.FocusNodeIds ?? [],
                 };
 
                 await foreach (var evt in chat.SendMessageAsync(send, entry.Cancellation.Token).ConfigureAwait(false))
@@ -329,6 +332,7 @@ public static class RunEndpoints
                     ModelId = req.ModelId,
                     Attachments = ToAttachments(req.Attachments),
                     Mode = mode,
+                    FocusNodeIds = req.FocusNodeIds ?? [],
                 };
 
                 HttpAgentApproval.CurrentRunId.Value = runId;

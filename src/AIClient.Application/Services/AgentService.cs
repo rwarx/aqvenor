@@ -732,6 +732,7 @@ public sealed class AgentService : IAgentService
                     ContextWindow = model?.ContextWindow,
                     ReservedOutputTokens = chat.ReservedOutputTokens,
                     MaxHistoryTurns = chat.MaxHistoryMessages,
+                    FocusNodeIds = run.FocusNodeIds,
                 },
                 run.RunToken).ConfigureAwait(false);
 
@@ -969,6 +970,7 @@ public sealed class AgentService : IAgentService
             ProviderId = request.ProviderId;
             ModelId = request.ModelId;
             Mode = request.Mode;
+            FocusNodeIds = request.FocusNodeIds;
             UserToken = userToken;
             RunToken = userToken;
 
@@ -1005,6 +1007,9 @@ public sealed class AgentService : IAgentService
         public AgentMode Mode { get; }
 
         public int MaxSteps { get; }
+
+        /// <summary>Canvas node ids selected when the run started; what "this" points at.</summary>
+        public IReadOnlyList<string> FocusNodeIds { get; } = [];
 
         /// <summary>The Stop button. Ends the run and closes an open question.</summary>
         public CancellationToken UserToken { get; }

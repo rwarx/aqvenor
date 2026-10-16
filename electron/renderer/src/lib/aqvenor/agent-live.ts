@@ -572,16 +572,19 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
 
   try {
     const attachments: RunAttachment[] | undefined = runAttachments;
+    // Canvas selection travels with the turn (capped): what "this" points at.
+    const focusNodeIds = store.canvas.selectedIds.slice(0, 20);
+    const focus = focusNodeIds.length > 0 ? focusNodeIds : undefined;
     if (mode === "off") {
       await runs.chatSend(
-        { runId, conversationId, content: trimmed, providerId, modelId, attachments },
+        { runId, conversationId, content: trimmed, providerId, modelId, attachments, focusNodeIds: focus },
         onFrame,
         abort.signal,
       );
     } else {
       const serverMode = mode === "plan" ? "Plan" : mode === "plancanvas" ? "PlanCanvas" : "Build";
       await runs.agentRun(
-        { runId, conversationId, content: trimmed, providerId, modelId, mode: serverMode, attachments },
+        { runId, conversationId, content: trimmed, providerId, modelId, mode: serverMode, attachments, focusNodeIds: focus },
         onFrame,
         abort.signal,
       );

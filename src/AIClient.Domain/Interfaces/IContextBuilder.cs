@@ -45,6 +45,17 @@ public sealed record ContextBuildRequest
     /// need the history as it stood before a given turn.
     /// </summary>
     public Guid? UpToMessageId { get; init; }
+
+    /// <summary>
+    /// Canvas node ids the user currently has selected. When non-empty the shared
+    /// spatial graph is serialized behind the history, so "this file" and "these
+    /// nodes" resolve to something the model can actually see.
+    /// </summary>
+    /// <remarks>
+    /// Bounded by the graph source itself (neighbourhood + detail caps), so one
+    /// crowded selection cannot spend the whole window.
+    /// </remarks>
+    public IReadOnlyList<string>? FocusNodeIds { get; init; }
 }
 
 /// <summary>Result of a context build, including what had to be dropped.</summary>

@@ -119,6 +119,11 @@ public static class AgentPrompt
 
         parts.Add(workspaceRoot is null ? NoWorkspace : Workspace(workspaceRoot));
 
+        if (workspaceRoot is not null)
+        {
+            parts.Add(GraphCanvas);
+        }
+
         if (canRunCommands && workspaceRoot is not null)
         {
             parts.Add(Commands);
@@ -203,6 +208,30 @@ public static class AgentPrompt
     /// usefully, lets the model tell the user what to do about it instead of reporting a mysterious
     /// failure.
     /// </remarks>
+    /// <summary>
+    /// The shared spatial canvas: what it is, how to read it, and how to draw on it.
+    /// </summary>
+    /// <remarks>
+    /// The tool descriptions say how to call each tool; this paragraph says when and
+    /// why. Without it a model that can see the graph treats it as decoration: it
+    /// answers about files it never looked at instead of reading the selection first.
+    /// </remarks>
+    private const string GraphCanvas = """
+        The project also exists as a spatial canvas you share with the user: files,
+        folders, modules and notes as nodes, containment and dependency edges between
+        them. When the user has nodes selected, their context follows this prompt under
+        a "Focus" heading - "this file" and "these nodes" mean those, so answer about
+        them specifically instead of re-deriving them from paths.
+        - Read before you draw: call read_canvas first. It lists every node with its
+          note text, so a question the canvas already answers never costs a file read.
+        - Draw as you go: add_nodes places findings on the canvas, link_nodes wires
+          them with relates/depends/calls/implements, and set_node_status tracks
+          progress on work the nodes stand for. A run that changes the project and
+          leaves the canvas untouched did half the job.
+        - Notes are instructions from the user. A note linked to a file with a question
+          in it is a task: answer it, and write the outcome back where it belongs.
+        """;
+
     private const string NoWorkspace = """
         No project folder is open, so every file tool will refuse. Do not keep trying them: tell the
         user to open a folder first, and answer whatever you can from the conversation alone.

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
+using AIClient.Application.Graph;
 using AIClient.Application.Interfaces;
 using AIClient.Application.Services;
 using AIClient.Domain.Enums;
@@ -643,7 +644,10 @@ public sealed class ChatServiceTests : IAsyncLifetime
         ICompactionService? compaction = null) =>
         new(_conversations,
             registry ?? (provider is null ? new StubProviderRegistry() : new StubProviderRegistry(provider)),
-            new ContextBuilder(_conversations, NullLogger<ContextBuilder>.Instance),
+            new ContextBuilder(
+                _conversations,
+                new GraphContextSource(new StubGraphService()),
+                NullLogger<ContextBuilder>.Instance),
             compaction ?? new StubCompactionService(),
             settings ?? new StubSettingsService(),
             NullLogger<ChatService>.Instance);

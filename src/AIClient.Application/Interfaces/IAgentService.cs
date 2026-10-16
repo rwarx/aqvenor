@@ -49,6 +49,9 @@ public sealed record AgentRunRequest
 
     public IReadOnlyList<NewAttachment> Attachments { get; init; } = [];
 
+    /// <summary>Canvas node ids selected when the run was started; empty means no selection.</summary>
+    public IReadOnlyList<string> FocusNodeIds { get; init; } = [];
+
     /// <summary>
     /// Which kind of run this is: one that changes the project, or one that plans.
     /// </summary>

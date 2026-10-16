@@ -1,4 +1,5 @@
 using AIClient.Application.DTOs;
+using AIClient.Application.Graph;
 using AIClient.Application.Interfaces;
 using AIClient.Domain.Enums;
 using AIClient.Domain.Interfaces;
@@ -22,13 +23,16 @@ namespace AIClient.Application.Services;
 public sealed class ContextBuilder : IContextBuilder
 {
     private readonly IConversationService _conversations;
+    private readonly GraphContextSource _graphs;
     private readonly ILogger<ContextBuilder> _logger;
 
     public ContextBuilder(
         IConversationService conversations,
+        GraphContextSource graphs,
         ILogger<ContextBuilder> logger)
     {
         _conversations = conversations;
+        _graphs = graphs;
         _logger = logger;
     }
 
@@ -69,15 +73,31 @@ public sealed class ContextBuilder : IContextBuilder
 
         var turns = blocks.SelectMany(block => block).ToList();
 
-        var messages = new List<AIChatMessage>(turns.Count + 1);
+        var messages = new List<AIChatMessage>(turns.Count + 2);
         if (systemPrompt is not null)
         {
             messages.Add(AIChatMessage.System(systemPrompt));
         }
 
+        // The canvas selection travels as a second system turn: always present
+        // (never trimmed like history), counted in the estimate, bounded by the
+        // graph source so one crowded selection cannot spend the window.
+        string? graphContext = null;
+        if (request.FocusNodeIds is { Count: > 0 })
+        {
+            graphContext = _graphs.BuildContext(request.FocusNodeIds, hops: 1, maxNodes: 40);
+        }
+
+        if (graphContext is not null)
+        {
+            messages.Add(AIChatMessage.System(graphContext));
+        }
+
         messages.AddRange(turns.Select(ToWire));
 
-        var estimated = TokenEstimator.EstimateMessage(systemPrompt) + turns.Sum(t => t.Tokens);
+        var estimated = TokenEstimator.EstimateMessage(systemPrompt)
+            + TokenEstimator.EstimateMessage(graphContext)
+            + turns.Sum(t => t.Tokens);
 
         if (dropped > 0)
         {

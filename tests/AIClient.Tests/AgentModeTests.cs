@@ -255,6 +255,42 @@ public sealed class AgentModeTests
 
     private const string Root = @"C:\Projects\Widgets";
 
+    [Fact]
+    public void A_build_prompt_names_the_canvas_tools_and_the_selection()
+    {
+        // The tools are offered with their own descriptions; this paragraph is what
+        // tells the model the canvas exists at all and that a selection follows.
+        var build = AgentPrompt.Compose(null, Root);
+
+        Assert.Contains("read_canvas", build, StringComparison.Ordinal);
+        Assert.Contains("add_nodes", build, StringComparison.Ordinal);
+        Assert.Contains("set_node_status", build, StringComparison.Ordinal);
+        Assert.Contains("Focus", build, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Planning_prompts_do_not_carry_the_canvas_tooling_paragraph()
+    {
+        // Planning modes never draw on the canvas (except through submit_plan's
+        // own parts), so the paragraph would advertise tools that were never
+        // offered. PlanCanvas keeps its own drawing paragraph instead.
+        foreach (var mode in new[] { AgentMode.Plan, AgentMode.PlanCanvas })
+        {
+            Assert.DoesNotContain("read_canvas first", AgentPrompt.Compose(null, Root, mode: mode), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void A_build_with_no_folder_open_says_nothing_about_a_canvas()
+    {
+        // No workspace, no graph: naming tools the model cannot reach would read
+        // as instructions to hallucinate one.
+        Assert.DoesNotContain(
+            "spatial canvas",
+            AgentPrompt.Compose(null, null),
+            StringComparison.Ordinal);
+    }
+
     /// <summary>One tool of each risk, plus one that belongs to the planning modes.</summary>
     private static AgentToolRegistry Registry() =>
         new([

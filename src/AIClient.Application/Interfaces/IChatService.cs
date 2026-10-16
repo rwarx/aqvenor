@@ -37,6 +37,9 @@ public sealed record SendMessageRequest
     public required string ProviderId { get; init; }
     public required string ModelId { get; init; }
     public IReadOnlyList<NewAttachment> Attachments { get; init; } = [];
+
+    /// <summary>Canvas node ids selected when the turn was sent; empty means no selection.</summary>
+    public IReadOnlyList<string> FocusNodeIds { get; init; } = [];
 }
 
 /// <summary>Input for <see cref="IChatService.RegenerateAsync"/>.</summary>

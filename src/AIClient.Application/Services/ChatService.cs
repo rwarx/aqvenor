@@ -85,6 +85,7 @@ public sealed class ChatService : IChatService
                            request.ProviderId,
                            request.ModelId,
                            upToMessageId: null,
+                           request.FocusNodeIds,
                            cancellationToken).ConfigureAwait(false))
         {
             yield return evt;
@@ -105,6 +106,7 @@ public sealed class ChatService : IChatService
                            request.ProviderId,
                            request.ModelId,
                            upToMessageId: null,
+                           focusNodeIds: null,
                            cancellationToken).ConfigureAwait(false))
         {
             yield return evt;
@@ -120,6 +122,7 @@ public sealed class ChatService : IChatService
         string providerId,
         string modelId,
         Guid? upToMessageId,
+        IReadOnlyList<string>? focusNodeIds,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Before the placeholder, deliberately. Compaction rewrites the history this turn is about
@@ -149,7 +152,7 @@ public sealed class ChatService : IChatService
 
         // Everything that can fail before the stream opens is resolved here, so the
         // iterator below only has to deal with streaming failures.
-        var preparation = await PrepareAsync(conversationId, providerId, modelId, upToMessageId, cancellationToken)
+        var preparation = await PrepareAsync(conversationId, providerId, modelId, upToMessageId, focusNodeIds, cancellationToken)
             .ConfigureAwait(false);
 
         if (preparation.Failure is { } earlyFailure)
@@ -356,6 +359,7 @@ public sealed class ChatService : IChatService
         string providerId,
         string modelId,
         Guid? upToMessageId,
+        IReadOnlyList<string>? focusNodeIds,
         CancellationToken cancellationToken)
     {
         try
@@ -385,6 +389,7 @@ public sealed class ChatService : IChatService
                     ReservedOutputTokens = chat.ReservedOutputTokens,
                     MaxHistoryTurns = chat.MaxHistoryMessages,
                     UpToMessageId = upToMessageId,
+                    FocusNodeIds = focusNodeIds,
                 },
                 cancellationToken).ConfigureAwait(false);
 

@@ -1,6 +1,8 @@
 using AIClient.Application.DTOs;
+using AIClient.Application.Graph;
 using AIClient.Application.Services;
 using AIClient.Domain.Enums;
+using AIClient.Domain.Graph;
 using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
 using AIClient.Tests.Support;
@@ -25,7 +27,10 @@ public sealed class ContextBuilderTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         _db = await TestDatabase.CreateAsync();
-        _builder = new ContextBuilder(_db.Conversations(), NullLogger<ContextBuilder>.Instance);
+        _builder = new ContextBuilder(
+            _db.Conversations(),
+            new GraphContextSource(new StubGraphService()),
+            NullLogger<ContextBuilder>.Instance);
     }
 
     public async ValueTask DisposeAsync() => await _db.DisposeAsync();
@@ -662,4 +667,102 @@ public sealed class ContextBuilderTests : IAsyncLifetime
         Assert.Equal(["one", "two", "three"], result.Messages.Select(m => m.Content));
         Assert.Equal(0, result.DroppedMessageCount);
     }
+
+    [Fact]
+    public async Task A_canvas_selection_travels_behind_the_history_with_its_note_text()
+    {
+        // The reported bug, end to end: a note whose body the model claimed not to see.
+        // Focus carries the Detail, not just the title and date.
+        var chat = await NewChatAsync(User("what is this element?"));
+        var builder = FocusBuilder();
+
+        var result = await builder.BuildAsync(
+            new ContextBuildRequest
+            {
+                ConversationId = chat,
+                ContextWindow = 100_000,
+                FocusNodeIds = ["note-1"],
+            },
+            TestContext.Current.CancellationToken);
+
+        var systems = result.Messages.Where(m => m.Role == "system").Select(m => m.Content).ToList();
+        var block = Assert.Single(systems);
+        Assert.Contains("Explain this element fully", block, StringComparison.Ordinal);
+        Assert.Contains("parsers/__init__.py", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_a_selection_no_graph_block_is_sent()
+    {
+        // An empty focus must not cost a system turn: the block names the whole
+        // graph even when nothing is selected, and most turns select nothing.
+        var chat = await NewChatAsync(User("hello"));
+        var builder = FocusBuilder();
+
+        var result = await builder.BuildAsync(
+            new ContextBuildRequest
+            {
+                ConversationId = chat,
+                ContextWindow = 100_000,
+            },
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(result.Messages, m => m.Role == "system");
+    }
+
+    [Fact]
+    public async Task Unknown_focus_ids_are_dropped_instead_of_failing_the_build()
+    {
+        // A selection is the caller's business: ids deleted since are facts about
+        // a stale canvas, not a reason to refuse the turn.
+        var chat = await NewChatAsync(User("hello"));
+        var builder = FocusBuilder();
+
+        var result = await builder.BuildAsync(
+            new ContextBuildRequest
+            {
+                ConversationId = chat,
+                ContextWindow = 100_000,
+                FocusNodeIds = ["gone"],
+            },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(["hello"], result.Messages.Select(m => m.Content));
+    }
+
+    private ContextBuilder FocusBuilder() =>
+        new(
+            _db.Conversations(),
+            new GraphContextSource(new StubGraphService(new GraphSnapshot
+            {
+                Nodes =
+                [
+                    new GraphNode
+                    {
+                        Id = "note-1",
+                        Kind = GraphNodeKind.Note,
+                        Title = "Note 1",
+                        Subtitle = "10/13/2026",
+                        Detail = "Explain this element fully",
+                    },
+                    new GraphNode
+                    {
+                        Id = "file:init",
+                        Kind = GraphNodeKind.File,
+                        Title = "__init__.py",
+                        Path = "parsers/__init__.py",
+                    },
+                ],
+                Edges =
+                [
+                    new GraphEdge
+                    {
+                        Id = "edge-1",
+                        SourceId = "note-1",
+                        TargetId = "file:init",
+                        Kind = GraphEdgeKind.Relates,
+                    },
+                ],
+            })),
+            NullLogger<ContextBuilder>.Instance);
 }

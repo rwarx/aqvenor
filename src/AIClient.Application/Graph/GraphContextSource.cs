@@ -97,6 +97,13 @@ public sealed class GraphContextSource
 
         var focus = CollectFocus(snapshot, focusNodeIds);
 
+        // A selection that matches nothing is a stale canvas, not a question about
+        // the graph: say nothing rather than spending a turn on an unasked summary.
+        if (focusNodeIds is { Count: > 0 } && focus.Count == 0)
+        {
+            return null;
+        }
+
         if (focus.Count > 0)
         {
             AppendFocusSection(builder, snapshot, focus, budget);
