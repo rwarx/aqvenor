@@ -43,6 +43,7 @@
             "perMachine": false,
             "allowToChangeInstallationDirectory": true,
             "multiLanguageInstaller": true,
+            "include": "installer.nsh",
             "installerLanguages": [
                 "en_US",
                 "ru_RU",

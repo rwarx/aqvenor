@@ -89,6 +89,18 @@ travels into the model request.
   English text.
 - The install remains per-user (no elevation required). Existing installs keep
   working; the installer improves only the first-run experience.
+- **The installer refuses to run on drives short on space, in the user's
+  language, instead of half-installing.** The packaging already had a failure
+  mode this release saw in the wild: the setup unpacks its payload into the
+  drive that hosts `TEMP`, and when that drive runs low the NSIS copy stops
+  mid-way with no error — leaving an install with the GPU libraries and the
+  sidecar missing, which at launch looks like a grey empty window. The setup
+  now measures free space up front (about 800 MB where `TEMP` lives, about
+  600 MB on the install drive) and refuses with a localized refusal message
+  before anything is unpacked; the checks fail open on unusual `TEMP`
+  locations. Verified both ways: a trip build with a deliberately inflated
+  threshold aborted with exit code 2 and untouched files, and the localized
+  Russian refusal was confirmed on screen.
 
 ### Dock tiling, drafts and parity
 
