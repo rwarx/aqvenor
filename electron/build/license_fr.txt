@@ -1,0 +1,53 @@
+﻿Aqvenor - logiciel avant-version (prerelease)
+Copyright (c) 2026 Aqvenor contributors
+
+=== LICENCE MIT (original) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== POLITIQUE D'UTILISATION ET AVERTISSEMENTS ===
+
+1. Tout s'execute sur votre machine. Les conversations (SQLite), les cles API
+   (chiffrees par DPAPI), l'index de l'espace de travail et le graphe spatial
+   restent locaux. Pas de telemetry, pas d'analyse, pas de rapports de plantage,
+   pas de compte, aucun serveur du projet.
+
+2. Ce programme peut ecrire des fichiers et lancer des programmes. L'agent
+   travaille uniquement dans le dossier de travail que vous designez et demande
+   une confirmation avant chaque modification; c'est un comportement decrit, pas
+   une garantie. Ouvrez un dossier que vous acceptez de lui confier, gardez votre
+   travail versionne et vos sauvegardes a jour.
+
+3. Ne quitte votre machine que ce que vous envoyez au fournisseur de modeles
+   choisi, et seulement quand vous appuyez sur Envoyer - selon la politique de
+   ce fournisseur. Il en va de meme pour git push/pull/fetch sur votre propre
+   depot.
+
+4. L'execution de commandes, les acces reseau et les fichiers hors projet sont
+   desactives par defaut; chaque utilisation d'une capacite active demande
+   d'abord votre accord. Ne les activez pas sans necessite.
+
+5. Ce logiciel est une avant-version sans garantie expresse ni implicite.
+   Utilisation a vos risques et perils.
+
+6. En cliquant sur "J'accepte", vous acceptez les conditions ci-dessus. Les
+   documents complets - LICENSE, SECURITY.md et PRIVACY.md - se trouvent dans
+   le depot.

@@ -1,0 +1,51 @@
+﻿Aqvenor - software en pre-lanzamiento
+Copyright (c) 2026 Aqvenor contributors
+
+=== LICENCIA MIT (original) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== POLITICA DE USO Y ADVERTENCIAS ===
+
+1. Todo se ejecuta en su maquina. Las conversaciones (SQLite), las claves API
+   (cifradas con DPAPI), el indice del espacio de trabajo y el grafo espacial
+   permanecen locales. No hay telemetria, ni analiticas, ni informes de fallos,
+   ni cuentas, ni servidores del proyecto.
+
+2. Este programa puede escribir archivos y ejecutar programas. El agente trabaja
+   solo en la carpeta de trabajo que usted elige y pide confirmacion antes de
+   cada cambio; eso es comportamiento descrito, no garantia. Abra una carpeta
+   que este dispuesto a entregarle, mantenga su trabajo en git y copias de
+   respaldo.
+
+3. Solo sale de su maquina lo que envia al proveedor de modelos elegido, y solo
+   al pulsar Enviar, bajo la politica de ese proveedor. Lo mismo vale para
+   git push/pull/fetch en su propio repositorio.
+
+4. La ejecucion de comandos, las descargas de red y el acceso a archivos fuera
+   del proyecto estan desactivados por defecto; cada uso de una capacidad
+   activada pide antes su aprobacion. No los active sin necesidad.
+
+5. Este es un software de pre-lanzamiento sin garantias expresas ni implicitas.
+   Uselo bajo su propio riesgo.
+
+6. Al pulsar "Acepto" usted acepta los terminos anteriores. Los documentos
+   completos - LICENSE, SECURITY.md y PRIVACY.md - estan en el repositorio.

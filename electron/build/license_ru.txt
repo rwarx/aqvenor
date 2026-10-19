@@ -1,0 +1,51 @@
+﻿Aqvenor - программное обеспечение до релиза
+Copyright (c) 2026 Aqvenor contributors
+
+=== ЛИЦЕНЗИЯ MIT (оригинал) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== ПОЛИТИКА ИСПОЛЬЗОВАНИЯ И РАСКРЫТИЕ ===
+
+1. Всё работает на вашем компьютере. Переписки (SQLite), ключи API (шифруются
+   DPAPI), индекс и пространственный граф рабочего пространства остаются
+   локально. Телеметрии, аналитики, crash-отчётов и аккаунтов нет, серверов
+   проекта нет.
+
+2. Эта программа может писать файлы и запускать программы. Агент работает
+   только в указанной вами рабочей папке и запрашивает подтверждение перед
+   каждым изменением, но это заявленное поведение, а не гарантия. Открывайте
+   папку, которую вы готовы отдать ему на редактирование, держите git и
+   резервные копии.
+
+3. С машины уходит только то, что вы отправляете выбранному провайдеру
+   моделей, и только по нажатию «Отправить» - по правилам этого провайдера.
+   То же верно для git push/pull/fetch вашего собственного репозитория.
+
+4. Выполнение команд, загрузка из сети и доступ к файлам вне проекта
+   выключены по умолчанию, и каждый вызов включённой возможности сначала
+   запрашивает подтверждение. Не включайте без необходимости.
+
+5. Это программное обеспечение до релиза, без прямых или подразумеваемых
+   гарантий. Используйте на свой риск.
+
+6. Нажимая «Я согласен», вы принимаете условия выше. Полные документы -
+   LICENSE, SECURITY.md и PRIVACY.md - в репозитории.

@@ -1,0 +1,50 @@
+﻿Aqvenor - pre-release software
+Copyright (c) 2026 Aqvenor contributors
+
+=== MIT LICENSE ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== USAGE POLICY AND DISCLOSURES ===
+
+1. Everything runs on your machine. Conversations (SQLite), API keys
+   (DPAPI-encrypted), the workspace index and the spatial graph stay local.
+   There is no telemetry, no analytics, no crash reporting, no accounts, and
+   no server operated by this project.
+
+2. This program can write files and run programs. The agent works inside the
+   workspace folder you nominate and asks before every change, but that is a
+   description of the intended behaviour, not a guarantee. Open a folder you
+   are willing to let it edit, keep your work committed, keep backups.
+
+3. What leaves your machine is what you send to a model provider, and only
+   when you press Send - under that provider's policy. The same applies when
+   you run git push/pull/fetch on your own repository.
+
+4. Command execution, network fetching and out-of-project file access are
+   disabled by default, and every call of an enabled capability asks for your
+   approval first. Keep them off unless the task requires them.
+
+5. This is pre-release software with no express or implied warranty. Use it
+   at your own risk.
+
+6. By clicking "I Agree" you accept the terms above. The complete documents -
+   LICENSE, SECURITY.md and PRIVACY.md - are in the repository.

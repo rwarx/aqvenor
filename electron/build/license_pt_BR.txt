@@ -1,0 +1,51 @@
+﻿Aqvenor - software em pre-lancamento
+Copyright (c) 2026 Aqvenor contributors
+
+=== LICENCA MIT (original) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== POLITICA DE USO E AVISOS ===
+
+1. Tudo roda na sua maquina. As conversas (SQLite), as chaves de API (criptografadas
+   por DPAPI), o indice do espaco de trabalho e o grafo espacial ficam locais.
+   Nao ha telemetria, nem analises, nem relatorios de falhas, nem contas, nem
+   servidor do projeto.
+
+2. Este programa pode escrever arquivos e executar programas. O agente trabalha
+   apenas na pasta de trabalho que voce indicar e pede aprovacao antes de cada
+   alteracao; isso e um comportamento descrito, nao uma garantia. Abra uma pasta
+   que voce aceite entregar para edicao, mantenha o trabalho commitado e com
+   backups.
+
+3. Sai da sua maquina apenas o que voce envia ao provedor de modelos escolhido,
+   e somente quando aperta Enviar, conforme as regras desse provedor. O mesmo
+   vale para git push/pull/fetch no seu proprio repositorio.
+
+4. Execucao de comandos, busca na rede e acesso a arquivos fora do projeto ficam
+   desligados por padrao; cada uso de uma capacidade ligada pede sua aprovacao
+   antes. Nao ligue sem necessidade.
+
+5. Este e um software de pre-lancamento, sem garantias expressas ou implicitas.
+   Use por sua conta e risco.
+
+6. Ao clicar em "Aceito", voce aceita os termos acima. Os documentos completos -
+   LICENSE, SECURITY.md e PRIVACY.md - estao no repositorio.

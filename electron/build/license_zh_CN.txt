@@ -1,0 +1,44 @@
+﻿Aqvenor - 发布前软件
+Copyright (c) 2026 Aqvenor contributors
+
+=== MIT 许可证（原文） ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== 使用政策与披露 ===
+
+1. 一切都在您的电脑上运行。对话（SQLite）、API 密钥（经 DPAPI 加密）、工作区索引和
+   空间图全部保留在本地。没有遥测、统计、崩溃报告、账户，项目不运营任何服务器。
+
+2. 本程序可以写文件、运行程序。智能体只在您指定的工作区文件夹内工作，每次改动前都会
+   征得同意——这是声明的行为，而不是保证。请打开一个您愿意交给它编辑的文件夹，保持
+   git 提交和备份。
+
+3. 离开您电脑的只有您向所配置的模型服务商发送的内容，且仅在点击发送时——并受该服务商
+   政策约束。对您自己的仓库执行 git push/pull/fetch 时同理。
+
+4. 执行命令、联网抓取和访问项目外文件的开关默认关闭，启用的能力每次调用都会先请求
+   批准。非必要请不要开启。
+
+5. 本软件为发布前版本，不附带任何明示或默示的保证。风险自负。
+
+6. 点击"我同意"即表示您接受上述条款。完整文档 LICENSE、SECURITY.md、PRIVACY.md 见
+   仓库。

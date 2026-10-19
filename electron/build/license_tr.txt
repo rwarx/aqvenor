@@ -1,0 +1,48 @@
+﻿Aqvenor - on yayın öncesi yazılım
+Copyright (c) 2026 Aqvenor contributors
+
+=== MIT LİSANSI (orijinal) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== KULLANIM POLİTİKASI VE AÇIKLAMALAR ===
+
+1. Her şey sizin makinenizde çalışır. Sohbetler (SQLite), API anahtarları (DPAPI
+   ile şifreli), çalışma alanı dizini ve uzamsal graf yerel kalır. Telemetri,
+   analiz, çökme raporu, hesap ve proje sunucusu yoktur.
+
+2. Bu program dosya yazabilir ve program çalıştırabilir. Temsilci yalnızca sizin
+   belirlediğiniz çalışma klasöründe çalışır ve her değişiklikten önce onay ister;
+   bu beyan edilmiş davranıştır, garanti değildir. Düzenlemesini kabul ettiğiniz
+   bir klasör açın, işinizi git'e işleyin ve yedeklerinizi tutun.
+
+3. Makinenizden çıkan şey, seçtiğiniz model sağlayıcısına gönderdiklerinizdir ve
+   yalnızca Gönder'e bastığınızda, o sağlayıcının kurallarıyla gider. Kendi
+   deponuzdaki git push/pull/fetch için de aynısı geçerlidir.
+
+4. Komut çalıştırma, ağdan indirme ve proje dışı dosya erişimi varsayılan olarak
+   kapalıdır; açtığınız her çağrı önce onayınızı ister. Gerek yoksa açık bırakmayın.
+
+5. Bu, açık ya da zımni garantisi olmayan yayın öncesi yazılımdır. Kendi
+   sorumluluğunuzda kullanın.
+
+6. "Kabul ediyorum"a tıkladığınızda yukarıdaki koşulları kabul etmiş olursunuz.
+   Tam belgeler - LICENSE, SECURITY.md ve PRIVACY.md - depodadır.

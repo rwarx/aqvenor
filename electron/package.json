@@ -41,6 +41,21 @@
         "nsis": {
             "oneClick": false,
             "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "multiLanguageInstaller": true,
+            "installerLanguages": [
+                "en_US",
+                "ru_RU",
+                "de_DE",
+                "es_ES",
+                "fr_FR",
+                "it_IT",
+                "ja_JP",
+                "ko_KR",
+                "pt_BR",
+                "tr_TR",
+                "zh_CN"
+            ],
             "createDesktopShortcut": true,
             "createStartMenuShortcut": true,
             "shortcutName": "Aqvenor"

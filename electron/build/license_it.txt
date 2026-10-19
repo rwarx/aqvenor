@@ -1,0 +1,51 @@
+﻿Aqvenor - software in pre-rilascio
+Copyright (c) 2026 Aqvenor contributors
+
+=== LICENZA MIT (originale) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== POLITICA D'USO E AVVERTENZE ===
+
+1. Tutto gira sulla tua macchina. Le conversazioni (SQLite), le chiavi API
+   (cifrature DPAPI), l'indice dell'area di lavoro e il grafo spaziale restano
+   in locale. Nessuna telemetria, nessuna analytics, nessun report di crash,
+   nessun account, nessun server del progetto.
+
+2. Questo programma puo scrivere file ed eseguire programmi. L'agente lavora
+   solo nella cartella di lavoro che indichi e chiede conferma prima di ogni
+   modifica; e un comportamento dichiarato, non una garanzia. Apri una cartella
+   che sei disposto a consegnargli, tieni il lavoro committato e i backup
+   aggiornati.
+
+3. Lascia la macchina solo cio che invii al fornitore di modelli scelto, e solo
+   quando premi Invia, secondo le regole di quel fornitore. Vale anche per
+   git push/pull/fetch sul tuo stesso repository.
+
+4. Esecuzione di comandi, richieste di rete e accesso a file fuori dal progetto
+   sono disattivati per impostazione predefinita; ogni uso di una capacita
+   attiva chiede prima la tua approvazione. Non attivarli se non serve.
+
+5. Software in pre-rilascio, senza garanzie espresse o implicite. Usalo a tuo
+   rischio.
+
+6. Cliccando "Accetto" accetti i termini precedenti. I documenti completi -
+   LICENSE, SECURITY.md e PRIVACY.md - sono nel repository.

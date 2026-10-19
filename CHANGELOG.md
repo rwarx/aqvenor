@@ -73,6 +73,23 @@ travels into the model request.
 - Unknown focus ids yield no block instead of an unasked summary; planning
   modes are unchanged.
 
+### The installer now asks before it installs
+
+- **A language choice, a policy page and a directory choice have been added to
+  the assisted installer.** The wizard shows the language dialog (11 languages,
+  the same set as the README), then a policy page that spells out what the
+  program can do — it writes files and runs programs — and stays honest about
+  no telemetry before anything is copied, and lets you change the install
+  folder instead of dropping the app somewhere you did not pick.
+- The policy text ships localized: the MIT licence stays in its original
+  English (the authoritative legal text), and the usage policy and disclosures
+  — fully local storage, out-of-project risks, what leaves the machine and
+  when, defaults that are off — are translated for every language the
+  installer offers. Any language without a translated file falls back to the
+  English text.
+- The install remains per-user (no elevation required). Existing installs keep
+  working; the installer improves only the first-run experience.
+
 ### Dock tiling, drafts and parity
 
 - A plain sidebar click now tiles the surface beside the current one instead

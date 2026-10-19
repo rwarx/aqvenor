@@ -1,0 +1,53 @@
+﻿Aqvenor - unfertige Software (Pre-Release)
+Copyright (c) 2026 Aqvenor contributors
+
+=== MIT-LIZENZ (Original) ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== NUTZUNGSRICHTLINIEN UND OFFENLEGUNG ===
+
+1. Alles laeuft auf Ihrem Rechner. Gespraechsverlaeufe (SQLite), API-Schluessel
+   (DPAPI-verschluesselt), der Arbeitsbereichsindex und der raeumliche Graph
+   bleiben lokal. Es gibt keine Telemetrie, keine Analytik, keine Absturzberichte,
+   keine Accounts und keinen Server des Projekts.
+
+2. Dieses Programm kann Dateien schreiben und Programme ausfuehren. Der Agent
+   arbeitet nur in dem von Ihnen angegebenen Arbeitsordner und fragt vor jeder
+   Aenderung nach - das ist beschriebenes Verhalten, keine Zusicherung. Oeffnen
+   Sie nur Ordner, deren Bearbeitung Sie dem Agenten zutrauen, und halten Sie
+   Git und Sicherungskopien bereit.
+
+3. Ihren Rechner verlaesst nur das, was Sie an einen von Ihnen gewaehlten
+   Modell-Anbieter senden, und nur wenn Sie Senden druecken - nach den Regeln
+   dieses Anbieters. Genauso gilt fuer git push/pull/fetch in Ihrem eigenen
+   Repository.
+
+4. Programmausfuehrung, Netzabrufe und Dateizugriff ausserhalb des Projekts
+   sind standardmaessig aus; jede Aktivierung eines dieser Features fragt erst
+   mit Ihnen. Schalten Sie sie nur ein, wenn der Task es braucht.
+
+5. Dies ist Pre-Release-Software ohne ausdrueckliche oder stillschweigende
+   Garantie. Benutzung auf eigenes Risiko.
+
+6. Mit Klick auf "Ich stimme zu" akzeptieren Sie die obigen Bedingungen. Die
+   vollstaendigen Dokumente - LICENSE, SECURITY.md und PRIVACY.md - liegen im
+   Repository.

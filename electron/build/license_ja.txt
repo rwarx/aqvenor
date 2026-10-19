@@ -1,0 +1,49 @@
+﻿Aqvenor - リリース前ソフトウェア
+Copyright (c) 2026 Aqvenor contributors
+
+=== MIT ライセンス（原文） ===
+
+Copyright (c) 2026 Aqvenor contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== 利用規約と開示事項 ===
+
+1. すべて自分のマシン上で動作します。会話（SQLite）、APIキー（DPAPIで暗号化）、
+   ワークスペースのインデックスと空間グラフはすべてローカルに保存されます。
+   テレメトリー、分析、クラッシュレポート、アカウント、当プロジェクトのサーバーは
+   一切ありません。
+
+2. このプログラムはファイルへの書き込みとプログラムの実行ができます。エージェントは
+   指定したワークスペースフォルダ内でのみ動作し、変更のたびに確認を求めますが、これは
+   予定されている動作であって保証ではありません。編集を許可できるフォルダを開き、
+   gitコミットとバックアップを取っておいてください。
+
+3. マシンから出ていくのは、明示的に送信した場合のみです。Sendを押したときに、設定した
+   モデルプロバイダーへ、そのプロバイダーのポリシーに従って送られたプロンプトだけが
+   対象です。自分のリポジトリへの git push/pull/fetch も同様です。
+
+4. コマンド実行、ネットワーク取得、プロジェクト外ファイルアクセスは既定でオフです。
+   有効化した能力は1回ごとに承認を求めます。必要でなければオフのままにしてください。
+
+5. リリース前のソフトウェアであり、明示的・暗示的な保証は一切ありません。
+   自己責任でご利用ください。
+
+6. 「同意する」をクリックした時点で、上記の条件に同意したものとみなされます。完全な
+   文書（LICENSE、SECURITY.md、PRIVACY.md）はリポジトリにあります。
