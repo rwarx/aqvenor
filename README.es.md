@@ -331,7 +331,7 @@ y Chromium, catalogados en [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Estado
 
-`0.1.1-alpha`. Publicado como prerelease, a propósito.
+`0.2.0-alpha`. Publicado como prerelease, a propósito.
 
 **Funciona:** chat en streaming, ambos hosts, el grafo espacial y el lienzo, el bucle de herramientas
 del agente con su puerta de aprobación, el editor, git, sesiones y paquetes, tres idiomas.

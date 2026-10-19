@@ -321,7 +321,7 @@ Third-party components keep their own licences — 40-odd bundled packages plus 
 
 ## Status
 
-`0.1.1-alpha`. Published as a prerelease, deliberately.
+`0.2.0-alpha`. Published as a prerelease, deliberately.
 
 **Works:** streaming chat, parallel chats with per-chat models, both hosts, the spatial graph and
 canvas, the agent tool loop with its approval gate, the editor, git, sessions and bundles, three

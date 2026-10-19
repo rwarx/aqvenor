@@ -328,7 +328,7 @@ Electron e Chromium — catalogados em [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTI
 
 ## Status
 
-`0.1.1-alpha`. Publicado como prerelease, deliberadamente.
+`0.2.0-alpha`. Publicado como prerelease, deliberadamente.
 
 **Funciona:** chat em streaming, os dois hosts, o grafo e o canvas espaciais, o ciclo de ferramentas do
 agente com o seu portão de aprovação, o editor, o git, sessões e pacotes, três idiomas.

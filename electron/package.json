@@ -1,6 +1,6 @@
 {
     "name": "aqvenor",
-    "version": "0.1.1-alpha",
+    "version": "0.2.0-alpha",
     "private": true,
     "description": "Aqvenor вЂ” Electron shell over the ported new-interface renderer and the .NET sidecar backend",
     "main": "main/main.js",

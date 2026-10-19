@@ -335,7 +335,7 @@ und Chromium —, katalogisiert in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.
 
 ## Status
 
-`0.1.1-alpha`. Bewusst als Vorabversion veröffentlicht.
+`0.2.0-alpha`. Bewusst als Vorabversion veröffentlicht.
 
 **Funktioniert:** Chat im Streaming, beide Hosts, der räumliche Graph und das Canvas, die
 Tool-Schleife des Agenten mit ihrem Freigabe-Tor, der Editor, git, Sitzungen und Pakete, drei

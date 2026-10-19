@@ -327,7 +327,7 @@ Chromium — catalogati in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Stato
 
-`0.1.1-alpha`. Pubblicata come prerelease, deliberatamente.
+`0.2.0-alpha`. Pubblicata come prerelease, deliberatamente.
 
 **Funziona:** chat in streaming, entrambi gli host, il grafo e la tela spaziali, il ciclo di strumenti
 dell'agente con il suo gate di approvazione, l'editor, git, sessioni e bundle, tre lingue.

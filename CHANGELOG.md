@@ -11,7 +11,20 @@ Versions are also published on the
 
 ---
 
-## [Unreleased]
+## [0.2.0-alpha] — 2026-10-19
+
+The first release published under the name **Aqvenor** — the same application
+previously released as Kontur Code. The rename is the headline; the substance
+is a settings overhaul, an honest offline mode, and canvas selection that
+travels into the model request.
+
+### Renamed to Aqvenor
+
+- **Kontur Code is now Aqvenor.** The product, the installer (`Aqvenor Setup`),
+  the window and taskbar icons, the mark in the title bar, the rotating
+  start-screen taglines and the repository (`rwarx/aqvenor`) all carry the new
+  name. Nothing to migrate: the database, the settings and the DPAPI-encrypted
+  keys stay in `%APPDATA%\AIClient`.
 
 ### Settings overhaul
 
@@ -37,9 +50,43 @@ Versions are also published on the
   Top P and nullable sampling, a System theme, and session behaviours
   (delete confirmation, auto-titles) that actually apply.
 
+### Honest offline
+
+- **Demo theatre runs only where no backend exists.** With a sidecar running,
+  every message — including "run a demo" — goes to your real model. The
+  canned-reply fallback, the simulated voice dictation and the dead
+  prototype/demo keys are gone; the palette demo command and the trajectory
+  demo button are gated to offline, and the trajectory empty state points at
+  chat instead.
+- **An unreachable sidecar is no longer silent.** Sidecar reachability is
+  mirrored into the store, and the chat shows an offline banner with a retry
+  button instead of scripted theatre that quietly pretends to answer.
+- The marketplace rail is renamed **Models** — it opens the catalogue — and
+  `regenerate()` routes through the retried chat's own engine mode.
+
+### Canvas selection travels into the prompt
+
+- Selecting nodes on the canvas now tags the next chat or agent run:
+  `canvas.selectedIds` (capped) is sent with the request, and the context
+  builder appends the shared graph block — the shared selection is *what you
+  are looking at*, so the model starts where your attention is.
+- Unknown focus ids yield no block instead of an unasked summary; planning
+  modes are unchanged.
+
+### Dock tiling, drafts and parity
+
+- A plain sidebar click now tiles the surface beside the current one instead
+  of stacking it behind a missing tab strip, and a restore heals
+  pre-existing stacks. Nothing ever hides behind a missing tab.
+- The WPF host gained per-conversation drafts (with tests) and **Alt-drag**
+  from the canvas into the composer — files pin, notes append — matching the
+  Electron host's drag both ways.
+- `FilesView` and the diff view are hardened against contentless rehydrated
+  entries, with the regression covered by `diff.test.ts`.
+
 ---
 
-## [0.1.1-alpha] — unreleased at the time of writing
+## [0.1.1-alpha] — 2026-10-05
 
 The follow-up to `0.1.0-alpha`, closing what that release documented as gaps. Five
 of the seven limitations listed below were fixed; the two that remain are recorded
@@ -267,6 +314,7 @@ Carried into this alpha deliberately, and detailed with file references in
    UI kit that was replaced. They are not bundled, but they are a supply-chain
    surface for anyone running `npm install`.
 
-[Unreleased]: https://github.com/rwarx/aqvenor/compare/v0.1.1-alpha...HEAD
+[Unreleased]: https://github.com/rwarx/aqvenor/compare/v0.2.0-alpha...HEAD
+[0.2.0-alpha]: https://github.com/rwarx/aqvenor/compare/v0.1.1-alpha...v0.2.0-alpha
 [0.1.1-alpha]: https://github.com/rwarx/aqvenor/compare/v0.1.0-alpha...v0.1.1-alpha
 [0.1.0-alpha]: https://github.com/rwarx/aqvenor/releases/tag/v0.1.0-alpha

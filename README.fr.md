@@ -335,7 +335,7 @@ et Chromium — catalogués dans [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md
 
 ## État
 
-`0.1.1-alpha`. Publiée comme préversion, délibérément.
+`0.2.0-alpha`. Publiée comme préversion, délibérément.
 
 **Fonctionne :** le chat en streaming, les deux hôtes, le graphe spatial et le canevas, la boucle
 d'outils de l'agent avec sa porte d'approbation, l'éditeur, git, les sessions et les paquets, trois

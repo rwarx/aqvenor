@@ -73,6 +73,7 @@ yarn-error.log*
 
 # electron-builder output and abandoned installer experiments
 /electron/dist-release/
+/electron/release-phase2/
 /electron/.vite/
 
 # ---- Agent scratch output ----

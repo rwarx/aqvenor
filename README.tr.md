@@ -262,7 +262,7 @@ Lütfen **bir güvenlik açığı için herkese açık bir konu açmayın** — 
 
 ## Durum
 
-`0.1.1-alpha`. Bilinçli olarak bir ön sürüm olarak yayımlandı.
+`0.2.0-alpha`. Bilinçli olarak bir ön sürüm olarak yayımlandı.
 
 **Çalışıyor:** akışlı sohbet, her iki host, uzamsal grafik ve tuval, onay kapısıyla birlikte ajanın araç döngüsü, düzenleyici, git, oturumlar ve paketler, üç dil.
 
