@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowUp,
+  BrainCircuit,
   Check,
   ChevronDown,
   CornerDownLeft,
   FoldVertical,
+  Image as ImageIcon,
   ListChecks,
   MessageSquare,
   Mic,
@@ -27,9 +30,11 @@ import { getNodeDragIds, hasNodeDrag } from "@/lib/aqvenor/dnd";
 import { attachCanvasNodeToDraft } from "@/lib/aqvenor/attachNode";
 import { sendMessage, stopGeneration } from "@/lib/aqvenor/scenario";
 import { useModel } from "@/lib/aqvenor/useModel";
+import { generateImage, wrapSequentialThinking } from "@/lib/aqvenor/imagegen";
 import type { WorkMethod, WorkMode, Locale } from "@/lib/aqvenor/types";
 import { AqToolButton } from "@/components/aqvenor/ui";
 import { ModelPicker } from "./ModelPicker";
+import { useAnchoredPopup } from "@/hooks/use-anchored-popup";
 import { cn } from "@/lib/utils";
 
 /* autonomy selector (Plan / Ask before changes / Edit automatically / Full access).
@@ -108,6 +113,15 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   const [slashDismissed, setSlashDismissed] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
+  const modelBtnRef = useRef<HTMLButtonElement>(null);
+  const modelPopRef = useRef<HTMLDivElement>(null);
+  const methodBtnRef = useRef<HTMLButtonElement>(null);
+  const methodPopRef = useRef<HTMLDivElement>(null);
+  /* Both popups are portalled and clamped into the viewport: an absolutely
+     positioned menu inside a scrolled dock panel can land tens of thousands of
+     pixels off screen (AQV-005). */
+  const modelPlacement = useAnchoredPopup(modelOpen, modelBtnRef, { width: 420, height: 470 });
+  const methodPlacement = useAnchoredPopup(modeMenuOpen, methodBtnRef, { width: 290, height: 300 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -200,6 +214,20 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
         hint: t("slash.cmd.compact.hint"),
         run: () => compactSession(resolvedId),
       },
+      {
+        id: "image",
+        icon: ImageIcon,
+        label: t("slash.cmd.image"),
+        hint: t("slash.cmd.image.hint"),
+        run: () => setDraftFor("/image "),
+      },
+      {
+        id: "think",
+        icon: BrainCircuit,
+        label: t("slash.cmd.think"),
+        hint: t("slash.cmd.think.hint"),
+        run: () => setDraftFor("/think "),
+      },
     ],
     [t, setWorkMode, setWorkMethod, pushToast, setDraftFor, compactSession, resolvedId],
   );
@@ -222,8 +250,9 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
 
   const runSlash = (cmd: (typeof slashCommands)[number]) => {
     cmd.run();
-    /* mode/compact commands clear the draft; demo keeps its inserted text */
-    if (cmd.id !== "demo") setDraftFor("");
+    /* mode/compact commands clear the draft; demo/image/think insert a
+       template the person completes, so their text stays */
+    if (!["demo", "image", "think"].includes(cmd.id)) setDraftFor("");
     setSlashIdx(0);
     setSlashDismissed(null);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -233,7 +262,9 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   useEffect(() => {
     if (!modeMenuOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setModeMenuOpen(false);
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || methodPopRef.current?.contains(target)) return;
+      setModeMenuOpen(false);
     };
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
@@ -242,7 +273,9 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   useEffect(() => {
     if (!modelOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (modelRef.current && !modelRef.current.contains(e.target as Node)) setModelOpen(false);
+      const target = e.target as Node;
+      if (modelRef.current?.contains(target) || modelPopRef.current?.contains(target)) return;
+      setModelOpen(false);
     };
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
@@ -374,6 +407,22 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
 
   const submit = () => {
     if (!draft.trim() || generating) return;
+    /* /image <prompt> — generate a picture instead of a text turn. */
+    const imageMatch = draft.match(/^\/image\s+([\s\S]+)$/);
+    if (imageMatch) {
+      void generateImage(imageMatch[1].trim(), resolvedId);
+      setDraftFor("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      return;
+    }
+    /* /think <problem> — wrap the prompt in the sequential-thinking scaffold. */
+    const thinkMatch = draft.match(/^\/think\s+([\s\S]+)$/);
+    if (thinkMatch) {
+      sendMessage(wrapSequentialThinking(thinkMatch[1].trim(), t.locale), { sessionId: resolvedId });
+      setDraftFor("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      return;
+    }
     /* targeted send: this panel's chat streams on its own run — sibling
        chats are untouched, no session switch, no shared text. */
     sendMessage(draft, { sessionId: resolvedId });
@@ -631,63 +680,90 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
               <Paperclip size={14} />
             </AqToolButton>
 
-            {/* work-method selector — autonomy while coworking (hidden in plain Chat) */}
+            {/* generate an image (/image <prompt>) — seeds the prefix so the
+                next typed words become the picture prompt */}
+            <AqToolButton
+              onClick={() => {
+                if (!draft.trim()) setDraftFor("/image ");
+                textareaRef.current?.focus();
+              }}
+              aria-label={t("slash.cmd.image")}
+              title={`${t("slash.cmd.image")} · /image`}
+            >
+              <ImageIcon size={14} />
+            </AqToolButton>
+
+            {/* work-method selector — autonomy while coworking (hidden in plain
+                Chat). Styled neutral gray so it blends with the composer chrome
+                instead of competing with the send button. */}
             {agentOn && (
             <div className="relative" ref={menuRef}>
               <button
+                ref={methodBtnRef}
                 type="button"
                 onClick={() => setModeMenuOpen((v) => !v)}
-                className="aq-focus-ring flex h-7 items-center gap-1.5 rounded-sm bg-accent-soft px-2 text-[12px] font-medium text-accent transition-colors hover:bg-accent-soft"
+                className="aq-focus-ring flex h-7 items-center gap-1.5 rounded-sm border border-line-faint bg-sunken px-2 text-[12px] font-medium text-fg-2 transition-colors hover:border-line hover:bg-surface-3 hover:text-fg-1"
                 aria-haspopup="menu"
                 aria-expanded={modeMenuOpen}
                 title={t("agent.tooltip")}
               >
-                <activeMethod.icon size={13} />
+                <activeMethod.icon size={13} className="text-fg-3" />
                 <span className="hidden sm:inline">
                   {`${t("work.method")} · ${t(`work.method.${workMethod}`)}`}
                 </span>
                 <ChevronDown size={11} className="text-fg-3" />
               </button>
-              {modeMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute bottom-[calc(100%+6px)] left-0 z-40 w-[290px] animate-settle overflow-hidden rounded-lg border border-line bg-surface-3 p-1.5 shadow-overlay"
-                >
-                  {METHODS.map((method) => {
-                    const selected = workMethod === method.id;
-                    const Icon = method.icon;
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={selected}
-                        onClick={() => {
-                          setWorkMethod(method.id, resolvedId);
-                          setModeMenuOpen(false);
-                        }}
-                        className={`aq-focus-ring flex w-full items-start gap-2.5 rounded-sm px-2.5 py-2 text-left transition-colors ${
-                          selected ? "bg-accent-soft" : "hover:bg-surface-hover"
-                        }`}
-                      >
-                        {selected ? (
-                          <Check size={13} className="mt-[2px] shrink-0 text-accent" />
-                        ) : (
-                          <Icon size={13} className="mt-[2px] shrink-0 text-fg-3" />
-                        )}
-                        <span className="min-w-0">
-                          <span
-                            className={`block text-[12.5px] font-medium ${selected ? "text-accent" : "text-fg-1"}`}
-                          >
-                            {t(method.labelKey)}
+              {modeMenuOpen && methodPlacement &&
+                createPortal(
+                  <div
+                    ref={methodPopRef}
+                    role="menu"
+                    aria-label={t("work.method")}
+                    className="fixed z-[70] animate-settle overflow-hidden rounded-lg border border-line bg-surface-3 p-1.5 shadow-overlay"
+                    style={{
+                      left: methodPlacement.left,
+                      top: methodPlacement.top,
+                      width: methodPlacement.width,
+                      maxHeight: methodPlacement.maxHeight,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {METHODS.map((method) => {
+                      const selected = workMethod === method.id;
+                      const Icon = method.icon;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={selected}
+                          onClick={() => {
+                            setWorkMethod(method.id, resolvedId);
+                            setModeMenuOpen(false);
+                          }}
+                          className={`aq-focus-ring flex w-full items-start gap-2.5 rounded-sm px-2.5 py-2 text-left transition-colors ${
+                            selected ? "bg-accent-soft" : "hover:bg-surface-hover"
+                          }`}
+                        >
+                          {selected ? (
+                            <Check size={13} className="mt-[2px] shrink-0 text-accent" />
+                          ) : (
+                            <Icon size={13} className="mt-[2px] shrink-0 text-fg-3" />
+                          )}
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-[12.5px] font-medium ${selected ? "text-accent" : "text-fg-1"}`}
+                            >
+                              {t(method.labelKey)}
+                            </span>
+                            <span className="block text-[11px] leading-snug text-fg-3">{t(method.hintKey)}</span>
                           </span>
-                          <span className="block text-[11px] leading-snug text-fg-3">{t(method.hintKey)}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                        </button>
+                      );
+                    })}
+                  </div>,
+                  document.body,
+                )}
             </div>
             )}
 
@@ -696,6 +772,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
               {/* model pill */}
               <div className="relative" ref={modelRef}>
                 <button
+                  ref={modelBtnRef}
                   type="button"
                   onClick={() => setModelOpen((v) => !v)}
                   className="aq-focus-ring hidden h-7 items-center gap-1.5 rounded-sm px-2 text-[11.5px] text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1 md:flex"
@@ -707,11 +784,25 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                   </span>
                   <ChevronDown size={11} className="text-fg-3" />
                 </button>
-                {modelOpen && (
-                  <div className="absolute bottom-[calc(100%+6px)] right-0 z-40 animate-settle">
-                    <ModelPicker sessionId={resolvedId} onClose={() => setModelOpen(false)} />
-                  </div>
-                )}
+                {modelOpen && modelPlacement &&
+                  createPortal(
+                    <div
+                      ref={modelPopRef}
+                      role="dialog"
+                      aria-label={t("composer.selectModel")}
+                      className="fixed z-[70] animate-settle overflow-hidden rounded-lg border border-line bg-surface-3 shadow-overlay"
+                      style={{
+                        left: modelPlacement.left,
+                        top: modelPlacement.top,
+                        width: modelPlacement.width,
+                        maxHeight: modelPlacement.maxHeight,
+                        overflowY: "auto",
+                      }}
+                    >
+                      <ModelPicker sessionId={resolvedId} onClose={() => setModelOpen(false)} />
+                    </div>,
+                    document.body,
+                  )}
               </div>
 
               {dictating ? (

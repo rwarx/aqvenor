@@ -9,6 +9,13 @@ public sealed record ConversationSummary
 {
     public required Guid Id { get; init; }
     public required string Title { get; init; }
+
+    /// <summary>
+    /// True once the person renamed the chat by hand. The client mirrors this into its
+    /// local rename flag so a reload never treats a hand-titled chat as auto-titled again.
+    /// </summary>
+    public bool IsTitleUserDefined { get; init; }
+
     public string? ProviderId { get; init; }
     public string? ModelId { get; init; }
     public DateTimeOffset CreatedAt { get; init; }

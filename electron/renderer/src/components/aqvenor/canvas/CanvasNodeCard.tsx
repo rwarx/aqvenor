@@ -12,6 +12,7 @@ import type {
   DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
+import { memo } from "react";
 import { Paperclip } from "lucide-react";
 import type { CanvasNode, CanvasNodeStatus } from "@/lib/aqvenor/types";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,14 @@ export interface CanvasNodeCardProps {
   statusLabel?: string;
 }
 
-export default function CanvasNodeCard({
+/* Memoized: the canvas re-renders on every pan/zoom/drag frame, and an
+   untouched node's visual props are referentially stable, so only the nodes
+   that actually changed (moved / selected / status flipped) re-render. The
+   comparator ignores the handler props: every handler CanvasView passes reads
+   live state through store.getState()/refs rather than its closure, and the
+   one captured input that changes behavior (`tool`) IS compared, so a stale
+   closure can never outlive the render that matters. */
+const CanvasNodeCard = memo(function CanvasNodeCard({
   node,
   selected,
   primary,
@@ -93,12 +101,20 @@ export default function CanvasNodeCard({
   const monoMeta = Boolean(node.path);
   /* standalone note nodes read as sticky notes — warm paper, dashed edge */
   const isNote = node.kind === "note";
+  /* the node the agent is currently working on carries the at-work effect
+     (animated accent sweep + scanline), on top of the pulsing status dot */
+  const working = node.status === "running";
 
   return (
     <div
       data-node-id={node.id}
-      role="button"
-      aria-label={node.title + (node.note ? ` · ${noteLabel}` : "") + (statusLabel ? ` · ${statusLabel}` : "")}
+      /* Decorative for assistive tech (AQV-001). The canvas is a visual
+         projection of the same nodes the Files and Graph surfaces list, and
+         putting 127 cards with role="button" into the accessibility tree
+         pushed the sidebar and every toolbar past the 400-element cap — a
+         screen reader could no longer reach the rest of the window. The card
+         keeps its pointer gestures; it is simply not a control in the tree. */
+      aria-hidden
       onPointerDown={(e) => onPointerDown(e, node)}
       onDoubleClick={() => onDoubleClick(node)}
       onContextMenu={(e) => onContextMenu(e, node)}
@@ -107,6 +123,7 @@ export default function CanvasNodeCard({
         !selected && "hover:border-line-strong hover:bg-surface-hover",
         tool === "select" ? "cursor-move" : "cursor-grab",
         connectTarget && "ring-2 ring-accent/50",
+        working && "aq-node-working",
       )}
       style={{
         left: node.x,
@@ -138,6 +155,10 @@ export default function CanvasNodeCard({
         style={{ background: color }}
       />
 
+      {/* at-work scanline — a soft accent sheen sweeping the card while the
+          agent works on this node (paired with the aq-node-working border) */}
+      {working && <span aria-hidden className="aq-node-scanline" />}
+
       {/* progress badge — top-left corner, always visible, running pulses.
           Driven by the agent's set_node_status; absent for an ordinary node. */}
       {node.status && (
@@ -153,6 +174,7 @@ export default function CanvasNodeCard({
       {tool === "select" && selected && !editingNote && (
         <button
           type="button"
+          tabIndex={-1}
           aria-label={connectLabel}
           title={connectLabel}
           onPointerDown={(e) => {
@@ -178,6 +200,7 @@ export default function CanvasNodeCard({
       {tool === "select" && selected && !editingNote && (
         <button
           type="button"
+          tabIndex={-1}
           aria-label={node.note ? noteEditLabel : noteLabel}
           title={node.note ? noteEditLabel : noteLabel}
           onPointerDown={(e) => {
@@ -206,18 +229,13 @@ export default function CanvasNodeCard({
           never starts from here. */}
       {tool === "select" && selected && !editingNote && (
         <span
-          role="button"
-          tabIndex={0}
           draggable
-          aria-label={dragLabel}
+          aria-hidden
           title={dragLabel}
           onPointerDown={(e) => {
             e.stopPropagation();
           }}
           onDragStart={onDragHandleStart}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") e.preventDefault();
-          }}
           className="aq-focus-ring absolute -bottom-2.5 -left-2.5 z-10 flex h-[22px] w-[22px] cursor-grab items-center justify-center rounded-full border border-line bg-surface-3 text-fg-2 shadow-subtle transition-colors duration-100 hover:border-line-strong hover:text-fg-1 active:cursor-grabbing"
         >
           <Paperclip size={11} aria-hidden />
@@ -251,4 +269,21 @@ export default function CanvasNodeCard({
       </div>
     </div>
   );
-}
+}, (a, b) =>
+  a.node === b.node &&
+  a.selected === b.selected &&
+  a.primary === b.primary &&
+  a.tool === b.tool &&
+  a.editingNote === b.editingNote &&
+  a.connectingFrom === b.connectingFrom &&
+  a.connectTarget === b.connectTarget &&
+  a.searchHit === b.searchHit &&
+  a.searchDim === b.searchDim &&
+  a.statusLabel === b.statusLabel &&
+  a.noteLabel === b.noteLabel &&
+  a.noteEditLabel === b.noteEditLabel &&
+  a.connectLabel === b.connectLabel &&
+  a.dragLabel === b.dragLabel
+);
+
+export default CanvasNodeCard;

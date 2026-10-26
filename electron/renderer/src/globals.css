@@ -252,6 +252,76 @@
   50% { opacity: 0.55; }
 }
 
+/* ---- AI-at-work effect on the canvas node the agent is working on ----
+   An accent light orbits the card's border (conic gradient whose angle is the
+   animated property — @property keeps the transition on the compositor where
+   Chromium supports it) plus a soft sheen sweeping across the card body. */
+@property --aq-node-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes aq-node-working-sweep {
+  to { --aq-node-angle: 360deg; }
+}
+@keyframes aq-node-scan {
+  0% { left: -45%; }
+  100% { left: 100%; }
+}
+.aq-node-working {
+  /* a static warm edge under the sweep so the border never fully disappears */
+  border-color: var(--aq-accent-border) !important;
+}
+.aq-node-working::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--aq-node-angle),
+    transparent 0deg,
+    var(--aq-accent) 55deg,
+    var(--aq-accent-glow) 75deg,
+    transparent 110deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: aq-node-working-sweep 2.4s linear infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+.aq-node-scanline {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.aq-node-scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, var(--aq-accent-soft), transparent);
+  animation: aq-node-scan 2.2s ease-in-out infinite;
+}
+
+/* ---- canvas GPU compositing ----
+   The world layer rides a compositor-driven transform (translate3d + scale),
+   so pans and zooms repaint nothing in the DOM — the GPU moves the already-
+   rasterized layer. `will-change` keeps it promoted for the canvas's life. */
+.aq-canvas-world {
+  transform-origin: 0 0;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+
 @layer base {
   * {
     @apply border-line outline-accent/60;

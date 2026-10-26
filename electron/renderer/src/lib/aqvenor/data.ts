@@ -376,6 +376,8 @@ export const PROVIDERS: Provider[] = [
       m("qwen/qwen3-max", "Qwen3 Max", "openrouter", 262, { pricePrompt: 0.6 }),
       m("deepseek/deepseek-v3.2", "DeepSeek V3.2", "openrouter", 164, { pricePrompt: 0.28 }),
       m("mistral/mistral-large-2", "Mistral Large 2", "openrouter", 128, { pricePrompt: 2 }),
+      m("google/gemini-2.5-flash-image-preview", "Gemini 2.5 Flash Image", "openrouter", 32, { vision: true, imageGen: true, pricePrompt: 0.135 }),
+      m("openai/dall-e-3", "DALL·E 3", "openrouter", 4, { imageGen: true, pricePrompt: 4 }),
     ],
   },
   {
@@ -451,7 +453,26 @@ export const PROVIDERS: Provider[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = "anthropic/claude-sonnet-4.5";
+export const DEFAULT_MODEL_ID = "";
+
+/* Ids that name image-generation models (used to flag `imageGen` on seeds and
+   to infer the capability from live server catalogues, whose wire shape has no
+   such field). Longest match wins so "gemini-2.5-flash-image" outranks "flash". */
+const IMAGE_GEN_ID_PATTERNS = [
+  "image",
+  "dall-e",
+  "imagen",
+  "banana",
+  "flux",
+  "seedream",
+  "ideogram",
+  "recraft",
+];
+
+export function looksLikeImageGenModel(modelId: string): boolean {
+  const id = modelId.toLowerCase();
+  return IMAGE_GEN_ID_PATTERNS.some((p) => id.includes(p));
+}
 
 export function findModel(modelId: string): Provider["models"][number] | undefined {
   for (const p of PROVIDERS) {

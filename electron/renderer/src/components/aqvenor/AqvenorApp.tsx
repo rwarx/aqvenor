@@ -19,6 +19,7 @@ import { ShortcutCheatsheet } from "./shell/ShortcutCheatsheet";
 import { triggerDictation } from "./chat/Composer";
 import { stopGeneration } from "@/lib/aqvenor/scenario";
 import { isServerMode } from "@/lib/aqvenor/sync";
+import { initProjectFileSync } from "@/lib/aqvenor/project-files";
 import { DockWorkspace } from "./shell/DockWorkspace";
 
 function ToasterBridge() {
@@ -44,8 +45,7 @@ function ToasterBridge() {
 }
 
 export function AqvenorApp() {
-  const theme = useAqvenor((s) => s.ui.theme);
-  const locale = useAqvenor((s) => s.ui.locale);
+  const theme = useAqvenor((s) => s.ui.theme);  const locale = useAqvenor((s) => s.ui.locale);
   const surface = useAqvenor((s) => s.surface);
   const workMode = useAqvenor((s) => s.ui.workMode);
   const workspaceRoot = useAqvenor((s) => s.workspaceRoot);
@@ -61,6 +61,13 @@ export function AqvenorApp() {
   const modeChosen = useAqvenor((s) => s.ui.modeChosen);
   const t = useT();
   useT(); // subscribe for re-render on locale change
+
+  /* Dev-only handle on the store, next to DockWorkspace's `__aqDock`: lets a QA
+     session (or the browser console) read runs/current session without a build. */
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __aqStore?: typeof useAqvenor }).__aqStore = useAqvenor;
+  }, []);
 
   /* theme class on <html>: "system" follows the OS live via matchMedia */
   useEffect(() => {
@@ -90,6 +97,10 @@ export function AqvenorApp() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  /* .aqvenor project folder: mirror the canvas + MCP set into the open
+     workspace (and hydrate them back when a workspace opens) */
+  useEffect(() => initProjectFileSync(), []);
 
   /* global keyboard layer */
   useEffect(() => {

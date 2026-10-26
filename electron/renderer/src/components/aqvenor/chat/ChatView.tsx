@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, CalendarDays, FileSearch, FlaskConical, FolderOpen, ListChecks, Map as MapIcon, Plus } from "lucide-react";
+import { ArrowDown, CalendarDays, FolderOpen, Plus } from "lucide-react";
 import type { Message } from "@/lib/aqvenor/types";
 import { markChatVisible, unmarkChatVisible, useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { fmtDay, fmtTimeShort } from "@/lib/aqvenor/format";
-import { sendMessage } from "@/lib/aqvenor/scenario";
 import { isServerMode, openWorkspaceDialog, syncWorkspaceFiles } from "@/lib/aqvenor/sync";
 import { checkBackend } from "@/lib/aqvenor/backend";
 import { MessageItem, FoldedNotice } from "./MessageItem";
@@ -14,13 +13,6 @@ import { ApprovalGate } from "./ApprovalGate";
 import { Composer } from "./Composer";
 import brandMark from "../../../assets/aqvenor-mark.png";
 import brandMarkLg from "../../../assets/aqvenor-mark-lg.png";
-
-const SUGGESTIONS = [
-  { icon: FileSearch, key: "chat.suggest.tokens", text: "Find every refresh-token usage and explain the flow" },
-  { icon: FlaskConical, key: "chat.suggest.tests", text: "Write tests for TokenService" },
-  { icon: ListChecks, key: "chat.suggest.plan", text: "Draft a migration plan for the token store" },
-  { icon: MapIcon, key: "chat.suggest.explain", text: "Explain the architecture of AuthFlow" },
-];
 
 const TIME_GAP_MS = 10 * 60 * 1000; /* dividers appear at ≥10-minute gaps */
 
@@ -89,11 +81,6 @@ function NeonCorners() {
 
 function StartScreen({ targetSessionId, generating }: { targetSessionId?: string; generating?: boolean }) {
   const t = useT();
-  /* suggestions in a pinned panel send into the pinned session — targeted,
-     no session switch, sibling chats keep streaming. */
-  const sendSuggestion = (text: string) => {
-    sendMessage(text, targetSessionId ? { sessionId: targetSessionId } : undefined);
-  };
   /* project comes from the shared store.workspaceRoot (item 5 single source of
      truth) — populated by syncWorkspaceFiles on boot and by openWorkspaceDialog. */
   const project = useAqvenor((s) => s.workspaceRoot);
@@ -157,24 +144,6 @@ function StartScreen({ targetSessionId, generating }: { targetSessionId?: string
       )}
       <div className="relative z-10 w-full max-w-[720px] animate-rise">
         <Composer targetSessionId={targetSessionId} />
-      </div>
-      <div className="relative z-10 mt-1 flex w-full max-w-[720px] flex-wrap justify-center gap-1.5 px-3">
-        {SUGGESTIONS.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => sendSuggestion(s.text)}
-              style={{ animationDelay: `${80 + i * 40}ms` }}
-              className="aq-focus-ring aq-lift group flex animate-rise items-center gap-1.5 rounded-full border border-line-faint bg-surface-1 px-3 py-1.5 text-[11.5px] text-fg-2 hover:border-line hover:bg-surface-2 hover:text-fg-1"
-              title={s.text}
-            >
-              <Icon size={12} className="text-fg-3 transition-colors group-hover:text-accent" />
-              {t(s.key)}
-            </button>
-          );
-        })}
       </div>
     </div>
   );

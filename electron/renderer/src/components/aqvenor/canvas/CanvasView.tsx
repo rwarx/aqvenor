@@ -699,7 +699,7 @@ export default function CanvasView() {
       /* snapshot of pre-drag positions BEFORE the first mutation */
       useAqvenor.getState().pushUndoSnapshot();
     }
-    const { canvas, moveNode } = useAqvenor.getState();
+    const { canvas } = useAqvenor.getState();
     const r = el.getBoundingClientRect();
     const wx = (e.clientX - r.left - canvas.panX) / canvas.zoom;
     const wy = (e.clientY - r.top - canvas.panY) / canvas.zoom;
@@ -865,9 +865,12 @@ export default function CanvasView() {
     }
     setSnapGuides(guides);
 
-    drag.snapshot.forEach((pos, id) => {
-      moveNode(id, pos.x + dx, pos.y + dy);
-    });
+    /* one store write for the whole selection: a multi-select drag costs one
+       render per frame instead of one store set (and one full re-render) per
+       node per frame */
+    const updates: { id: string; x: number; y: number }[] = [];
+    drag.snapshot.forEach((pos, id) => updates.push({ id, x: pos.x + dx, y: pos.y + dy }));
+    useAqvenor.getState().moveNodes(updates);
   };
 
   const finishMarquee = (e: ReactPointerEvent<HTMLDivElement>, mq: MarqueeState) => {
@@ -1757,7 +1760,8 @@ export default function CanvasView() {
       ref={containerRef}
       tabIndex={0}
       role="application"
-      aria-label={t("canvas.title")}
+      /* one summary instead of one tree node per card (AQV-001) */
+      aria-label={`${t("canvas.title")} — ${t("canvas.a11y.summary", nodes.length, edges.length)}`}
       className={cn(
         "relative h-full w-full touch-none select-none overflow-hidden bg-canvas outline-none focus-visible:ring-1 focus-visible:ring-accent/25",
         tool === "pan" ? "cursor-grab" : "cursor-default",
@@ -2248,12 +2252,13 @@ export default function CanvasView() {
         );
       })()}
 
-      {/* ---- nodes (world space, scaled container) ---- */}
+      {/* ---- nodes (world space, scaled container) ----
+          translate3d keeps the layer on the GPU compositor: pans and zooms
+          move an already-rasterized layer instead of repainting every node. */}
       <div
-        className="absolute left-0 top-0 z-10"
+        className="aq-canvas-world absolute left-0 top-0 z-10"
         style={{
-          transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
-          transformOrigin: "0 0",
+          transform: `translate3d(${panX}px, ${panY}px, 0) scale(${zoom})`,
         }}
       >
         {(visibleNodeIds ? nodes.filter((n) => visibleNodeIds.has(n.id)) : nodes).map((n) => (

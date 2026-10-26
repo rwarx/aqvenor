@@ -492,31 +492,6 @@ export function ContextPanel() {
             )}
           </div>
         </section>
-
-        {/* ask AI */}
-        <section>
-          <Overline className="mb-1.5">{t("context.askAi")}</Overline>
-          <div className="flex flex-col gap-1.5">
-            {[
-              { label: t("chat.suggest.explain"), prompt: "Explain the architecture of AuthFlow" },
-              { label: t("chat.suggest.tokens"), prompt: "Find all token usages" },
-            ].map((item) => (
-              <AqGhostButton
-                key={item.label}
-                className="h-7 justify-start border border-line bg-surface-2 font-medium text-fg-2 hover:bg-surface-hover hover:text-fg-1"
-                onClick={() => {
-                  const st = useAqvenor.getState();
-                  const target = st.focusedChat();
-                  st.setDraft(item.prompt, target);
-                  if (target === st.currentSessionId) setSurface("chat");
-                }}
-              >
-                <Bot size={12} className="text-accent" />
-                <span className="truncate">{item.label}</span>
-              </AqGhostButton>
-            ))}
-          </div>
-        </section>
       </div>
     </aside>
   );

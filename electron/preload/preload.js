@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld("aqvenor", {
   showInFolder: (fullPath) => ipcRenderer.invoke("aqvenor:showInFolder", fullPath),
   readFileLocal: (fullPath) => ipcRenderer.invoke("aqvenor:readFileLocal", fullPath),
   openExternal: (url) => ipcRenderer.invoke("aqvenor:openExternal", url),
+  /* MCP: one request to a built-in server ({builtin:"memory"|"thinking"|"computer"})
+     or a remote Streamable-HTTP endpoint ({url}). Runs in the main process —
+     remote MCP never widens the page's connect-src. */
+  mcp: (target, method, params) => ipcRenderer.invoke("aqvenor:mcp", target, method, params),
   win: {
     minimize: () => ipcRenderer.invoke("aqvenor:winMinimize"),
     maximizeToggle: () => ipcRenderer.invoke("aqvenor:winMaximizeToggle"),

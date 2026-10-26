@@ -109,10 +109,6 @@ export const de: Dictionary = {
   "chat.voice.hint": "Spracheingabe",
   "chat.folded": "{0} ältere Nachrichten zusammengefasst",
   "chat.folded.one": "{0} ältere Nachricht zusammengefasst",
-  "chat.suggest.explain": "Architektur erklären",
-  "chat.suggest.tokens": "Alle Token-Verwendungen finden",
-  "chat.suggest.tests": "Tests für TokenService schreiben",
-  "chat.suggest.plan": "Migrationsplan entwerfen",
 
   /* agent modes */
   "agent.label": "Agent",
@@ -267,6 +263,7 @@ export const de: Dictionary = {
 
   /* canvas */
   "canvas.title": "Canvas",
+  "canvas.a11y.summary": "Grafikkarte, {0} Knoten und {1} Verbindungen. Dieselben Knoten stehen in „Dateien“ und „Graph“, wo sie per Tastatur erreichbar sind.",
   "canvas.blank.title": "Der Canvas ist leer",
   "canvas.blank.hint": "Öffne einen Arbeitsbereich, um ihn als Karte zu sehen, oder bitte den Agenten um einen Plan — er zeichnet ihn hier.",
   "canvas.open": "Arbeitsbereich öffnen",
@@ -960,6 +957,9 @@ export const de: Dictionary = {
   "dock.popout": "Panel ablösen",
   "dock.openBeside": "Daneben öffnen",
   "dock.openBesideHint": "Alt+Klick öffnet ebenfalls daneben",
+  "dock.noRoom.title": "Zu wenig Platz zum Teilen",
+  "dock.noRoom.desc": "Über dem aktuellen Panel geöffnet — ziehen Sie den Eintrag an einen Rand, wenn er in einer Spalte stehen soll.",
+  "dock.noRoom.chatDesc": "Stattdessen im Haupt-Chat-Panel geöffnet.",
 
   /* Sitzungs-Verzweigung */
   "session.fork.badge": "Fork",
@@ -1165,4 +1165,54 @@ export const de: Dictionary = {
   "settings.reset.confirm": "Erneut klicken zum Zurücksetzen",
   "settings.reset.done": "Bereich zurückgesetzt.",
   "settings.shortcuts.hint": "Derzeit feste Tastenkombinationen.",
+
+  /* Seitenleiste anpassen (Elemente ein-/ausblenden) */
+  "sidebar.edit.start": "Seitenleiste anpassen",
+  "sidebar.edit.done": "Fertig",
+  "sidebar.edit.hint": "Auf ein Element klicken, um es ein- oder auszublenden.",
+
+  /* Faehigkeiten-Leiste einer Modellzeile (Hover in Einstellungen - Modelle) */
+  "cap.text": "Text",
+  "cap.images": "Bildeingabe",
+  "cap.generation": "Bilderzeugung",
+  "cap.tools": "Werkzeuge",
+
+  /* Bildgenerierung (/image) */
+  "slash.cmd.image": "Bild generieren",
+  "slash.cmd.image.hint": "Zeichnet ein Bild anhand einer Beschreibung",
+  "slash.cmd.think": "Schrittweise denken",
+  "slash.cmd.think.hint": "Bettet die Anfrage in ein strukturiertes Denkgeruest ein",
+  "imagegen.noModel.title": "Kein Bildmodell",
+  "imagegen.noModel.desc": "Verbinde einen Anbieter mit Bildmodell (z. B. OpenRouter) und versuche es erneut.",
+  "imagegen.working": "Bild wird erstellt\u2026",
+  "imagegen.think.scaffold": "Arbeite das Schritt fuer Schritt durch. Nummeriere deine Gedanken, korrigiere sie explizit, wenn eine Annahme scheitert, und gib nach dem letzten Gedanken eine klare Antwort.",
+
+  /* MCP (Einstellungen - Tools & Skills - MCP) */
+  "settings.nav.mcp": "MCP",
+  "settings.nav.mcp.kw": "mcp server model context protocol tools verbinden",
+  "settings.mcp.hint": "Model-Context-Protocol-Server: die integrierten laufen sofort nach einem Klick, entfernte Streamable-HTTP-Server per URL.",
+  "mcp.connected": "Verbundene MCP-Server",
+  "mcp.empty": "Noch keine MCP-Server \u2014 installiere einen integrierten oder fuege einen entfernten hinzu.",
+  "mcp.remove": "Server entfernen",
+  "mcp.install": "Installieren",
+  "mcp.installed": "Installiert",
+  "mcp.builtins": "Integrierte Server",
+  "mcp.builtins.hint": "Liefern mit Aqvenor mit, laufen lokal, keine Schluessel noetig.",
+  "mcp.add": "Entfernten Server hinzufuegen",
+  "mcp.add.hint": "Jeder MCP-Server mit Streamable HTTP (URL wie https://example.com/mcp).",
+  "mcp.add.name": "Name",
+  "mcp.add.url": "Server-URL",
+  "mcp.add.button": "Hinzufuegen",
+  "mcp.add.badUrl": "Die URL muss mit http:// oder https:// beginnen",
+  "mcp.projectNote": "Die konfigurierten Server werden in .aqvenor/mcp.json des Projekts gespeichert und reisen so mit dem Ordner.",
+  "mcp.state.connected": "verbunden",
+  "mcp.state.error": "Fehler",
+  "mcp.state.connecting": "pruefe\u2026",
+  "mcp.state.off": "aus",
+  "mcp.builtin.memory.name": "Memory",
+  "mcp.builtin.memory.desc": "Dauerhaftes Gedaechtnis zwischen Chats: der Agent erinnert sich in jedem neuen Gespraech an fruehere Fakten.",
+  "mcp.builtin.thinking.name": "Sequential Thinking",
+  "mcp.builtin.thinking.desc": "Ein Heft nummerierter Gedanken fuer schrittweises Denken, Korrekturen und Verzweigungen.",
+  "mcp.builtin.computer.name": "Computer",
+  "mcp.builtin.computer.desc": "Nutzt diesen Computer: Screenshots, Dateien oeffnen, Benachrichtigungen und Zwischenablage.",
 };

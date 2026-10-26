@@ -76,6 +76,139 @@ public abstract class OpenAiCompatibleProvider : IAIProvider
 
     protected virtual string ChatCompletionsPath => "chat/completions";
 
+    /// <summary>
+    /// Path of a native images endpoint (<c>images/generations</c> on OpenAI). Null — the
+    /// default — means the provider generates images through <c>chat/completions</c> with the
+    /// <c>modalities</c> field, the shape gateway image models (OpenRouter's Gemini image,
+    /// DALL·E) answer on.
+    /// </summary>
+    protected virtual string? ImagesGenerationPath => null;
+
+    /// <summary>One generated image: a <c>data:</c> URL or a remote https URL, plus the
+    /// provider's revised prompt when it rewrote one.</summary>
+    public sealed record ImageGenerationResult(string Image, string? RevisedPrompt);
+
+    /// <summary>
+    /// Generates one image from a text prompt. Splits by <see cref="ImagesGenerationPath"/>:
+    /// native images endpoints get <c>{model, prompt, n:1}</c>; everything else rides chat
+    /// completions with <c>modalities:["image","text"]</c> and reads the first
+    /// <c>message.images[0]</c> block.
+    /// </summary>
+    public async Task<ImageGenerationResult> GenerateImageAsync(
+        string prompt,
+        string modelId,
+        CancellationToken cancellationToken)
+    {
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+
+        if (ImagesGenerationPath is { } imagesPath)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/{imagesPath}")
+            {
+                Content = JsonContent.Create(new { model = modelId, prompt, n = 1 }),
+            };
+            await AuthorizeAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw await CreateErrorAsync(response, cancellationToken).ConfigureAwait(false);
+            }
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var item = document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("data", out var data)
+                && data.ValueKind == JsonValueKind.Array
+                && data.GetArrayLength() > 0
+                    ? data[0]
+                    : default;
+            if (item.ValueKind == JsonValueKind.Object)
+            {
+                var revised = ReadString(item, "revised_prompt");
+                var b64 = ReadString(item, "b64_json");
+                if (!string.IsNullOrEmpty(b64))
+                {
+                    return new ImageGenerationResult($"data:image/png;base64,{b64}", revised);
+                }
+
+                var url = ReadString(item, "url");
+                if (!string.IsNullOrEmpty(url))
+                {
+                    return new ImageGenerationResult(url, revised);
+                }
+            }
+
+            throw new AIProviderException(
+                AIErrorKind.Unknown,
+                $"{DisplayName} returned no image for this prompt.",
+                null,
+                Id);
+        }
+
+        // chat/completions + modalities — the gateway shape.
+        using var chatRequest = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/{ChatCompletionsPath}")
+        {
+            Content = JsonContent.Create(new
+            {
+                model = modelId,
+                messages = new[] { new { role = "user", content = prompt } },
+                modalities = new[] { "image", "text" },
+            }),
+        };
+        await AuthorizeAsync(chatRequest, cancellationToken).ConfigureAwait(false);
+        using var chatResponse = await client.SendAsync(chatRequest, cancellationToken).ConfigureAwait(false);
+        if (!chatResponse.IsSuccessStatusCode)
+        {
+            throw await CreateErrorAsync(chatResponse, cancellationToken).ConfigureAwait(false);
+        }
+        await using var chatStream = await chatResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var chatDocument = await JsonDocument.ParseAsync(chatStream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var root = chatDocument.RootElement;
+
+        // Some gateways report failures inside a 200.
+        if (root.ValueKind == JsonValueKind.Object
+            && root.TryGetProperty("error", out var error)
+            && error.ValueKind == JsonValueKind.Object)
+        {
+            throw new AIProviderException(
+                AIErrorKind.ServerError,
+                ReadString(error, "message") ?? $"{DisplayName} reported an error while generating.",
+                null,
+                Id);
+        }
+
+        if (root.TryGetProperty("choices", out var choices)
+            && choices.ValueKind == JsonValueKind.Array
+            && choices.GetArrayLength() > 0
+            && choices[0].ValueKind == JsonValueKind.Object
+            && choices[0].TryGetProperty("message", out var message)
+            && message.ValueKind == JsonValueKind.Object
+            && message.TryGetProperty("images", out var images)
+            && images.ValueKind == JsonValueKind.Array
+            && images.GetArrayLength() > 0)
+        {
+            var first = images[0];
+            var url = ReadString(first, "image_url");
+            if (string.IsNullOrEmpty(url)
+                && first.ValueKind == JsonValueKind.Object
+                && first.TryGetProperty("image_url", out var imageUrl)
+                && imageUrl.ValueKind == JsonValueKind.Object)
+            {
+                url = ReadString(imageUrl, "url");
+            }
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                return new ImageGenerationResult(url, null);
+            }
+        }
+
+        throw new AIProviderException(
+            AIErrorKind.Unknown,
+            $"{DisplayName} returned no image for this prompt.",
+            null,
+            Id);
+    }
+
     /// <summary>Adds provider-specific headers. The Authorization header is added by the base class.</summary>
     protected virtual void ConfigureRequest(HttpRequestMessage request)
     {

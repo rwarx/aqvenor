@@ -108,10 +108,6 @@ export const en: Record<string, string> = {
   "chat.voice.hint": "Voice dictation",
   "chat.folded": "{0} older messages folded into a summary",
   "chat.folded.one": "{0} older message folded into a summary",
-  "chat.suggest.explain": "Explain the architecture",
-  "chat.suggest.tokens": "Find all token usages",
-  "chat.suggest.tests": "Write tests for TokenService",
-  "chat.suggest.plan": "Draft a migration plan",
 
   /* agent modes */
   "agent.label": "Agent",
@@ -267,6 +263,7 @@ export const en: Record<string, string> = {
 
   /* canvas */
   "canvas.title": "Canvas",
+  "canvas.a11y.summary": "graph map, {0} nodes and {1} connections. The same nodes are listed in Files and Graph, where they can be reached from the keyboard.",
   "canvas.blank.title": "The canvas is empty",
   "canvas.blank.hint": "Open a workspace to see it as a map, or ask the agent for a plan and have it drawn here.",
   "canvas.open": "Open Workspace",
@@ -959,6 +956,9 @@ export const en: Record<string, string> = {
   "dock.popout": "Float active panel",
   "dock.openBeside": "Open beside",
   "dock.openBesideHint": "Alt+click opens beside too",
+  "dock.noRoom.title": "Not enough room to split",
+  "dock.noRoom.desc": "Opened on top of the current panel — drag the sidebar item to an edge of the workspace when you want it in a column.",
+  "dock.noRoom.chatDesc": "Opened in the main chat panel instead.",
 
   /* session fork */
   "session.fork.badge": "fork",
@@ -1163,4 +1163,54 @@ export const en: Record<string, string> = {
   "settings.reset.confirm": "Click again to reset",
   "settings.reset.done": "Section reset to defaults.",
   "settings.shortcuts.hint": "Fixed keybindings for now.",
+
+  /* sidebar editing (show/hide workspace elements) */
+  "sidebar.edit.start": "Customize sidebar",
+  "sidebar.edit.done": "Done customizing",
+  "sidebar.edit.hint": "Click an item to show or hide it in the sidebar.",
+
+  /* model capability bar (hover in Settings - Models) */
+  "cap.text": "Text",
+  "cap.images": "Image input",
+  "cap.generation": "Image generation",
+  "cap.tools": "Tools",
+
+  /* image generation (/image) */
+  "slash.cmd.image": "Generate image",
+  "slash.cmd.image.hint": "Draw a picture from a prompt",
+  "slash.cmd.think": "Think step by step",
+  "slash.cmd.think.hint": "Wrap the request in a structured reasoning scaffold",
+  "imagegen.noModel.title": "No image model",
+  "imagegen.noModel.desc": "Connect a provider with an image model (e.g. OpenRouter) and try again.",
+  "imagegen.working": "Generating image\u2026",
+  "imagegen.think.scaffold": "Work through this step by step. Number your thoughts, revise them explicitly when an assumption fails, and state the final answer clearly after the last thought.",
+
+  /* MCP (Settings - Tools & Skills - MCP) */
+  "settings.nav.mcp": "MCP",
+  "settings.nav.mcp.kw": "mcp servers model context protocol tools connect",
+  "settings.mcp.hint": "Model Context Protocol servers: the built-ins ship with the app and install with one click; remote Streamable-HTTP servers connect by URL.",
+  "mcp.connected": "Connected MCP servers",
+  "mcp.empty": "No MCP servers yet \u2014 install a built-in below or add a remote endpoint.",
+  "mcp.remove": "Remove server",
+  "mcp.install": "Install",
+  "mcp.installed": "Installed",
+  "mcp.builtins": "Built-in servers",
+  "mcp.builtins.hint": "Ship with Aqvenor, run locally, no keys needed.",
+  "mcp.add": "Add a remote server",
+  "mcp.add.hint": "Any MCP server that speaks Streamable HTTP (a URL like https://example.com/mcp).",
+  "mcp.add.name": "Name",
+  "mcp.add.url": "Server URL",
+  "mcp.add.button": "Add",
+  "mcp.add.badUrl": "The URL must start with http:// or https://",
+  "mcp.projectNote": "The servers you configure are saved to the project's .aqvenor/mcp.json, so the setup travels with the folder.",
+  "mcp.state.connected": "connected",
+  "mcp.state.error": "error",
+  "mcp.state.connecting": "checking\u2026",
+  "mcp.state.off": "off",
+  "mcp.builtin.memory.name": "Memory",
+  "mcp.builtin.memory.desc": "Durable memory between chats: the agent recalls facts from earlier conversations in every new one.",
+  "mcp.builtin.thinking.name": "Sequential Thinking",
+  "mcp.builtin.thinking.desc": "A numbered-thought scratchpad for step-by-step reasoning, revisions and branches.",
+  "mcp.builtin.computer.name": "Computer",
+  "mcp.builtin.computer.desc": "Uses this computer: screenshots, opening files, notifications and the clipboard.",
 };

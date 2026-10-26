@@ -64,6 +64,10 @@ public sealed class OpenAiProvider : OpenAiCompatibleProvider
 
     protected override string HttpClientName => ProviderId;
 
+    // OpenAI exposes a native images endpoint, so image generation goes there
+    // rather than through chat completions with modalities.
+    protected override string? ImagesGenerationPath => "images/generations";
+
     protected override IReadOnlyList<AIModelDescriptor> ParseModels(JsonDocument document)
     {
         var models = new List<AIModelDescriptor>();

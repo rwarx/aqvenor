@@ -267,6 +267,9 @@ async function describeFailure(res: Response, path: string): Promise<string> {
 export interface ServerConversationSummary {
   id: string;
   title: string;
+  /** true once the person renamed the chat by hand — keeps the client's
+   *  rename flag in sync so reloads never clobber a hand-set title */
+  isTitleUserDefined?: boolean;
   providerId?: string | null;
   modelId?: string | null;
   createdAt: string;
@@ -315,6 +318,7 @@ export interface ServerMessage {
 export interface ServerConversationDetail {
   id: string;
   title: string;
+  isTitleUserDefined?: boolean;
   providerId?: string | null;
   modelId?: string | null;
   createdAt: string;
@@ -760,4 +764,14 @@ export const ai = {
   // AbortError when `signal` fires — ghost-text supersedes its own requests, so callers swallow that.
   complete: (body: CompleteRequestBody, signal?: AbortSignal) =>
     api<CompleteResult>(`/api/ai/complete`, { method: "POST", body: JSON.stringify(body), signal }),
+
+  // Text-to-image. Returns a `data:` URL (or a remote https URL) plus the
+  // provider's revised prompt when it rewrote one. Same key handling as
+  // complete: the sidecar attaches the credential, none of it crosses the wire.
+  image: (body: { providerId: string; modelId: string; prompt: string }, signal?: AbortSignal) =>
+    api<{ image: string; revisedPrompt?: string | null }>(`/api/ai/image`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal,
+    }),
 };

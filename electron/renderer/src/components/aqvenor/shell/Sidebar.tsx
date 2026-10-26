@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  Eye,
+  EyeOff,
   Frame,
   ListTodo,
   FileCode2,
@@ -16,9 +18,9 @@ import {
   CornerDownRight,
   GitBranch,
   GitFork,
-  MoreHorizontal,
   MessageSquare,
   Moon,
+  MoreHorizontal,
   PanelRight,
   Pencil,
   Pin,
@@ -29,6 +31,7 @@ import {
   Store,
   Sun,
   Trash2,
+  Users,
   Waypoints,
   Workflow,
   X,
@@ -40,6 +43,7 @@ import type { Project, Session, Surface } from "@/lib/aqvenor/types";
 import { MODE_SURFACES } from "@/lib/aqvenor/modes";
 import { AqGhostButton, AqToolButton, Overline } from "@/components/aqvenor/ui";
 import { DOCK_SURFACE_MIME } from "./DockWorkspace";
+import { ExportMenu } from "./ExportMenu";
 import { getNodeDragIds, hasNodeDrag, setSessionDrag } from "@/lib/aqvenor/dnd";
 import { attachCanvasNodeToDraft } from "@/lib/aqvenor/attachNode";
 
@@ -83,6 +87,9 @@ function NavItem({
   collapsed,
   badge,
   onClick,
+  editing,
+  visible = true,
+  onToggleVisible,
 }: {
   surface: Surface;
   icon: React.ElementType;
@@ -90,6 +97,10 @@ function NavItem({
   collapsed: boolean;
   badge?: number;
   onClick: () => void;
+  /** sidebar edit mode: the row becomes a visibility toggle, not a link */
+  editing?: boolean;
+  visible?: boolean;
+  onToggleVisible?: () => void;
 }) {
   const t = useT();
   const active = useAqvenor((s) => s.surface) === surface;
@@ -112,7 +123,7 @@ function NavItem({
     (window as unknown as { __aqDockSplit?: (s: string) => void }).__aqDockSplit?.(surface);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="group/nav relative">
       <button
         type="button"
         draggable
@@ -121,18 +132,22 @@ function NavItem({
           e.dataTransfer.effectAllowed = "copy";
         }}
         onClick={(e) => {
+          if (editing) {
+            onToggleVisible?.();
+            return;
+          }
           if (e.altKey) split();
           else onClick();
         }}
         onContextMenu={(e) => {
           e.preventDefault();
-          setMenuOpen(true);
+          if (!editing) setMenuOpen(true);
         }}
         title={collapsed ? label : undefined}
         aria-current={active ? "page" : undefined}
         className={`aq-focus-ring group relative flex h-[30px] w-full items-center gap-2.5 rounded-sm px-2 text-left transition-colors duration-100 ${
           active ? "bg-accent-soft text-accent" : "text-fg-2 hover:bg-surface-hover hover:text-fg-1"
-        } ${collapsed ? "justify-center px-0" : ""}`}
+        } ${collapsed ? "justify-center px-0" : ""} ${editing && !visible ? "opacity-45" : ""}`}
       >
         <span
           className={`absolute left-0 top-1/2 h-[14px] w-[2px] -translate-y-1/2 rounded-full bg-accent transition-all duration-150 ${
@@ -142,12 +157,36 @@ function NavItem({
         />
         <Icon size={14} className={active ? "text-accent" : "text-fg-3 group-hover:text-fg-2"} />
         {!collapsed && <span className="truncate text-[12.5px] font-medium">{label}</span>}
-        {!collapsed && badge !== undefined && badge > 0 && (
+        {!collapsed && editing && (
+          <span className="ml-auto flex shrink-0 items-center gap-1 text-fg-3">
+            {visible ? <Eye size={12} /> : <EyeOff size={12} />}
+          </span>
+        )}
+        {!collapsed && !editing && badge !== undefined && badge > 0 && (
           <span className="ml-auto rounded-full bg-accent-soft px-1.5 py-px font-mono text-[10px] text-accent">
             {badge}
           </span>
         )}
       </button>
+
+      {/* explicit docking: the row itself opens the surface on top of the current
+          panel; this puts it in a column of its own (same as Alt+click and the
+          row menu). A sibling of the row, because a button cannot nest in a
+          button. With no tab strip this is the visible way to dock. */}
+      {!collapsed && !editing && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            split();
+          }}
+          aria-label={t("dock.openBeside")}
+          title={t("dock.openBeside")}
+          className="aq-focus-ring absolute right-1 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-xs text-fg-3 opacity-0 transition-opacity duration-100 hover:bg-surface-3 hover:text-fg-1 focus-visible:opacity-100 group-hover/nav:opacity-100"
+        >
+          <PanelRight size={11} aria-hidden />
+        </button>
+      )}
 
       {menuOpen && (
         <div className="absolute left-0 top-8 z-30 w-52 animate-settle rounded-md border border-line bg-surface-3 p-1 shadow-overlay">
@@ -764,31 +803,100 @@ export function Sidebar() {
   }, [resizing]);
 
   const collapsed = ui.sidebarCollapsed;
+  /* sidebar edit mode: nav rows become show/hide toggles (persisted in
+     ui.hiddenNavItems — the person decides which elements the sidebar shows) */
+  const [navEdit, setNavEdit] = useState(false);
+  const hiddenNav = ui.hiddenNavItems ?? [];
+  const toggleNavVisible = (id: Surface) => {
+    const next = hiddenNav.includes(id) ? hiddenNav.filter((x) => x !== id) : [...hiddenNav, id];
+    setUi({ hiddenNavItems: next });
+  };
 
   const body = (
     <div className="flex h-full flex-col bg-surface-1">
+      {/* work-mode switch (Chat / Cowork / Code) — the header no longer carries
+          it, so the sidebar is its always-visible home. In the collapsed rail the
+          three become fixed square buttons in a column: `flex-1` there has no
+          free space to grow into (the container is auto-height), so it collapsed
+          them from 26px to the 12px of the icon and they piled up on each other. */}
+      <div
+        className={`flex ${collapsed ? "flex-col items-center gap-1 px-1.5" : "gap-0.5 px-2"} pb-1.5 pt-2`}
+      >
+        {([
+          { id: "chat", icon: MessageSquare, key: "work.mode.chat" },
+          { id: "cowork", icon: Users, key: "work.mode.cowork" },
+          { id: "code", icon: FileCode2, key: "work.mode.code" },
+        ] as const).map(({ id, icon: Icon, key }) => {
+          const active = ui.workMode === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => useAqvenor.getState().setWorkMode(id)}
+              title={t(`${key}.hint`)}
+              aria-pressed={active}
+              aria-label={collapsed ? t(key) : undefined}
+              className={`aq-focus-ring flex ${collapsed ? "h-7 w-7 shrink-0" : "h-[26px] flex-1"} items-center justify-center gap-1.5 rounded-sm text-[11.5px] font-medium transition-colors duration-100 ${
+                active
+                  ? "bg-surface-3 text-fg-1 shadow-sm"
+                  : "text-fg-3 hover:bg-surface-hover hover:text-fg-2"
+              }`}
+            >
+              <Icon size={collapsed ? 13 : 12} className={active ? "text-accent" : ""} />
+              {!collapsed && <span className="truncate">{t(key)}</span>}
+            </button>
+          );
+        })}
+      </div>
+
       {/* rail — workflows / models (palette lives on its shortcuts) */}
-      <nav className={`flex flex-col gap-px ${collapsed ? "px-1.5" : "px-2"} pb-1.5 pt-2`}>
+      <nav className={`flex flex-col gap-px ${collapsed ? "px-1.5" : "px-2"} pb-1.5`}>
         <NavItem surface="workflows" icon={Workflow} label={t("sidebar.rail.workflows")} collapsed={collapsed} onClick={() => setSurface("workflows")} />
         <NavItem surface="models" icon={Store} label={t("sidebar.rail.models")} collapsed={collapsed} onClick={() => setSurface("models")} />
       </nav>
 
       <div className={`mx-3 h-px bg-line-faint ${collapsed ? "mx-2" : ""}`} />
 
-      {/* navigation — scoped to the active work mode (chat / cowork / code) */}
+      {/* navigation — scoped to the active work mode (chat / cowork / code);
+          edit mode (pencil) turns rows into show/hide toggles so the person
+          chooses which elements live in the sidebar */}
       <nav className={`flex flex-col gap-px ${collapsed ? "px-1.5" : "px-2"} pb-2 pt-1.5`} aria-label={t("sidebar.section.workspace")}>
-        {!collapsed && <Overline className="px-2 pb-1 pt-1">{t("sidebar.section.workspace")}</Overline>}
-        {NAV.filter((item) => MODE_SURFACES[ui.workMode].includes(item.id)).map((item) => (
-          <NavItem
-            key={item.id}
-            surface={item.id}
-            icon={item.icon}
-            label={t(item.key)}
-            collapsed={collapsed}
-            badge={item.id === "trajectory" ? eventsCount : undefined}
-            onClick={() => setSurface(item.id)}
-          />
-        ))}
+        {!collapsed && (
+          <div className="flex items-center justify-between px-2 pb-1 pt-1">
+            <Overline>{t("sidebar.section.workspace")}</Overline>
+            <button
+              type="button"
+              onClick={() => setNavEdit((v) => !v)}
+              aria-pressed={navEdit}
+              title={navEdit ? t("sidebar.edit.done") : t("sidebar.edit.start")}
+              aria-label={navEdit ? t("sidebar.edit.done") : t("sidebar.edit.start")}
+              className={`aq-focus-ring flex h-5 w-5 items-center justify-center rounded-xs transition-colors ${
+                navEdit ? "bg-accent-soft text-accent" : "text-fg-3 hover:bg-surface-hover hover:text-fg-1"
+              }`}
+            >
+              <Pencil size={11} />
+            </button>
+          </div>
+        )}
+        {navEdit && !collapsed && (
+          <p className="px-2 pb-1 text-[10.5px] leading-snug text-fg-3">{t("sidebar.edit.hint")}</p>
+        )}
+        {NAV.filter((item) => MODE_SURFACES[ui.workMode].includes(item.id))
+          .filter((item) => navEdit || !hiddenNav.includes(item.id))
+          .map((item) => (
+            <NavItem
+              key={item.id}
+              surface={item.id}
+              icon={item.icon}
+              label={t(item.key)}
+              collapsed={collapsed}
+              badge={item.id === "trajectory" ? eventsCount : undefined}
+              onClick={() => setSurface(item.id)}
+              editing={navEdit && !collapsed}
+              visible={!hiddenNav.includes(item.id)}
+              onToggleVisible={() => toggleNavVisible(item.id)}
+            />
+          ))}
       </nav>
 
       <div className={`mx-3 h-px bg-line-faint ${collapsed ? "mx-2" : ""}`} />
@@ -951,6 +1059,7 @@ export function Sidebar() {
         <AqToolButton onClick={() => setSurface("settings")} active={useAqvenor.getState().surface === "settings"} aria-label={t("sidebar.settings")}>
           <Settings size={14} />
         </AqToolButton>
+        <ExportMenu up />
         <AqToolButton
           onClick={() => setUi({ theme: ui.theme === "dark" ? "light" : "dark" })}
           aria-label={t(`theme.${ui.theme === "dark" ? "light" : "dark"}`)}

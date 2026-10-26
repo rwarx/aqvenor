@@ -11,6 +11,55 @@ Versions are also published on the
 
 ---
 
+## [0.3.0-alpha] — 2026-10-26
+
+### Added
+
+- **MCP servers.** Built-in catalogues install in one click (Memory is one), remote HTTP endpoints
+  can be added by URL, and the set survives a restart. The list lives in Settings → MCP and mirrors
+  into `<project>/.aqvenor/mcp.json`.
+- **`/image` generation.** The command picks an image-capable model out of the live catalogue on its
+  own and sends the prompt to the provider's image endpoint; a provider refusal is reported in plain
+  words instead of an endless spinner.
+- **`.aqvenor` project folder.** The canvas, the MCP set and a README are mirrored into the open
+  workspace, and read back when a workspace is opened — so the spatial layout travels with the repo.
+- **Export / import menu** in the sidebar and the page header.
+- **Editable sidebar.** The pencil turns the workspace rows into show/hide toggles; the choice is
+  persisted per user.
+
+### Fixed
+
+- **A click no longer splits the workspace.** Every sidebar click used to dock the surface to the
+  right of the active panel. Eight visits to the sidebar meant eight side-by-side columns — the
+  settings panel had been squeezed to 150px and its Install button to **2px**, so the click missed.
+  A plain open now lays the surface **on top of the panel already in that group** — the sidebar is the
+  switcher, and there is no tab strip to read past. Docking became explicit: the row's **open beside**
+  button (visible on hover), `Alt+click`, the row menu, or dragging a sidebar item to a dock edge.
+  Each panel keeps a hover-close; closing the last one rebuilds the mode default.
+- **The collapsed sidebar no longer squashes the work-mode buttons.** In the 48px rail the three
+  buttons were `flex-1` inside an auto-height column, so flex shrank them from 26px to the 12px of
+  their icons and they piled up on each other (the reported glitch). They are fixed 28×28 squares
+  now, with `aria-label`s so the rail still reads correctly.
+- **Dock panels have a floor.** Each panel carries `minimumWidth: 260 / minimumHeight: 200`, and a
+  split that would leave less than that opens in place (with a toast) instead of producing a sliver.
+- **Saved layouts from the tiling dock are retired.** The layout is persisted in a versioned
+  envelope; a v1 layout is dropped once and rebuilt as a single group, so an existing install does
+  not start up on the old wall of columns.
+- **Canvas nodes no longer flood the accessibility tree.** A 127-node graph put 127 `role="button"`
+  cards into the tree, pushing the sidebar and toolbars past the 400-element cap — a screen reader
+  lost the rest of the window. The cards are decorative for assistive tech now (the same nodes are
+  reachable in Files and Graph) and the canvas exposes one summary label with the counts.
+- **The composer's model picker can no longer open off screen.** It was absolutely positioned inside
+  a scrolled panel and was measured at `y ≈ −18858`. Popups (model picker, work-method menu) now
+  render through a portal, `position: fixed`, clamped into the viewport and flipped when the room
+  above runs out.
+- **New chats get auto-titles again.** The client sent the "New chat" placeholder as the title on
+  `conversations.create`; the server reads any non-empty title as a hand rename and sets
+  `IsTitleUserDefined = true`, which disabled auto-titling for that chat forever. Only a real,
+  hand-typed title travels now.
+
+---
+
 ## [0.2.0-alpha] — 2026-10-19
 
 The first release published under the name **Aqvenor** — the same application

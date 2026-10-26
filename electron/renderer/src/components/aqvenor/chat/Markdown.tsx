@@ -161,6 +161,7 @@ type MdBlock =
   | { type: "heading"; level: number; text: string }
   | { type: "code"; language: string; code: string }
   | { type: "list"; items: string[] }
+  | { type: "image"; alt: string; url: string }
   | { type: "paragraph"; text: string };
 
 function parseMarkdown(src: string): MdBlock[] {
@@ -181,6 +182,13 @@ function parseMarkdown(src: string): MdBlock[] {
       const heading = trimmed.match(/^(#{1,4})\s+(.*)$/);
       if (heading && trimmed.startsWith("#")) {
         blocks.push({ type: "heading", level: heading[1].length, text: heading[2] });
+        continue;
+      }
+      /* a paragraph that is exactly one markdown image renders as a figure —
+         this is the shape generated images (/image) come back in */
+      const image = trimmed.match(/^!\[([^\]]*)\]\((\S+?)\)$/);
+      if (image) {
+        blocks.push({ type: "image", alt: image[1], url: image[2] });
         continue;
       }
       const lines = trimmed.split("\n");
@@ -209,6 +217,22 @@ export function Markdown({ text }: { text: string }) {
         }
         if (b.type === "code") {
           return <CodeBlock key={i} code={b.code} language={b.language} />;
+        }
+        if (b.type === "image") {
+          return (
+            <figure key={i} className="my-2">
+              <img
+                src={b.url}
+                alt={b.alt}
+                loading="lazy"
+                draggable={false}
+                className="max-h-[420px] max-w-full rounded-md border border-line-faint bg-sunken object-contain"
+              />
+              {b.alt && (
+                <figcaption className="mt-1 text-[11px] text-fg-3">{b.alt}</figcaption>
+              )}
+            </figure>
+          );
         }
         if (b.type === "list") {
           return (

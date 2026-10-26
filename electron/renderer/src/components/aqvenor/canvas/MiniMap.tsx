@@ -7,7 +7,7 @@
    the main canvas on the corresponding world point.
    ============================================================ */
 
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { CanvasNode } from "@/lib/aqvenor/types";
 import { kindColorVar, nodeH, nodeW, nodesBounds } from "./canvas-utils";
@@ -28,7 +28,7 @@ export interface MiniMapProps {
   onCenterWorld: (wx: number, wy: number) => void;
 }
 
-export function MiniMap({
+export const MiniMap = memo(function MiniMap({
   nodes,
   selectedIds,
   zoom,
@@ -134,4 +134,4 @@ export function MiniMap({
       </svg>
     </div>
   );
-}
+});

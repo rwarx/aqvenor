@@ -111,10 +111,6 @@ export const ru: Dictionary = {
   "chat.folded.one": "{0} старое сообщение свёрнуто в краткое резюме",
   "chat.folded.few": "{0} старых сообщения свёрнуты в краткое резюме",
   "chat.folded.many": "{0} старых сообщений свёрнуто в краткое резюме",
-  "chat.suggest.explain": "Объяснить архитектуру",
-  "chat.suggest.tokens": "Найти все использования токенов",
-  "chat.suggest.tests": "Написать тесты для TokenService",
-  "chat.suggest.plan": "Составить план миграции",
 
   /* agent modes */
   "agent.label": "Агент",
@@ -275,6 +271,7 @@ export const ru: Dictionary = {
 
   /* canvas */
   "canvas.title": "Канвас",
+  "canvas.a11y.summary": "карта графа, узлов: {0}, связей: {1}. Те же узлы перечислены в разделах «Файлы» и «Граф», где до них можно дойти с клавиатуры.",
   "canvas.blank.title": "Канвас пуст",
   "canvas.blank.hint": "Откройте рабочий каталог, чтобы увидеть его как карту, или попросите агента о плане — он нарисует его здесь.",
   "canvas.open": "Открыть каталог",
@@ -1000,6 +997,9 @@ export const ru: Dictionary = {
   "dock.popout": "Открепить панель",
   "dock.openBeside": "Открыть рядом",
   "dock.openBesideHint": "Alt+клик тоже открывает рядом",
+  "dock.noRoom.title": "Не хватает места для стыковки",
+  "dock.noRoom.desc": "Открыто поверх текущей панели — перетащите пункт к краю рабочей области, если нужна колонка.",
+  "dock.noRoom.chatDesc": "Чат открыт в основной панели чата.",
 
   /* ответвление сессии */
   "session.fork.badge": "ответвление",
@@ -1205,4 +1205,54 @@ export const ru: Dictionary = {
   "settings.reset.confirm": "Нажмите ещё раз для сброса",
   "settings.reset.done": "Секция сброшена к значениям по умолчанию.",
   "settings.shortcuts.hint": "Пока фиксированные сочетания.",
+
+  /* редактирование сайдбара (показ/скрытие элементов) */
+  "sidebar.edit.start": "Настроить сайдбар",
+  "sidebar.edit.done": "Готово",
+  "sidebar.edit.hint": "Нажимайте на элемент, чтобы показать или скрыть его в сайдбаре.",
+
+  /* бар возможностей модели (наведение в Настройки → Модели) */
+  "cap.text": "Текст",
+  "cap.images": "Изображения",
+  "cap.generation": "Генерация",
+  "cap.tools": "Инструменты",
+
+  /* генерация изображений (/image) */
+  "slash.cmd.image": "Сгенерировать изображение",
+  "slash.cmd.image.hint": "Нарисовать картинку по описанию",
+  "slash.cmd.think": "Мысли пошагово",
+  "slash.cmd.think.hint": "Оформить запрос в структурированное пошаговое рассуждение",
+  "imagegen.noModel.title": "Нет модели для изображений",
+  "imagegen.noModel.desc": "Подключите провайдера с image-моделью (например, OpenRouter) и попробуйте снова.",
+  "imagegen.working": "Генерирую изображение\u2026",
+  "imagegen.think.scaffold": "Разберись с этим пошагово. Нумеруй мысли, явно исправляй их, если предположение не подтвердилось, и после последней мысли дай чёткий итоговый ответ.",
+
+  /* MCP (Настройки → Tools & Skills → MCP) */
+  "settings.nav.mcp": "MCP",
+  "settings.nav.mcp.kw": "mcp серверы model context protocol инструменты подключить",
+  "settings.mcp.hint": "Серверы Model Context Protocol: встроенные работают сразу после установки в один клик, удалённые Streamable-HTTP подключаются по URL.",
+  "mcp.connected": "Подключённые MCP-серверы",
+  "mcp.empty": "Пока нет MCP-серверов — установите встроенный ниже или добавьте удалённый.",
+  "mcp.remove": "Удалить сервер",
+  "mcp.install": "Установить",
+  "mcp.installed": "Установлен",
+  "mcp.builtins": "Встроенные серверы",
+  "mcp.builtins.hint": "Поставляются с Aqvenor, работают локально, ключи не нужны.",
+  "mcp.add": "Добавить удалённый сервер",
+  "mcp.add.hint": "Любой MCP-сервер со Streamable HTTP (URL вида https://example.com/mcp).",
+  "mcp.add.name": "Название",
+  "mcp.add.url": "URL сервера",
+  "mcp.add.button": "Добавить",
+  "mcp.add.badUrl": "URL должен начинаться с http:// или https://",
+  "mcp.projectNote": "Настроенные серверы сохраняются в .aqvenor/mcp.json проекта — настройка переезжает вместе с папкой.",
+  "mcp.state.connected": "подключён",
+  "mcp.state.error": "ошибка",
+  "mcp.state.connecting": "проверка\u2026",
+  "mcp.state.off": "выключен",
+  "mcp.builtin.memory.name": "Память",
+  "mcp.builtin.memory.desc": "Долговременная память между чатами: агент вспоминает факты из прошлых разговоров в каждом новом.",
+  "mcp.builtin.thinking.name": "Sequential Thinking",
+  "mcp.builtin.thinking.desc": "Блокнот пронумерованных мыслей для пошагового рассуждения, исправлений и ветвлений.",
+  "mcp.builtin.computer.name": "Компьютер",
+  "mcp.builtin.computer.desc": "Использует этот компьютер: скриншоты, открытие файлов, уведомления и буфер обмена.",
 };

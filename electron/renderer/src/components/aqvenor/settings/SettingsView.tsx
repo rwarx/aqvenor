@@ -47,6 +47,7 @@ import {
   Keycap,
   Overline,
 } from "@/components/aqvenor/ui";
+import { McpSettings } from "./McpSettings";
 import { ProviderStudioLauncher } from "../chat/ProviderStudio";
 import pkg from "../../../../../package.json";
 
@@ -95,6 +96,7 @@ type CategoryId =
   | "agent"
   | "permissions"
   | "tools"
+  | "mcp"
   | "context"
   | "workspace"
   | "shortcuts"
@@ -111,6 +113,7 @@ const CATEGORIES: { id: CategoryId; label: string; keywords: string }[] = [
   { id: "agent", label: "settings.agent", keywords: "settings.nav.agent.kw" },
   { id: "permissions", label: "settings.nav.permissions", keywords: "settings.nav.permissions.kw" },
   { id: "tools", label: "settings.nav.tools", keywords: "settings.nav.tools.kw" },
+  { id: "mcp", label: "settings.nav.mcp", keywords: "settings.nav.mcp.kw" },
   { id: "context", label: "settings.nav.context", keywords: "settings.nav.context.kw" },
   { id: "workspace", label: "settings.workspace", keywords: "settings.nav.workspace.kw" },
   { id: "shortcuts", label: "settings.shortcuts", keywords: "settings.nav.shortcuts.kw" },
@@ -1258,6 +1261,13 @@ export default function SettingsView() {
                   ))}
                 </AqCard>
               </div>
+            </Section>
+          )}
+
+          {visible("mcp") && (
+            <Section id="settings-mcp" highlight={flash === "mcp"} overline={t("settings.nav.mcp")}>
+              <p className="text-[12px] leading-snug text-fg-3">{t("settings.mcp.hint")}</p>
+              <McpSettings />
             </Section>
           )}
 

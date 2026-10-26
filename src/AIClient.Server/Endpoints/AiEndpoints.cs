@@ -2,6 +2,8 @@ using System.Text;
 using AIClient.Application.Configuration;
 using AIClient.Application.Interfaces;
 using AIClient.Domain.Models;
+using AIClient.Domain.Enums;
+using AIClient.Infrastructure.Providers.OpenAiCompatible;
 
 namespace AIClient.Server;
 
@@ -156,6 +158,70 @@ public static class AiEndpoints
 
             return Results.Ok(new { text = text.ToString(), finishReason });
         }).RequireAuthorization();
+
+        // Image generation from a text prompt. Only OpenAI-compatible providers have an image
+        // path today; a provider that cannot generate answers 400 with a plain reason rather
+        // than failing somewhere deep in a chat turn. Same credit-spend discipline as complete:
+        // bounded prompt, authenticated, one image per call.
+        app.MapPost("/api/ai/image", async (
+            ImageRequest req,
+            IProviderRegistry registry,
+            ILoggerFactory loggerFactory,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(req.ProviderId))
+            {
+                return Results.BadRequest(new { error = "A provider id is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(req.ModelId))
+            {
+                return Results.BadRequest(new { error = "A model id is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(req.Prompt))
+            {
+                return Results.BadRequest(new { error = "A prompt is required." });
+            }
+
+            if (req.Prompt.Length > MaxPromptCharacters)
+            {
+                req = req with { Prompt = req.Prompt[..MaxPromptCharacters] };
+            }
+
+            var provider = registry.GetProvider(req.ProviderId);
+            if (provider is null)
+            {
+                return Results.BadRequest(new { error = $"Unknown provider '{req.ProviderId}'." });
+            }
+
+            if (provider is not OpenAiCompatibleProvider compatible)
+            {
+                return Results.BadRequest(
+                    new { error = $"'{provider.DisplayName}' does not support image generation." });
+            }
+
+            try
+            {
+                var result = await compatible.GenerateImageAsync(req.Prompt, req.ModelId, ct).ConfigureAwait(false);
+                return Results.Ok(new { image = result.Image, revisedPrompt = result.RevisedPrompt });
+            }
+            catch (OperationCanceledException)
+            {
+                return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
+            }
+            catch (AIProviderException ex)
+            {
+                loggerFactory.CreateLogger("AiImage").LogWarning(
+                    "Image generation refused: {Kind} - {Message}", ex.Kind, ex.UserMessage);
+                return Results.Json(new { error = ex.UserMessage }, statusCode: 502);
+            }
+            catch (Exception ex)
+            {
+                loggerFactory.CreateLogger("AiImage").LogWarning(ex, "Image generation failed.");
+                return Results.Json(new { error = ex.Message }, statusCode: 502);
+            }
+        }).RequireAuthorization();
     }
 
     /// <summary>
@@ -169,4 +235,8 @@ public static class AiEndpoints
         string? System,
         double? Temperature,
         int? MaxTokens);
+
+    /// <summary>An image-generation request. One prompt, one image; the provider resolves its
+    /// own credential, exactly as the completion path does.</summary>
+    private sealed record ImageRequest(string ProviderId, string ModelId, string Prompt);
 }

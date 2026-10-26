@@ -81,10 +81,21 @@
   height: 100%;
 }
 
-/* No tab strip, ever: surfaces open from the sidebar (click = open/focus,
-   Alt+click or drag = open beside), and each panel carries its own
-   hover-close. Same-group stacking stays reachable because every surface
-   has a sidebar entry that focuses it. */
+/* ============================================================
+   No tab strip. Panels open ON TOP of the one already in their group
+   (a plain sidebar click never splits the workspace), the sidebar is the
+   switcher between them, and docking is an explicit gesture: Alt+click, the
+   row menu's "Open beside", or dragging a sidebar item to an edge. Each
+   panel carries its own hover-close because there is no tab to click.
+
+   The strip still exists in the DOM — dockview needs it for the overflow
+   affordance — so it is hidden, not removed.
+   ============================================================ */
 .aq-dock .dv-tabs-and-actions-container {
   display: none;
+}
+
+/* the group body is the panel; keep it flush with the dock edges */
+.aq-dock .dv-void-container {
+  background: transparent;
 }

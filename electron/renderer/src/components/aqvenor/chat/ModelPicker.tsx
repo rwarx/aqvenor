@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Eye, RefreshCw, Search, SlidersHorizontal, Wrench } from "lucide-react";
+import { Check, Eye, Image as ImageIcon, RefreshCw, Search, SlidersHorizontal, Wrench } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import type { ModelInfo } from "@/lib/aqvenor/types";
@@ -118,6 +118,11 @@ export function ModelPicker({ sessionId, onClose }: { sessionId?: string; onClos
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
                     <AqBadge>{m.contextK >= 1000 ? `${Math.round(m.contextK / 1000)}M` : `${m.contextK}K`}</AqBadge>
+                    {m.imageGen && (
+                      <span title={t("cap.generation")} className="text-accent">
+                        <ImageIcon size={10} />
+                      </span>
+                    )}
                     {m.vision && (
                       <span title={t("picker.vision")} className="text-fg-3">
                         <Eye size={10} />

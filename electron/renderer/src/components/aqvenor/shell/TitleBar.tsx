@@ -1,27 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Bot,
-  ChevronDown,
   Copy,
   Minus,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   Search,
-  Sparkles,
   Square,
   X,
 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
-import { useModel } from "@/lib/aqvenor/useModel";
 import { AqToolButton } from "@/components/aqvenor/ui";
-import { ModelPicker } from "@/components/aqvenor/chat/ModelPicker";
 import brandMark from "../../../assets/aqvenor-mark.png";
 
 export function TitleBar() {
@@ -36,52 +29,61 @@ export function TitleBar() {
   const goHistory = useAqvenor((s) => s.goHistory);
   const historyIndex = useAqvenor((s) => s.historyIndex);
   const historyLen = useAqvenor((s) => s.history.length);
-  const [modelOpen, setModelOpen] = useState(false);
-  const modelRef = useRef<HTMLDivElement>(null);
 
-  const model = useModel(ui.selectedModelId);
-
-  useEffect(() => {
-    if (!modelOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (modelRef.current && !modelRef.current.contains(e.target as Node)) setModelOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [modelOpen]);
+  /* The brand mark in the corner is the sidebar's toggle: click to collapse /
+     expand (desktop) or open the drawer (mobile). One control, no duplicate
+     close button beside it. */
+  const onBrandClick = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setSidebarOpenMobile(true);
+      return;
+    }
+    toggleSidebar();
+  };
 
   return (
     <header className="aq-drag grid h-10 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1.5 border-b border-line-faint bg-surface-1 px-2">
-      {/* left cluster — brand + the persistent AI status pill, moved into the
-          corner. The pill never disappears: idle shows a calm muted dot +
-          "Idle"; while the agent runs it becomes a white-neon pill whose dot
-          (pulse-dot) and glow ring (pulse-ring) beat together at 1.6s. */}
+      {/* left cluster — the logo doubles as the sidebar toggle (collapse state
+          shown by the open/closed eye around the mark), plus the run status. */}
       <div className="flex min-w-0 items-center gap-1">
-        <AqToolButton
-          onClick={() => setSidebarOpenMobile(true)}
-          className="lg:hidden"
+        <button
+          type="button"
+          onClick={onBrandClick}
           aria-label={t("shortcuts.sidebar")}
+          title={t("shortcuts.sidebar")}
+          className={`aq-focus-ring aq-no-drag group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] transition-colors hover:bg-surface-hover ${
+            ui.sidebarCollapsed ? "" : "bg-surface-hover/60"
+          }`}
         >
-          <PanelRightOpen size={14} />
-        </AqToolButton>
-        <AqToolButton onClick={toggleSidebar} active={!ui.sidebarCollapsed} aria-label={t("shortcuts.sidebar")} className="hidden lg:flex">
-          {ui.sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-        </AqToolButton>
-        <span
-          aria-hidden
-          className="ml-1 flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-[7px] border border-white/15 bg-gradient-to-b from-surface-3 to-sunken p-[3px] shadow-[0_0_10px_var(--aq-accent-glow,rgba(255,255,255,0.08))]"
-        >
-          <img
-            src={brandMark}
-            alt=""
+          <span
             aria-hidden
-            draggable={false}
-            className="h-full w-full object-contain"
+            className="flex h-7 w-7 select-none items-center justify-center rounded-[7px] border border-white/15 bg-gradient-to-b from-surface-3 to-sunken p-[3px] shadow-[0_0_10px_var(--aq-accent-glow,rgba(255,255,255,0.08))] transition-transform duration-150 group-hover:scale-[1.06] group-active:scale-95"
+          >
+            <img
+              src={brandMark}
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="h-full w-full object-contain"
+            />
+          </span>
+          {/* collapse state hint — a quiet rail that mirrors the sidebar's edge */}
+          <span
+            aria-hidden
+            className={`absolute left-0 top-1/2 h-[16px] w-[2px] -translate-y-1/2 rounded-full bg-accent transition-opacity duration-150 ${
+              ui.sidebarCollapsed ? "opacity-0" : "opacity-100"
+            }`}
           />
-        </span>
+        </button>
         <span className="ml-0.5 shrink-0 text-[13px] font-semibold tracking-[-0.01em] text-fg-1">
           {t("app.name")}
         </span>
+        {runnerStatus === "running" && (
+          <span className="ml-1 flex h-5 items-center gap-1.5 rounded-full border border-line-faint bg-surface-2 px-2 text-[10.5px] font-medium text-fg-2">
+            <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" aria-hidden />
+            {t("main.ai.working")}
+          </span>
+        )}
       </div>
 
       {/* center — history arrows + the command-palette search, centered. */}
@@ -122,34 +124,12 @@ export function TitleBar() {
         </AqToolButton>
       </div>
 
-      {/* right cluster */}
+      {/* right cluster — the model picker lives in the composer now, so the
+          corner holds only the context panel toggle and the window controls. */}
       <div className="flex min-w-0 items-center gap-1 justify-self-end">
         <AqToolButton onClick={toggleContextPanel} active={ui.contextPanelOpen} aria-label={t("main.inspector")}>
-          <PanelRightClose size={14} />
+          {surface === "canvas" || surface === "graph" ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
         </AqToolButton>
-        <div className="relative" ref={modelRef}>
-          <button
-            type="button"
-            onClick={() => setModelOpen((v) => !v)}
-            className="aq-focus-ring flex h-[26px] items-center gap-1.5 rounded-sm px-2 text-[12px] text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1"
-            aria-label={t("composer.selectModel")}
-          >
-            {runnerStatus === "running" ? (
-              <Sparkles size={13} className="animate-pulse-dot text-accent" />
-            ) : (
-              <Bot size={13} className="text-fg-3" />
-            )}
-            <span className="max-w-[150px] truncate font-medium text-fg-1">
-              {model?.name ?? t("status.noModel")}
-            </span>
-            <ChevronDown size={12} className="text-fg-3" />
-          </button>
-          {modelOpen && (
-            <div className="aq-no-drag absolute right-0 top-[calc(100%+6px)] z-50 animate-settle">
-              <ModelPicker onClose={() => setModelOpen(false)} />
-            </div>
-          )}
-        </div>
         <WindowControls />
       </div>
     </header>

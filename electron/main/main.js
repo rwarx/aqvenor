@@ -342,7 +342,18 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+/* Taskbar identity: without an explicit AppUserModelId Windows groups the window
+   under the electron.exe identity (generic icon + "Electron" name) instead of
+   the installed app. One line, set before any window exists. */
+app.setAppUserModelId("com.aqvenor.app");
+
 function registerIpc() {
+  const { registerMcpIpc } = require("./mcp");
+  // Built-in MCP servers (memory / thinking / computer) + the remote-server
+  // fetch proxy. Lives in the main process so the renderer's CSP never has to
+  // allow arbitrary origins for external MCP endpoints.
+  registerMcpIpc(ipcMain);
+
   ipcMain.handle("aqvenor:getBackendUrl", async () => {
     await backendReady;
     return backendUrl || LOOPBACK_URL;

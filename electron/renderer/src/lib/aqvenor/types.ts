@@ -323,10 +323,13 @@ export interface ModelInfo {
   name: string;
   providerId: string;
   contextK: number;
+  /** accepts image attachments on input */
   vision?: boolean;
   tools?: boolean;
   pricePrompt?: number; // $ per 1M prompt tokens
   kind?: "chat" | "reasoner";
+  /** can generate images from a text prompt (shown in the capability bar) */
+  imageGen?: boolean;
 }
 
 export interface Provider {
@@ -341,6 +344,31 @@ export interface Provider {
   enabled?: boolean;
   /** Deep-link to the provider's API-key page (server `apiKeyUrl`). */
   apiKeyUrl?: string;
+}
+
+/* ---------- MCP (Model Context Protocol) ---------- */
+
+/** One configured MCP server: a built-in served by the app itself over the
+ *  preload bridge, or an external Streamable-HTTP server reached through the
+ *  main process (so the renderer's CSP never has to allow arbitrary origins). */
+export interface McpServerConfig {
+  id: string;
+  name: string;
+  /** "builtin" servers are implemented inside Aqvenor (memory, thinking,
+   *  computer); "http" servers are remote Streamable-HTTP MCP endpoints. */
+  transport: "builtin" | "http";
+  /** builtin server key ("memory" | "thinking" | "computer") or the remote URL */
+  target: string;
+  enabled: boolean;
+  addedAt: number;
+}
+
+/** Live probe result for a configured server (transient, never persisted). */
+export interface McpServerStatus {
+  state: "connected" | "error" | "connecting";
+  tools: { name: string; description: string }[];
+  error?: string;
+  checkedAt: number;
 }
 
 /* ---------- workspace files (demo project) ---------- */

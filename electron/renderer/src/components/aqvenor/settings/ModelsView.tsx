@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Eye, Search, Wrench } from "lucide-react";
+import { Check, Eye, Image as ImageIcon, MessageSquareText, Search, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
@@ -15,6 +15,46 @@ import { Divider, AqBadge, Overline } from "@/components/aqvenor/ui";
    + the model catalogue. Keys are managed inside the studio;
    this surface only sets the default model.
    ============================================================ */
+
+/* Capability bar — appears on hover over a model row and spells out what the
+   model can do: plain text, image input, image generation, tool calls.
+   Unsupported capabilities stay visible but dimmed, so the bar always tells
+   the whole story rather than silently omitting a modality. */
+function ModelCapBar({ model }: { model: ModelInfo }) {
+  const t = useT();
+  const caps = [
+    { on: true, icon: MessageSquareText, label: t("cap.text") },
+    { on: Boolean(model.vision), icon: Eye, label: t("cap.images") },
+    { on: Boolean(model.imageGen), icon: ImageIcon, label: t("cap.generation") },
+    { on: Boolean(model.tools), icon: Wrench, label: t("cap.tools") },
+  ];
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none absolute right-2 top-full z-30 flex translate-y-1 items-center gap-1 rounded-md border border-line bg-surface-3 px-2 py-1.5 opacity-0 shadow-overlay transition-all duration-150 group-hover/cap:translate-y-0 group-hover/cap:opacity-100"
+    >
+      {caps.map(({ on, icon: Icon, label }) => (
+        <span
+          key={label}
+          className={cn(
+            "flex h-5 items-center gap-1 rounded-xs border px-1.5 text-[10px] font-medium",
+            on
+              ? "border-line-faint bg-sunken text-fg-2"
+              : "border-transparent bg-transparent text-fg-3/50 line-through decoration-fg-3/40",
+          )}
+        >
+          <Icon size={10} aria-hidden />
+          {label}
+        </span>
+      ))}
+      {model.kind === "reasoner" && (
+        <span className="flex h-5 items-center rounded-xs border border-accent-border bg-accent-soft px-1.5 text-[10px] font-medium text-accent">
+          reasoner
+        </span>
+      )}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------
    Model catalogue — grouped by provider, click to set default.
@@ -84,55 +124,63 @@ function Catalogue() {
                 {models.map((m) => {
                   const selected = m.id === selectedModelId;
                   return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => select(m)}
-                      aria-pressed={selected}
-                      className={cn(
-                        "aq-focus-ring flex w-full items-center justify-between gap-3 rounded-sm border px-2.5 py-2 text-left transition-colors duration-100",
-                        selected
-                          ? "border-accent bg-accent-soft"
-                          : "border-transparent hover:bg-surface-hover",
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        {selected ? (
-                          <Check
-                            size={12}
-                            strokeWidth={2.25}
-                            className="shrink-0 text-accent"
-                            aria-hidden
-                          />
-                        ) : (
-                          <span className="w-3 shrink-0" aria-hidden />
+                    <div key={m.id} className="group/cap relative">
+                      <button
+                        type="button"
+                        onClick={() => select(m)}
+                        aria-pressed={selected}
+                        className={cn(
+                          "aq-focus-ring flex w-full items-center justify-between gap-3 rounded-sm border px-2.5 py-2 text-left transition-colors duration-100",
+                          selected
+                            ? "border-accent bg-accent-soft"
+                            : "border-transparent hover:bg-surface-hover",
                         )}
-                        <span className="truncate text-[13px] font-medium text-fg-1">{m.name}</span>
-                        <span className="hidden truncate font-mono text-[10.5px] text-fg-3 sm:inline">
-                          {m.id}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1.5">
-                        <AqBadge>{m.contextK}K</AqBadge>
-                        {m.vision && (
-                          <AqBadge>
-                            <Eye size={10} className="mr-1" aria-hidden />
-                            {t("picker.vision")}
-                          </AqBadge>
-                        )}
-                        {m.tools && (
-                          <AqBadge>
-                            <Wrench size={10} className="mr-1" aria-hidden />
-                            {t("picker.tools")}
-                          </AqBadge>
-                        )}
-                        {m.pricePrompt !== undefined && (
-                          <span className="font-mono text-[10.5px] text-fg-3">
-                            ${fmtDec(m.pricePrompt, t.locale, 2)}/M
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          {selected ? (
+                            <Check
+                              size={12}
+                              strokeWidth={2.25}
+                              className="shrink-0 text-accent"
+                              aria-hidden
+                            />
+                          ) : (
+                            <span className="w-3 shrink-0" aria-hidden />
+                          )}
+                          <span className="truncate text-[13px] font-medium text-fg-1">{m.name}</span>
+                          <span className="hidden truncate font-mono text-[10.5px] text-fg-3 sm:inline">
+                            {m.id}
                           </span>
-                        )}
-                      </span>
-                    </button>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          <AqBadge>{m.contextK}K</AqBadge>
+                          {m.imageGen && (
+                            <AqBadge>
+                              <ImageIcon size={10} className="mr-1 text-accent" aria-hidden />
+                              {t("cap.generation")}
+                            </AqBadge>
+                          )}
+                          {m.vision && (
+                            <AqBadge>
+                              <Eye size={10} className="mr-1" aria-hidden />
+                              {t("picker.vision")}
+                            </AqBadge>
+                          )}
+                          {m.tools && (
+                            <AqBadge>
+                              <Wrench size={10} className="mr-1" aria-hidden />
+                              {t("picker.tools")}
+                            </AqBadge>
+                          )}
+                          {m.pricePrompt !== undefined && (
+                            <span className="font-mono text-[10.5px] text-fg-3">
+                              ${fmtDec(m.pricePrompt, t.locale, 2)}/M
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      <ModelCapBar model={m} />
+                    </div>
                   );
                 })}
               </div>

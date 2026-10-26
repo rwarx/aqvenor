@@ -99,8 +99,10 @@ in your own database.
   setting. Runs stream concurrently; a chat that finishes out of sight knocks with a toast and a
   sidebar badge.
 - **Drag both ways.** Drag canvas nodes into the composer to pin their files to the turn; drag a chat
-  onto the canvas to file it as a linked note. Plain sidebar clicks tile surfaces side by side —
-  nothing ever hides behind a missing tab.
+  onto the canvas to file it as a linked note. A plain sidebar click opens a surface **on top of the
+  panel already in that group** — the sidebar is the switcher, there is no tab strip to read past —
+  and docking is something you ask for: the row's *open beside* button, `Alt+click`, or dragging an
+  item to a dock edge puts it in a column of its own.
 - **Three work modes.** *Chat* for conversation, *Cowork* for analysis, and *Code* — where the agent
   gets a workspace and a tool loop. The mode is a property of the message, not of the app, so "plan
   this, then build it" is two messages rather than two trips to Settings.

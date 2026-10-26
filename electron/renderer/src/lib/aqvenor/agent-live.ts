@@ -10,6 +10,7 @@
 import { checkpoints, runs, type RunAttachment, type StreamFrame } from "./backend";
 import { ensureServerSession, isServerId, refreshCanvasAfterPlan, refreshCanvasAfterRun, refreshOpenTabs, reloadSession, syncCanvas, syncWorkspaceFiles } from "./sync";
 import { failPendingApprovals, isChatVisible, newId, onSessionDeleted, useAqvenor, waitForApproval } from "./store";
+import { memoryContextFor, rememberRun } from "./mcp";
 import { translate } from "./i18n";
 import type { AgentMode, Approval, Attachment, DiffLine, Message, ToolCall } from "./types";
 
@@ -139,11 +140,13 @@ export async function runAgentConversation(
   store.setDraft("", sid);
 
   // Files staged on the paperclip travel with this one turn, then the tray clears.
+  // When the memory MCP server is enabled, relevant memories from other chats
+  // ride along as one extra read-only attachment.
   const staged = store.draftOf(sid).attachments;
-  const runAttachments: RunAttachment[] | undefined =
-    staged.length > 0
-      ? staged.map((a) => ({ fileName: a.name, mimeType: a.mimeType, textContent: a.textContent }))
-      : undefined;
+  const memoryCtx = await memoryContextFor(trimmed);
+  const stagedList: RunAttachment[] = staged.map((a) => ({ fileName: a.name, mimeType: a.mimeType, textContent: a.textContent }));
+  if (memoryCtx) stagedList.unshift(memoryCtx);
+  const runAttachments: RunAttachment[] | undefined = stagedList.length > 0 ? stagedList : undefined;
   const displayAttachments: Attachment[] | undefined =
     staged.length > 0 ? staged.map((a) => ({ id: a.id, name: a.name, sizeKb: a.sizeKb })) : undefined;
   store.clearDraftAttachments(sid);
@@ -224,6 +227,13 @@ export async function runAgentConversation(
       finishStreaming();
     }
     S().setSessionRunner(sid, { status: "done", label: label || "Completed" });
+    // Memory-between-chats: after a successful run, keep a one-line fact about
+    // this exchange so future chats (any chat) can recall it via the memory MCP.
+    void (async () => {
+      const session = S().resolveSession(sid);
+      const answer = session?.messages.filter((m) => m.role === "assistant").at(-1)?.content ?? "";
+      if (answer) await rememberRun(session?.title ?? "Chat", trimmed, answer);
+    })();
     try {
       await reloadSession(sid);
     } catch {

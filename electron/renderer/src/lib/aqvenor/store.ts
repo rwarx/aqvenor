@@ -16,6 +16,8 @@ import type {
   EdgeKind,
   Goal,
   Locale,
+  McpServerConfig,
+  McpServerStatus,
   Message,
   MessageBlock,
   Project,
@@ -210,6 +212,9 @@ interface UiPrefs {
   /** which auto-selectable skills are active (id → on). Seeded from SKILLS
    *  defaults; the agent only draws on enabled skills when picking per-run. */
   skillsEnabled: Record<string, boolean>;
+  /** workspace surfaces the person hid while editing the sidebar (chat,
+   *  canvas, files, …). Empty = the full per-mode set is shown. */
+  hiddenNavItems: Surface[];
 }
 
 /* Collapse per-chat run states into the single global indicator:
@@ -488,6 +493,8 @@ interface AqvenorState {
   /** re-point an edge's from/to endpoint (reconnect drag) — snapshot for
    *  undo is pushed by the caller (gesture commits once) */
   updateEdgeEndpoints: (id: string, from: string, to: string) => void;
+  /** move many nodes in one store write (drag hot path) */
+  moveNodes: (updates: { id: string; x: number; y: number }[], commit?: boolean) => void;
   pushUndoSnapshot: () => void;
   undoCanvas: () => void;
   redoCanvas: () => void;
@@ -520,6 +527,19 @@ interface AqvenorState {
 
   /* providers */
   setProviderState: (id: string, patch: Partial<Provider>) => void;
+
+  /* MCP servers (Settings → Tools & Skills → MCP) */
+  /** configured servers; persisted in the local cache and mirrored to the
+   *  workspace's .aqvenor/mcp.json so a project carries its MCP set with it */
+  mcpServers: McpServerConfig[];
+  /** live probe results per server id (transient, never persisted) */
+  mcpStatus: Record<string, McpServerStatus>;
+  addMcpServer: (
+    server: Omit<McpServerConfig, "id" | "addedAt" | "enabled"> & { enabled?: boolean },
+  ) => string;
+  removeMcpServer: (id: string) => void;
+  setMcpServerEnabled: (id: string, enabled: boolean) => void;
+  setMcpStatus: (id: string, status: McpServerStatus) => void;
 }
 
 const uid = (() => {
@@ -566,6 +586,7 @@ const defaultUi: UiPrefs = {
   maxSteps: 40,
   ghostText: false,
   skillsEnabled: Object.fromEntries(SKILLS.map((s) => [s.id, s.enabled])),
+  hiddenNavItems: [],
 };
 
 function sortSessions(sessions: Session[]): Session[] {
@@ -629,6 +650,20 @@ export function deriveTitle(raw: string): string {
   text = text.replace(/[\s—–-]+$/, "").replace(/[,:;]+$/, "").trim();
   if (!text) return "New chat";
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/* A placeholder is not a title. "New chat" (and its ru/de siblings) is what a
+   chat shows before anyone named it — treating it as a real title is what used
+   to freeze new chats on "New chat" for good (AQV-003): the client sent the
+   placeholder to the server, the server read a non-empty title as a hand
+   rename (IsTitleUserDefined), and every auto-title — local and server-side —
+   was switched off for that chat from then on. Shared by the client-side title
+   gates and by sync.ensureServerSession. */
+const PLACEHOLDER_TITLES = new Set(["new chat", "новый чат", "neuer chat"]);
+
+export function isPlaceholderTitle(title: string | null | undefined): boolean {
+  const t = (title ?? "").trim().toLowerCase();
+  return t === "" || PLACEHOLDER_TITLES.has(t);
 }
 
 /* The chat to open for a mode: the remembered one if it still exists and still
@@ -1076,7 +1111,12 @@ export const useAqvenor = create<AqvenorState>()(
         if (!clean) return;
         set({
           sessions: get().sessions.map((s) =>
-            s.id === id && !s.titleUserDefined ? { ...s, title: clean } : s,
+            /* A hand rename wins — unless the "title" is only the placeholder a
+               chat was born with (an AQV-003 leftover), which must not block the
+               real title any more. */
+            s.id === id && (!s.titleUserDefined || isPlaceholderTitle(s.title))
+              ? { ...s, title: clean, titleUserDefined: undefined }
+              : s,
           ),
         });
       },
@@ -1212,7 +1252,7 @@ export const useAqvenor = create<AqvenorState>()(
                   title:
                     ui.autoTitles &&
                     msg.role === "user" &&
-                    !s.titleUserDefined &&
+                    (!s.titleUserDefined || isPlaceholderTitle(s.title)) &&
                     (s.title === "New chat" || s.title === "")
                       ? deriveTitle(msg.content)
                       : s.title,
@@ -1641,15 +1681,31 @@ export const useAqvenor = create<AqvenorState>()(
             selectedEdgeIds: ids,
           },
         }),
-      moveNode: (id, x, y, commit) => {
-        set({
-          canvas: {
-            ...get().canvas,
-            nodes: get().canvas.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)),
-          },
-        });
-        if (commit) get().pushUndoSnapshot();
+  moveNode: (id, x, y, commit) => {
+    set({
+      canvas: {
+        ...get().canvas,
+        nodes: get().canvas.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)),
       },
+    });
+    if (commit) get().pushUndoSnapshot();
+  },
+  /** Batched variant for the drag hot path: N nodes move in ONE store write,
+   *  so a multi-select drag costs one render per frame instead of N. */
+  moveNodes: (updates, commit) => {
+    if (updates.length === 0) return;
+    const moved = new Map(updates.map((u) => [u.id, u]));
+    set({
+      canvas: {
+        ...get().canvas,
+        nodes: get().canvas.nodes.map((n) => {
+          const u = moved.get(n.id);
+          return u ? { ...n, x: u.x, y: u.y } : n;
+        }),
+      },
+    });
+    if (commit) get().pushUndoSnapshot();
+  },
       addNodes: (nodes) => set({ canvas: { ...get().canvas, nodes: [...get().canvas.nodes, ...nodes] } }),
       setNodeNote: (id, note) => {
         const current = get().canvas.nodes.find((n) => n.id === id);
@@ -1817,6 +1873,30 @@ export const useAqvenor = create<AqvenorState>()(
       /* ---------- providers ---------- */
       setProviderState: (id, patch) =>
         set({ providers: get().providers.map((p) => (p.id === id ? { ...p, ...patch } : p)) }),
+
+      /* ---------- MCP servers ---------- */
+      mcpServers: [],
+      mcpStatus: {},
+      addMcpServer: (server) => {
+        const id = uid("mcp");
+        set({
+          mcpServers: [
+            ...get().mcpServers.filter(
+              (s) => !(s.transport === server.transport && s.target === server.target),
+            ),
+            { ...server, id, enabled: server.enabled ?? true, addedAt: Date.now() },
+          ],
+        });
+        return id;
+      },
+      removeMcpServer: (id) => {
+        const mcpStatus = { ...get().mcpStatus };
+        delete mcpStatus[id];
+        set({ mcpServers: get().mcpServers.filter((s) => s.id !== id), mcpStatus });
+      },
+      setMcpServerEnabled: (id, enabled) =>
+        set({ mcpServers: get().mcpServers.map((s) => (s.id === id ? { ...s, enabled } : s)) }),
+      setMcpStatus: (id, status) => set({ mcpStatus: { ...get().mcpStatus, [id]: status } }),
     }),
     {
       name: "aqvenor-proto",
@@ -1849,6 +1929,8 @@ export const useAqvenor = create<AqvenorState>()(
         projects: state.projects,
         // per-mode dockview layouts, so the workspace docking survives a reload.
         dockLayout: state.dockLayout,
+        // configured MCP servers (built-ins and remote endpoints)
+        mcpServers: state.mcpServers,
         // Metadata only. `filesSnapshot` is every file's text, once per checkpoint.
         checkpoints: state.checkpoints.map(({ filesSnapshot: _bodies, ...rest }) => rest),
         canvas: state.canvas,
@@ -1898,6 +1980,10 @@ export const useAqvenor = create<AqvenorState>()(
                     : "ask") as WorkMethod,
                 }
               : ui;
+          /* caches written before the editable sidebar / MCP manager carry no
+           *  hiddenNavItems — default to "everything visible" rather than
+           *  undefined, which would break the sidebar's filter. */
+          if (!migratedUi.hiddenNavItems) migratedUi.hiddenNavItems = [];
           /* per-mode chats: ensure the memory map exists, then reconcile the
              restored mode with the chat that is actually open so the mode-filtered
              list and the open conversation never disagree. The open chat wins —

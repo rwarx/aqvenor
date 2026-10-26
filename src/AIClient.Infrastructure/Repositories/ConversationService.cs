@@ -23,6 +23,21 @@ public sealed class ConversationService : IConversationService
     /// <summary>Characters of the last message shown as the sidebar preview.</summary>
     private const int PreviewLength = 100;
 
+    /// <summary>
+    /// The title a conversation carries before anyone has named it. Sending one of these as an
+    /// explicit title used to mark the row as hand-named, which switched every auto-title off for
+    /// that conversation for good (AQV-003), so they are recognised in both directions here.
+    /// </summary>
+    private static readonly string[] PlaceholderTitles = ["new chat", "новый чат", "neuer chat"];
+
+    /// <summary>True when the title is empty or only a placeholder.</summary>
+    private static bool IsPlaceholderTitle(string? title)
+    {
+        var trimmed = title?.Trim();
+        return string.IsNullOrEmpty(trimmed)
+            || PlaceholderTitles.Contains(trimmed, StringComparer.OrdinalIgnoreCase);
+    }
+
     private readonly IDbContextFactory<AIClientDbContext> _contextFactory;
     private readonly ITitleGenerator _titleGenerator;
     private readonly ILogger<ConversationService> _logger;
@@ -56,6 +71,7 @@ public sealed class ConversationService : IConversationService
             {
                 Id = c.Id,
                 Title = c.Title,
+                IsTitleUserDefined = c.IsTitleUserDefined,
                 ProviderId = c.ProviderId,
                 ModelId = c.ModelId,
                 CreatedAt = c.CreatedAt,
@@ -106,6 +122,7 @@ public sealed class ConversationService : IConversationService
             {
                 Id = c.Id,
                 Title = c.Title,
+                IsTitleUserDefined = c.IsTitleUserDefined,
                 ProviderId = c.ProviderId,
                 ModelId = c.ModelId,
                 CreatedAt = c.CreatedAt,
@@ -220,10 +237,12 @@ public sealed class ConversationService : IConversationService
         await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var now = DateTimeOffset.UtcNow;
+        // A placeholder is not a user-chosen title: keep the flag false so auto-titling stays on.
+        var placeholder = IsPlaceholderTitle(title);
         var conversation = new Conversation
         {
-            Title = string.IsNullOrWhiteSpace(title) ? "New Chat" : title.Trim(),
-            IsTitleUserDefined = !string.IsNullOrWhiteSpace(title),
+            Title = placeholder ? "New Chat" : title!.Trim(),
+            IsTitleUserDefined = !placeholder,
             ProviderId = providerId,
             ModelId = modelId,
             CreatedAt = now,
@@ -239,6 +258,7 @@ public sealed class ConversationService : IConversationService
         {
             Id = conversation.Id,
             Title = conversation.Title,
+            IsTitleUserDefined = conversation.IsTitleUserDefined,
             ProviderId = conversation.ProviderId,
             ModelId = conversation.ModelId,
             CreatedAt = conversation.CreatedAt,
@@ -500,8 +520,10 @@ public sealed class ConversationService : IConversationService
             .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
             .ConfigureAwait(false);
 
-        // A user-chosen title is never overwritten.
-        if (conversation is null || conversation.IsTitleUserDefined)
+        // A user-chosen title is never overwritten — but a row still showing the placeholder was
+        // never really named, even if an older build stored the placeholder as a hand rename
+        // (AQV-003). Let those heal on the next message instead of staying "New chat" forever.
+        if (conversation is null || (conversation.IsTitleUserDefined && !IsPlaceholderTitle(conversation.Title)))
         {
             return null;
         }
@@ -763,6 +785,7 @@ public sealed class ConversationService : IConversationService
             {
                 Id = c.Id,
                 Title = c.Title,
+                IsTitleUserDefined = c.IsTitleUserDefined,
                 ProviderId = c.ProviderId,
                 ModelId = c.ModelId,
                 CreatedAt = c.CreatedAt,

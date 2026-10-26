@@ -30,7 +30,9 @@ import {
   type ServerModel,
   type ServerProject,
 } from "./backend";
-import { newId, sessionModeOf, useAqvenor } from "./store";
+import { isPlaceholderTitle, newId, sessionModeOf, useAqvenor } from "./store";
+import { serverCreateTitle } from "./session-titles";
+import { looksLikeImageGenModel } from "./data";
 import { tp, translate } from "./i18n";
 import type {
   CanvasEdge,
@@ -255,6 +257,9 @@ function mapSummary(s: ServerConversationSummary, mode?: WorkMode): Session {
     contextTokens: undefined,
     mode,
     projectId: s.projectId ?? null,
+    /* carry the server's hand-rename flag so the client-side auto-title gates
+       (addMessage / applyAutoTitle / reloadSession) survive a restart */
+    titleUserDefined: s.isTitleUserDefined || undefined,
   };
 }
 
@@ -329,7 +334,18 @@ export interface HydrateResult {
 export async function hydrateFromBackend(): Promise<HydrateResult> {
   if (booted) return { ok: serverMode, sessions: 0, providers: 0 };
   booted = true;
-  const ok = await checkBackend();
+  /* The sidecar boots in parallel with this page, and on a cold start the
+     first probe can lose the race — a Kestrel that has not bound yet reads
+     as "backend down", and without the retries below that one loss stuck for
+     the whole session (the app opened offline until a manual Retry). Probe a
+     few times with a short backoff before falling to the honest offline
+     state; the Boot screen's own timeout keeps the UI responsive while this
+     runs in the background. */
+  let ok = false;
+  for (let attempt = 0; attempt < 5 && !ok; attempt++) {
+    ok = await checkBackend();
+    if (!ok) await new Promise((r) => setTimeout(r, 1200 + attempt * 800));
+  }
   if (!ok) return { ok: false, sessions: 0, providers: 0 };
   serverMode = true;
 
@@ -436,6 +452,10 @@ const modelToUi = (m: ServerModel): ModelInfo => ({
   vision: m.supportsImages,
   tools: m.supportsTools,
   pricePrompt: m.promptPricePerMillion ?? undefined,
+  /* the wire shape has no image-generation flag yet — infer it from the id
+     ("…-image", "dall-e", "imagen", "banana", "flux", …) so the capability
+     bar and /image model picker still know */
+  imageGen: looksLikeImageGenModel(m.modelId) || undefined,
 });
 
 /** (Re)load providers + catalogue from the server into the store. */
@@ -562,7 +582,13 @@ async function loadServerTranscript(id: string): Promise<void> {
         s.id === id
           ? {
               ...s,
-              title: detail.title,
+              /* A hand-renamed chat keeps its local title: the wire title equals it
+                 after a successful PATCH, but if that PATCH failed (backend briefly
+                 down) the server still holds the auto-title, and blindly applying
+                 it here would silently revert the rename on the very next click. */
+              title: s.titleUserDefined || detail.isTitleUserDefined ? s.title : detail.title,
+              titleUserDefined:
+                s.titleUserDefined || detail.isTitleUserDefined ? true : undefined,
               messages,
               events,
               modelId:
@@ -611,7 +637,11 @@ function installServerActions() {
       void (async () => {
         try {
           const { providerId, modelId } = splitModelId(S().ui.selectedModelId);
-          const created = await conversations.create("New chat", providerId, modelId);
+          /* No title on create: a chat is born untitled and the server then owns
+             its auto-title. Sending the placeholder "New chat" marked the chat as
+             hand-named (IsTitleUserDefined) and froze it on that name forever
+             (AQV-003). */
+          const created = await conversations.create(undefined, providerId, modelId);
           const session: Session = { ...mapSummary(created, mode), mode };
           useAqvenor.setState((st) => ({
             sessions: [session, ...st.sessions.filter((s) => s.id !== session.id)],
@@ -783,11 +813,17 @@ export async function reloadSession(sessionId?: string): Promise<void> {
     // (e.g. NVIDIA 451 geo-block, or a missing key) detail.title is still the
     // "New chat" placeholder, which would revert the title we derived locally
     // from the first user message. Keep a meaningful local title whenever the
-    // server's is still the default (or the user set it by hand).
-    const serverDefault = !detail.title || detail.title === "New chat";
+    // server's is still the default (or the user set it by hand). The check is
+    // case-insensitive: the WPF app creates "New Chat" while this renderer
+    // compares against "New chat", and that single letter was enough to revert
+    // a local title on every reload.
+    const isPlaceholderTitle = (v: string | undefined | null) =>
+      !v || v.toLowerCase() === "new chat";
+    const serverDefault = isPlaceholderTitle(detail.title);
     const localTitle = local?.title;
+    const userTitled = local?.titleUserDefined || detail.isTitleUserDefined;
     const nextTitle =
-      ((serverDefault || local?.titleUserDefined) && localTitle && localTitle !== "New chat")
+      (serverDefault || userTitled) && localTitle && !isPlaceholderTitle(localTitle)
         ? localTitle
         : detail.title;
     return {
@@ -796,6 +832,7 @@ export async function reloadSession(sessionId?: string): Promise<void> {
           ? {
               ...x,
               title: nextTitle,
+              titleUserDefined: userTitled ? true : undefined,
               updatedAt: toMs(detail.updatedAt),
               messages: nextMessages,
               events: mergeEvents(x.events, events),
@@ -831,15 +868,27 @@ export async function ensureServerSession(sessionId?: string): Promise<string> {
   const mode = current?.mode ?? st.ui.workMode;
   // and keeps the project it was filed under (Cowork / Code)
   const projectId = current?.projectId ?? null;
-  const created = await conversations.create(
-    current?.title && current.title !== "New chat" ? current.title : "New chat",
-    providerId,
-    modelId,
-  );
+  /* Only a real, user-chosen title travels as the title. A placeholder (or a
+     title this client derived from the first message) must not be sent: the
+     server treats any non-empty title as a hand rename and stops auto-titling
+     the chat — the AQV-003 freeze. */
+  const explicitTitle = serverCreateTitle(current);
+  const created = await conversations.create(explicitTitle, providerId, modelId);
   if (projectId && isServerId(projectId)) {
     await conversations.patch(created.id, { projectId }).catch(() => undefined);
   }
-  const session: Session = { ...mapSummary(created, mode), mode, projectId, titleUserDefined: current?.titleUserDefined };
+  const summary = mapSummary(created, mode);
+  /* The fresh server row is titled "New Chat"; keep the locally derived title
+     on screen until the server's own title echo arrives. */
+  const keepTitle =
+    !explicitTitle && !isPlaceholderTitle(current?.title) ? current!.title : summary.title;
+  const session: Session = {
+    ...summary,
+    title: keepTitle,
+    mode,
+    projectId,
+    titleUserDefined: current?.titleUserDefined,
+  };
   // carry over local messages? No — a fresh server transcript starts clean;
   // the run's user message is persisted by the run itself. Drop the empty local
   // placeholder we just upgraded so the mode's list doesn't keep a phantom "New

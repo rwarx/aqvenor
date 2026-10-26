@@ -14,6 +14,13 @@ interface AqvenorBridge {
   showInFolder: (fullPath: string) => Promise<void>;
   readFileLocal: (fullPath: string) => Promise<string>;
   openExternal: (url: string) => Promise<void>;
+  /** MCP bridge: one request to a built-in server ({builtin}) or a remote
+   *  Streamable-HTTP endpoint ({url}). Absent in the plain browser build. */
+  mcp?: (
+    target: { builtin?: string; url?: string },
+    method: "probe" | "tools/list" | "tools/call",
+    params?: Record<string, unknown>,
+  ) => Promise<{ tools?: { name: string; description: string }[] } & Record<string, unknown>>;
   /** Window-chrome controls for the frameless shell. Absent in the plain browser build. */
   win?: {
     minimize: () => Promise<void>;
