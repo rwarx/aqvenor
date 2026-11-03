@@ -11,6 +11,28 @@ Versions are also published on the
 
 ---
 
+## [0.3.1-alpha] — 2026-11-03
+
+### Fixed
+
+- **The model stays put.** Choosing a model in a chat now persists that choice on the conversation
+  row as well as in the renderer, and a transcript reload never replaces a chat's own pick with the
+  model the conversation happened to be created with. Custom-provider models are no longer snapped
+  back to Claude Sonnet 4.5 (or any other default) after a request.
+- **The status bar agrees with the composer.** It reports the open chat's model instead of the
+  global default for new chats, which could show a different model than the one answering.
+- **Sending is never silent.** A thinking bubble with the live phase label appears as soon as a
+  run starts, before the first token arrives, so a slow reasoning step or a provider hand-off no
+  longer looks like an ignored message. The transcript also follows it into view.
+
+### Removed
+
+- The `IDLE` label in the status bar. The corner is quiet until there is real work to report.
+- The `LIVE AI` badge on every assistant message.
+- The import/export button in the sidebar footer.
+
+---
+
 ## [0.3.0-alpha] — 2026-10-26
 
 ### Added

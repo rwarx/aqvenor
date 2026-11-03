@@ -151,15 +151,6 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
         <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-fg-2">
           {model?.name ?? t("message.assistant")}
         </span>
-        {message.live && (
-          <span
-            className="flex items-center gap-1 rounded-full border border-accent-border bg-accent-soft px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-accent"
-            title={t("chat.live.title")}
-          >
-            <span className="h-1 w-1 rounded-full bg-accent" aria-hidden />
-            {t("chat.live.badge")}
-          </span>
-        )}
         {message.skills && message.skills.length > 0 && (
           <span
             className="animate-rise flex items-center gap-1 rounded-full border border-line-faint bg-sunken px-1.5 py-px font-mono text-[9px] tracking-[0.04em] text-fg-3"

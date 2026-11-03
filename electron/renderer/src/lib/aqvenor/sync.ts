@@ -591,10 +591,17 @@ async function loadServerTranscript(id: string): Promise<void> {
                 s.titleUserDefined || detail.isTitleUserDefined ? true : undefined,
               messages,
               events,
+              /* The local pick is authoritative. A transcript pull happens on
+                 every open and after every run; adopting the server's stamped
+                 model here is what used to snap a chat back to the model the
+                 conversation was *created* with (Claude Sonnet 4.5) right after
+                 the user chose a custom-provider model. The picker now PATCHes
+                 the server too, so the local value and the server agree. */
               modelId:
-                detail.providerId && detail.modelId
+                s.modelId ??
+                (detail.providerId && detail.modelId
                   ? toCompositeModel(detail.providerId, detail.modelId)
-                  : s.modelId,
+                  : s.modelId),
             }
           : s,
       ),
@@ -701,6 +708,18 @@ function installServerActions() {
             return b.updatedAt - a.updatedAt;
           }),
       }));
+    },
+    /* Persist the chat's model on the server as well as in the store. Every
+       transcript pull (open, reload after a run) reads the conversation row, so
+       a pick that lived only in the renderer was replaced by the row's original
+       model — the "it snaps back to Claude Sonnet 4.5 after each request" bug.
+       splitModelId keeps custom-provider composites ("custom-x/model") intact. */
+    setSessionModel: (id: string, modelId: string) => {
+      prev.setSessionModel(id, modelId);
+      if (isServerId(id)) {
+        const { providerId, modelId: backendModelId } = splitModelId(modelId);
+        void conversations.patch(id, { providerId, modelId: backendModelId }).catch(() => undefined);
+      }
     },
     createProject: (name, opts) => {
       const mode = S().ui.workMode === "chat" ? "cowork" : S().ui.workMode;
@@ -836,10 +855,14 @@ export async function reloadSession(sessionId?: string): Promise<void> {
               updatedAt: toMs(detail.updatedAt),
               messages: nextMessages,
               events: mergeEvents(x.events, events),
+              /* Keep the chat's own pick. The server's stamped model is only a
+                 fallback for a session that has none yet — see the same guard
+                 in loadServerTranscript. */
               modelId:
-                detail.providerId && detail.modelId
+                x.modelId ??
+                (detail.providerId && detail.modelId
                   ? toCompositeModel(detail.providerId, detail.modelId)
-                  : x.modelId,
+                  : x.modelId),
             }
           : x,
       ),

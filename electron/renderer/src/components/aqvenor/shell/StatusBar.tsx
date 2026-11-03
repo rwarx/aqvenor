@@ -10,7 +10,11 @@ export function StatusBar() {
   const t = useT();
   const runnerStatus = useAqvenor((s) => s.runner.status);
   const runnerLabel = useAqvenor((s) => s.runner.label);
-  const selectedModelId = useAqvenor((s) => s.ui.selectedModelId);
+  /* The chat's own pick wins over the global default: the model pill in the
+     composer and the status bar must never disagree about what will answer. */
+  const selectedModelId = useAqvenor(
+    (s) => s.sessions.find((x) => x.id === s.currentSessionId)?.modelId ?? s.ui.selectedModelId,
+  );
   /* Selected to primitives rather than to `s.canvas`. Subscribing to the whole canvas object meant a
    new identity on every pan and zoom step — and `panBy` writes the object on each pointermove — so
    the status bar re-rendered continuously while the user dragged the canvas. It reads four scalars,
@@ -50,13 +54,14 @@ const selectedEdgeKind = useAqvenor((s) => {
         <span className="truncate">{projectName}</span>
       </span>
 
-      <span className="hidden items-center gap-1.5 text-[11px] text-fg-3 md:flex">
-        <span className="h-2.5 w-px bg-line" />
-        <Sparkles size={11} className={generating ? "animate-pulse-dot text-accent" : "text-fg-3"} />
-        <span className={generating ? "text-fg-2" : ""}>
-          {generating ? (runnerLabel || t("status.generating")) : t("main.ai.idle")}
+      {/* Idle is silence: the corner says nothing until there is work to report. */}
+      {generating && (
+        <span className="hidden items-center gap-1.5 text-[11px] text-fg-3 md:flex">
+          <span className="h-2.5 w-px bg-line" />
+          <Sparkles size={11} className="animate-pulse-dot text-accent" />
+          <span className="text-fg-2">{runnerLabel || t("status.generating")}</span>
         </span>
-      </span>
+      )}
 
       {/* right cluster */}
       <div className="ml-auto flex items-center gap-2.5">

@@ -65,7 +65,7 @@ export async function runLiveChat(msgId: string): Promise<LiveResult> {
   if (!lastUser) {
     return "failed";
   }
-  const { providerId, modelId } = splitCompositeModel(store.ui.selectedModelId);
+  const { providerId, modelId } = splitCompositeModel(session.modelId ?? store.ui.selectedModelId);
   const historyChars = session.messages.reduce((n, m) => n + m.content.length, 0);
 
   const controller = new AbortController();

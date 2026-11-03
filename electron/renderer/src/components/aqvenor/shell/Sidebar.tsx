@@ -43,7 +43,6 @@ import type { Project, Session, Surface } from "@/lib/aqvenor/types";
 import { MODE_SURFACES } from "@/lib/aqvenor/modes";
 import { AqGhostButton, AqToolButton, Overline } from "@/components/aqvenor/ui";
 import { DOCK_SURFACE_MIME } from "./DockWorkspace";
-import { ExportMenu } from "./ExportMenu";
 import { getNodeDragIds, hasNodeDrag, setSessionDrag } from "@/lib/aqvenor/dnd";
 import { attachCanvasNodeToDraft } from "@/lib/aqvenor/attachNode";
 
@@ -1059,7 +1058,6 @@ export function Sidebar() {
         <AqToolButton onClick={() => setSurface("settings")} active={useAqvenor.getState().surface === "settings"} aria-label={t("sidebar.settings")}>
           <Settings size={14} />
         </AqToolButton>
-        <ExportMenu up />
         <AqToolButton
           onClick={() => setUi({ theme: ui.theme === "dark" ? "light" : "dark" })}
           aria-label={t(`theme.${ui.theme === "dark" ? "light" : "dark"}`)}

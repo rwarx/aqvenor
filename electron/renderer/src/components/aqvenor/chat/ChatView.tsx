@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, CalendarDays, FolderOpen, Plus } from "lucide-react";
+import { ArrowDown, CalendarDays, FolderOpen, Plus, Sparkles } from "lucide-react";
 import type { Message } from "@/lib/aqvenor/types";
 import { markChatVisible, unmarkChatVisible, useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
@@ -166,6 +166,9 @@ export function ChatView({ sessionId }: { sessionId?: string } = {}) {
   const runnerStatus = useAqvenor((s) =>
     effectiveId ? s.sessionRunnerOf(effectiveId).status : s.sessionRunnerOf().status,
   );
+  const runnerLabel = useAqvenor((s) =>
+    effectiveId ? s.sessionRunnerOf(effectiveId).label : s.sessionRunnerOf().label,
+  );
   const newSession = useAqvenor((s) => s.newSession);
   const messages = session?.messages ?? [];
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -188,13 +191,18 @@ export function ChatView({ sessionId }: { sessionId?: string } = {}) {
   }, [messages]);
 
   const generating = runnerStatus === "running" || runnerStatus === "awaiting-approval";
+  /* The server may spend seconds (or minutes, on a reasoning model) before the
+     first assistant frame lands. Stream text already shows its own pulse; this
+     fills the gap before any bubble exists, so a send never looks ignored. */
+  const hasStreamingMessage = messages.some((m) => m.streaming);
+  const showThinking = runnerStatus === "running" && !hasStreamingMessage;
 
   /* auto-scroll when near bottom */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || scrolledAway || !useAqvenor.getState().ui.autoscroll) return;
     el.scrollTop = el.scrollHeight;
-  }, [lastSignature, scrolledAway, approval]);
+  }, [lastSignature, scrolledAway, approval, showThinking]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -319,6 +327,29 @@ export function ChatView({ sessionId }: { sessionId?: string } = {}) {
                   </div>
                 );
               })}
+              {showThinking && (
+                <div className="animate-rise flex items-start gap-2 py-2" role="status" aria-live="polite">
+                  <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-xs bg-accent-soft text-accent">
+                    <Sparkles size={10} className="animate-pulse-dot" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-fg-2">
+                        {runnerLabel || t("chat.thinking")}
+                      </span>
+                      <span className="text-[11px] text-fg-3">{t("chat.thinking")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 py-1">
+                      <span className="flex items-center gap-1" aria-hidden>
+                        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
+                        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:200ms]" />
+                        <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:400ms]" />
+                      </span>
+                      <span className="aq-shimmer h-1 w-40 rounded-full" aria-hidden />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="h-2" />
             </div>
         </div>
