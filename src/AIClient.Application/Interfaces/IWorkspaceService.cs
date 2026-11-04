@@ -62,6 +62,15 @@ public interface IWorkspaceService
         int? lineCount = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reads a complete text document for editing or snapshots. The byte-size and path
+    /// restrictions still apply, but the agent's excerpt character limit does not.
+    /// A successful result is never truncated.
+    /// </summary>
+    Task<WorkspaceResult<WorkspaceFile>> ReadDocumentAsync(
+        WorkspacePath path,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Metadata for one entry, without reading it.</summary>
     Task<WorkspaceResult<WorkspaceEntry>> StatAsync(
         WorkspacePath path,

@@ -324,6 +324,35 @@ public sealed class WorkspaceService : IWorkspaceService
             });
         });
 
+    public Task<WorkspaceResult<WorkspaceFile>> ReadDocumentAsync(
+        WorkspacePath path,
+        CancellationToken cancellationToken = default) =>
+        GuardAsync<WorkspaceFile>(path, async () =>
+        {
+            if (!TryResolve(path, out var full, out var error))
+            {
+                return WorkspaceResult<WorkspaceFile>.Fail(error);
+            }
+
+            var (text, readError) = await ReadTextAsync(path, full, cancellationToken).ConfigureAwait(false);
+            if (readError is not null)
+            {
+                return WorkspaceResult<WorkspaceFile>.Fail(readError);
+            }
+
+            var lines = SplitLines(text!).Length;
+            return WorkspaceResult<WorkspaceFile>.Ok(new WorkspaceFile
+            {
+                Path = path,
+                Content = text!,
+                FirstLine = 1,
+                LineCount = lines,
+                TotalLines = lines,
+                Size = new FileInfo(full).Length,
+                IsTruncated = false,
+            });
+        });
+
     public Task<WorkspaceResult<WorkspaceEntry>> StatAsync(
         WorkspacePath path,
         CancellationToken cancellationToken = default) =>

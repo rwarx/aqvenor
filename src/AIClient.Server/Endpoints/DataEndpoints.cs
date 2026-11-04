@@ -228,6 +228,27 @@ public static class DataEndpoints
                 })
                 : Results.BadRequest(new { error = result.Error });
         });
+        g.MapGet("/workspace/document", async (string path, IWorkspaceService w, CancellationToken ct) =>
+        {
+            if (!WorkspacePath.TryParse(path, out var p, out var perr))
+            {
+                return Results.BadRequest(new { error = perr });
+            }
+
+            var result = await w.ReadDocumentAsync(p, ct).ConfigureAwait(false);
+            return result.Success
+                ? Results.Ok(new
+                {
+                    path = result.Value!.Path.Value,
+                    content = result.Value.Content,
+                    firstLine = result.Value.FirstLine,
+                    lineCount = result.Value.LineCount,
+                    totalLines = result.Value.TotalLines,
+                    size = result.Value.Size,
+                    isTruncated = result.Value.IsTruncated,
+                })
+                : Results.BadRequest(new { error = result.Error });
+        });
         g.MapPost("/workspace/write", async (WriteFileRequest req, IWorkspaceService w, CancellationToken ct) =>
         {
             if (!WorkspacePath.TryParse(req.Path, out var p, out var perr))
@@ -429,16 +450,18 @@ public static class DataEndpoints
             var files = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var path in req.Files ?? [])
             {
-                if (!WorkspacePath.TryParse(path, out var p, out _))
+                if (!WorkspacePath.TryParse(path, out var p, out var pathError))
                 {
-                    continue;
+                    return Results.BadRequest(new { error = $"Cannot capture '{path}': {pathError}" });
                 }
 
-                var read = await workspace.ReadAsync(p, 1, null, ct).ConfigureAwait(false);
-                if (read.Success && read.Value is { } file && file.Content.Length <= 256_000)
+                var read = await workspace.ReadDocumentAsync(p, ct).ConfigureAwait(false);
+                if (!read.Success || read.Value is not { IsTruncated: false } file)
                 {
-                    files[p.Value] = file.Content;
+                    return Results.BadRequest(new { error = $"Cannot capture '{path}': {read.Error ?? "The document is incomplete."}" });
                 }
+
+                files[p.Value] = file.Content;
             }
 
             string? graphKey = null;

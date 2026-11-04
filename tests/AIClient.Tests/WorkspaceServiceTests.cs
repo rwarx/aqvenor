@@ -339,6 +339,44 @@ public sealed class WorkspaceServiceTests : IAsyncLifetime
         Assert.True(result.Value.IsTruncated);
     }
 
+    [Fact]
+    public async Task Document_read_and_save_preserve_the_tail_beyond_the_agent_excerpt_limit()
+    {
+        var original = new string('a', 70_000) + "\r\nLAST LINE\r\n";
+        await File.WriteAllTextAsync(Path.Combine(_root, "large.txt"), original, Token);
+
+        var excerpt = await _service.ReadAsync(Parse("large.txt"), cancellationToken: Token);
+        Assert.True(excerpt.Value!.IsTruncated);
+
+        var document = await _service.ReadDocumentAsync(Parse("large.txt"), Token);
+        Assert.True(document.Success, document.Error);
+        Assert.False(document.Value!.IsTruncated);
+        Assert.Equal(original, document.Value.Content);
+
+        var edited = "b" + document.Value.Content[1..];
+        var written = await _service.WriteAsync(Parse("large.txt"), edited, Token);
+        Assert.True(written.Success, written.Error);
+        Assert.Equal(edited, await File.ReadAllTextAsync(Path.Combine(_root, "large.txt"), Token));
+    }
+
+    [Theory]
+    [InlineData("data.bin")]
+    [InlineData(".env")]
+    [InlineData("missing.txt")]
+    public async Task Document_read_keeps_the_workspace_guards(string path)
+    {
+        var result = await _service.ReadDocumentAsync(Parse(path), Token);
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task Document_read_refuses_files_over_the_byte_limit()
+    {
+        _settings.With<AgentSettings>(agent => agent.MaxFileBytes = 8);
+        var result = await _service.ReadDocumentAsync(Parse("README.md"), Token);
+        Assert.False(result.Success);
+    }
+
     /// <remarks>
     /// None of these files needs to exist. The refusal is made from the path alone, before anything
     /// is opened, so a name that is off limits stays off limits whether or not it is there.

@@ -441,6 +441,10 @@ export const workspace = {
     api<{ path: string; content: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
       `/api/workspace/read?path=${encodeURIComponent(path)}&startLine=${startLine}${lineCount ? `&lineCount=${lineCount}` : ""}`,
     ),
+  readDocument: (path: string) =>
+    api<{ path: string; content: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
+      `/api/workspace/document?path=${encodeURIComponent(path)}`,
+    ),
   write: (path: string, content: string) =>
     api<{ created: boolean; linesAfter: number }>(`/api/workspace/write`, { method: "POST", body: JSON.stringify({ path, content }) }),
   search: (query: string, path?: string, filePattern?: string) =>

@@ -1005,7 +1005,8 @@ export async function pickFolderPath(): Promise<string | null> {
 
 export async function readServerFile(path: string): Promise<string | null> {
   try {
-    const res = await workspace.read(path, 1);
+    const res = await workspace.readDocument(path);
+    if (res.isTruncated) return null;
     return res.content;
   } catch {
     return null;
