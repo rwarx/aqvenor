@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface AqvenorBridge {
+  mcpConfigure: (servers: import("./lib/aqvenor/types").McpServerConfig[]) => Promise<void>;
   getBackendUrl: () => Promise<string>;
   /**
    * The sidecar's per-launch bearer token. Generated in the main process, handed to the sidecar over
@@ -17,7 +18,7 @@ interface AqvenorBridge {
   /** MCP bridge: one request to a built-in server ({builtin}) or a remote
    *  Streamable-HTTP endpoint ({url}). Absent in the plain browser build. */
   mcp?: (
-    target: { builtin?: string; url?: string },
+    target: { id: string },
     method: "probe" | "tools/list" | "tools/call",
     params?: Record<string, unknown>,
   ) => Promise<{ tools?: { name: string; description: string }[] } & Record<string, unknown>>;

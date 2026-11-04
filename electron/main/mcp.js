@@ -11,6 +11,7 @@
 const { app, clipboard, desktopCapturer, Notification, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const { readRpcResponse } = require("./mcp-response");
 
 /* ---------- memory (between chats) ---------- */
 
@@ -249,35 +250,20 @@ async function remoteCall(url, method, params, notify = false) {
     ? { jsonrpc: "2.0", method }
     : { jsonrpc: "2.0", id: ++rpcId, method, params: params ?? {} };
 
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 30_000);
+  try {
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: abort.signal, redirect: "error" });
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`MCP server answered HTTP ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+    await res.body?.cancel();
+    throw new Error(`MCP server answered HTTP ${res.status}`);
   }
   const newSid = res.headers.get("Mcp-Session-Id");
   if (newSid) remoteSessions.set(url, newSid);
 
-  const contentType = res.headers.get("Content-Type") ?? "";
-  const text = await res.text();
-  if (contentType.includes("text/event-stream")) {
-    // take the last data frame that parses and answers our id
-    let found = null;
-    for (const line of text.split("\n")) {
-      if (!line.startsWith("data:")) continue;
-      try {
-        const frame = JSON.parse(line.slice(5).trim());
-        if (!notify && frame.id === body.id) found = frame;
-      } catch {
-        /* keepalive / partial frame */
-      }
-    }
-    if (found?.error) throw new Error(found.error.message ?? "MCP call failed");
-    return found?.result;
-  }
-  if (!text.trim()) return undefined;
-  const frame = JSON.parse(text);
-  if (frame.error) throw new Error(frame.error.message ?? "MCP call failed");
-  return frame.result;
+  if (notify) { await res.body?.cancel(); return undefined; }
+  return await readRpcResponse(res, body.id);
+  } finally { clearTimeout(timer); }
 }
 
 async function ensureRemoteSession(url) {
@@ -285,12 +271,13 @@ async function ensureRemoteSession(url) {
   const result = await remoteCall(url, "initialize", {
     protocolVersion: "2025-03-26",
     capabilities: {},
-    clientInfo: { name: "aqvenor", version: "0.2.0" },
+    clientInfo: { name: "aqvenor", version: app.getVersion() },
   }).catch((err) => {
     remoteSessions.delete(url);
     throw err;
   });
   if (!result) throw new Error("The MCP server did not complete initialization.");
+  if (!remoteSessions.has(url)) remoteSessions.set(url, null);
   await remoteCall(url, "notifications/initialized", undefined, true).catch(() => undefined);
 }
 
@@ -357,12 +344,56 @@ async function handleMcpRequest(target, method, params) {
   throw new Error("An MCP request needs either a built-in server key or a server URL.");
 }
 
-function registerMcpIpc(ipcMain) {
-  ipcMain.handle("aqvenor:mcp", (_event, target, method, params) =>
-    handleMcpRequest(target, method, params).catch((err) => {
-      throw new Error(err instanceof Error ? err.message : "The MCP request failed.");
-    }),
-  );
+function registerMcpIpc(ipcMain, policy) {
+  const configs = new Map();
+  const trustFile = path.join(app.getPath("userData"), "mcp-trust.json");
+  let trusted = new Set();
+  try { trusted = new Set(JSON.parse(fs.readFileSync(trustFile, "utf8"))); } catch { /* first launch */ }
+  let configure = Promise.resolve();
+  ipcMain.handle("aqvenor:mcpConfigure", (_event, servers) => {
+    configure = configure.catch(() => {}).then(async () => {
+      if (!Array.isArray(servers) || servers.length > 100) throw new Error("Invalid MCP configuration.");
+      const next = new Map();
+      for (const cfg of servers) {
+        if (!cfg || typeof cfg.id !== "string" || !cfg.enabled) continue;
+        if (cfg.transport === "builtin" ? !Object.hasOwn(BUILTIN_SERVERS, cfg.target) : cfg.transport !== "http" || !/^https?:\/\//i.test(cfg.target)) continue;
+        const key = JSON.stringify([cfg.projectRoot ?? null, cfg.transport, cfg.target]);
+        if (!trusted.has(key)) {
+          const allow = await policy.confirm("Enable this MCP server?", `${cfg.name}\n${cfg.target}\n${cfg.projectRoot ?? "All projects"}\nIt may receive project content when you call its tools.`);
+          if (!allow) continue;
+          trusted.add(key);
+          fs.mkdirSync(path.dirname(trustFile), { recursive: true });
+          fs.writeFileSync(trustFile, JSON.stringify([...trusted]), "utf8");
+        }
+        const existing = configs.get(cfg.id);
+        next.set(cfg.id, existing && JSON.stringify(existing) === JSON.stringify(cfg) ? existing : { ...cfg });
+      }
+      configs.clear();
+      for (const [id, cfg] of next) configs.set(id, cfg);
+    });
+    return configure;
+  });
+  ipcMain.handle("aqvenor:mcp", async (_event, target, method, params) => {
+    await configure;
+    const cfg = configs.get(target?.id);
+    if (!cfg?.enabled) throw new Error("Install and enable this MCP server before using it.");
+    const pinned = cfg.transport === "builtin" ? { builtin: cfg.target } : { url: cfg.target };
+    if (method === "tools/call" && (cfg.transport === "http" || cfg.target === "computer")) {
+      const detail = JSON.stringify(params ?? {});
+      if (detail.length > 6000) throw new Error("MCP arguments are too large for the approval preview.");
+      if (!await policy.confirm(`Allow MCP tool ${String(params?.name ?? "")}?`, `${cfg.name}\n${cfg.target}\n${detail}`)) throw new Error("MCP action was denied.");
+      await configure;
+      if (configs.get(cfg.id) !== cfg) throw new Error("MCP configuration changed while awaiting approval.");
+      if (cfg.target === "computer" && params?.name === "open_path") {
+        const targetPath = String(params.arguments?.path ?? "");
+        if (!path.isAbsolute(targetPath) || !policy.isAllowedPath(targetPath)) throw new Error("Open a file inside a folder selected in Aqvenor.");
+        const real = await fs.promises.realpath(targetPath);
+        const stat = await fs.promises.stat(real);
+        if (!policy.isAllowedPath(real) || path.relative(targetPath, real) !== "" || (!stat.isDirectory() && !/\.(txt|md|json|yaml|yml|toml|csv|log|pdf|png|jpg|jpeg|gif|webp)$/i.test(real))) throw new Error("Only folders and ordinary documents can be opened through MCP.");
+      }
+    }
+    return handleMcpRequest(pinned, method, params);
+  });
 }
 
 module.exports = { registerMcpIpc, handleMcpRequest, BUILTIN_SERVERS };

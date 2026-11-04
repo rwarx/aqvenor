@@ -352,6 +352,7 @@ export interface Provider {
  *  preload bridge, or an external Streamable-HTTP server reached through the
  *  main process (so the renderer's CSP never has to allow arbitrary origins). */
 export interface McpServerConfig {
+  projectRoot?: string;
   id: string;
   name: string;
   /** "builtin" servers are implemented inside Aqvenor (memory, thinking,

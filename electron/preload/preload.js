@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("aqvenor", {
      or a remote Streamable-HTTP endpoint ({url}). Runs in the main process —
      remote MCP never widens the page's connect-src. */
   mcp: (target, method, params) => ipcRenderer.invoke("aqvenor:mcp", target, method, params),
+  mcpConfigure: (servers) => ipcRenderer.invoke("aqvenor:mcpConfigure", servers),
   win: {
     minimize: () => ipcRenderer.invoke("aqvenor:winMinimize"),
     maximizeToggle: () => ipcRenderer.invoke("aqvenor:winMaximizeToggle"),

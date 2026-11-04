@@ -11,6 +11,8 @@ const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const path = require("node:path");
 const fs = require("node:fs");
+const { isRendererUrl, assertRendererSender } = require("./renderer-security");
+const RENDERER_ENTRY = path.join(__dirname, "..", "dist", "renderer", "index.html");
 
 const DEV_URL = process.env.AQVENOR_RENDERER_URL || "http://127.0.0.1:5173";
 const isDev = !app.isPackaged;
@@ -269,11 +271,17 @@ function createWindow() {
   /* Same reasoning for in-page navigation. A renderer-side `location.href` would otherwise replace
      the application with whatever it pointed at, still holding the preload bridge. */
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    const allowed = isDev ? DEV_URL : url.startsWith("file://");
+    const allowed = isRendererUrl(url, DEV_URL, RENDERER_ENTRY, isDev);
     if (!allowed) {
       event.preventDefault();
       console.error(`[aqvenor] blocked navigation to ${url}`);
     }
+  });
+  mainWindow.webContents.on("will-redirect", (event, url) => {
+    if (!isRendererUrl(url, DEV_URL, RENDERER_ENTRY, isDev)) event.preventDefault();
+  });
+  mainWindow.webContents.on("will-frame-navigate", (event) => {
+    if (!event.isMainFrame || !isRendererUrl(event.url, DEV_URL, RENDERER_ENTRY, isDev)) event.preventDefault();
   });
 
   mainWindow.webContents.on("will-attach-webview", (event) => event.preventDefault());
@@ -348,13 +356,28 @@ function buildMenu() {
 app.setAppUserModelId("com.aqvenor.app");
 
 function registerIpc() {
+  /** @type {Electron.IpcMain["handle"]} */
+  const handle = (channel, listener) => ipcMain.handle(channel, (event, ...args) => {
+    assertRendererSender(event, mainWindow, DEV_URL, RENDERER_ENTRY, isDev);
+    return listener(event, ...args);
+  });
   const { registerMcpIpc } = require("./mcp");
   // Built-in MCP servers (memory / thinking / computer) + the remote-server
   // fetch proxy. Lives in the main process so the renderer's CSP never has to
   // allow arbitrary origins for external MCP endpoints.
-  registerMcpIpc(ipcMain);
+  registerMcpIpc({ handle }, {
+    confirm: async (message, detail) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return false;
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: "question", title: "Aqvenor · MCP", message, detail,
+        buttons: ["Cancel", "Allow"], defaultId: 0, cancelId: 0, noLink: true,
+      });
+      return result.response === 1;
+    },
+    isAllowedPath: isInsideKnownWorkspace,
+  });
 
-  ipcMain.handle("aqvenor:getBackendUrl", async () => {
+  handle("aqvenor:getBackendUrl", async () => {
     await backendReady;
     return backendUrl || LOOPBACK_URL;
   });
@@ -362,12 +385,12 @@ function registerIpc() {
   /* The sidecar's bearer token. It crosses the bridge rather than living in the bundle because it is
      generated per launch: a token baked into the renderer would be a token an attacker could read out
      of a published asar. The renderer attaches it as an Authorization header and nothing else. */
-  ipcMain.handle("aqvenor:getBackendAuth", async () => {
+  handle("aqvenor:getBackendAuth", async () => {
     await backendReady;
     return authToken;
   });
 
-  ipcMain.handle("aqvenor:pickFolder", async () => {
+  handle("aqvenor:pickFolder", async () => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return null;
     const res = await dialog.showOpenDialog(win, { properties: ["openDirectory"] });
@@ -376,7 +399,7 @@ function registerIpc() {
     return res.filePaths[0];
   });
 
-  ipcMain.handle("aqvenor:saveDialog", async (_evt, defaultName, filters) => {
+  handle("aqvenor:saveDialog", async (_evt, defaultName, filters) => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return null;
     const res = await dialog.showSaveDialog(win, {
@@ -387,7 +410,7 @@ function registerIpc() {
     return res.filePath;
   });
 
-  ipcMain.handle("aqvenor:openDialog", async (_evt, filters) => {
+  handle("aqvenor:openDialog", async (_evt, filters) => {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
     if (!win) return [];
     const res = await dialog.showOpenDialog(win, {
@@ -398,7 +421,7 @@ function registerIpc() {
     return res.filePaths;
   });
 
-  ipcMain.handle("aqvenor:showInFolder", async (_evt, fullPath) => {
+  handle("aqvenor:showInFolder", async (_evt, fullPath) => {
     if (typeof fullPath !== "string" || fullPath.length === 0) return;
     // Resolved before it reaches the shell so a relative or malformed path cannot be handed to
     // Explorer, and so the check below is against an absolute path rather than whatever the caller
@@ -408,7 +431,7 @@ function registerIpc() {
     shell.showItemInFolder(resolved);
   });
 
-  ipcMain.handle("aqvenor:readFileLocal", async (_evt, fullPath) => {
+  handle("aqvenor:readFileLocal", async (_evt, fullPath) => {
     /* Read off disk for the renderer: a project file the user has already opened. It was an
        arbitrary-path read with no size cap, which meant one string in one IPC message could pull any
        file on the disk - including the DPAPI-protected keys - into the renderer. Now: the path must
@@ -427,6 +450,10 @@ function registerIpc() {
     }
 
     const stat = await fs.promises.lstat(resolved);
+    const real = await fs.promises.realpath(resolved);
+    if (!isInsideKnownWorkspace(real) || path.relative(resolved, real) !== "") {
+      throw new Error("Links and parent junctions are not followed here.");
+    }
     if (stat.isSymbolicLink()) {
       throw new Error("That path is a link, and links are not followed here.");
     }
@@ -437,7 +464,7 @@ function registerIpc() {
     return fs.promises.readFile(resolved, "utf-8");
   });
 
-  ipcMain.handle("aqvenor:openExternal", async (_evt, url) => {
+  handle("aqvenor:openExternal", async (_evt, url) => {
     /* only ever hand http/https URLs to the OS browser */
     if (typeof url === "string" && /^https?:\/\//i.test(url)) {
       await shell.openExternal(url);
@@ -447,25 +474,25 @@ function registerIpc() {
   // ----- frameless window chrome (custom TitleBar controls) -----
   const focusedWin = () => BrowserWindow.getFocusedWindow() || mainWindow;
 
-  ipcMain.handle("aqvenor:winMinimize", () => {
+  handle("aqvenor:winMinimize", () => {
     focusedWin()?.minimize();
   });
 
-  ipcMain.handle("aqvenor:winMaximizeToggle", () => {
+  handle("aqvenor:winMaximizeToggle", () => {
     const win = focusedWin();
     if (!win) return;
     if (win.isMaximized()) win.unmaximize();
     else win.maximize();
   });
 
-  ipcMain.handle("aqvenor:winClose", () => {
+  handle("aqvenor:winClose", () => {
     focusedWin()?.close();
   });
 
-  ipcMain.handle("aqvenor:winIsMaximized", () => focusedWin()?.isMaximized() ?? false);
+  handle("aqvenor:winIsMaximized", () => focusedWin()?.isMaximized() ?? false);
 
   // ----- interface zoom (app scale) -----
-  ipcMain.handle("aqvenor:setZoom", (_evt, factor) => {
+  handle("aqvenor:setZoom", (_evt, factor) => {
     const win = focusedWin();
     if (!win) return 1;
     const n = Number(factor);

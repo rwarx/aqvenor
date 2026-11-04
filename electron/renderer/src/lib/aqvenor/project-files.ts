@@ -13,7 +13,7 @@
 import { workspace } from "./backend";
 import { isServerMode } from "./sync";
 import { useAqvenor } from "./store";
-import { importMcpServers, serializeMcpServers } from "./mcp";
+import { configureMcpBridge, importMcpServers, isImportingMcpConfig, serializeMcpServers } from "./mcp";
 import type { CanvasEdge, CanvasNode } from "./types";
 
 const AQ_DIR = ".aqvenor";
@@ -42,6 +42,7 @@ interface CanvasFile {
 async function writeProjectFile(path: string, content: string, root = useAqvenor.getState().workspaceRoot): Promise<void> {
   if (!isServerMode()) return;
   if (!useAqvenor.getState().workspaceRoot) return;
+
   try {
     await workspace.write(path, content, root);
   } catch {
@@ -79,9 +80,11 @@ function scheduleCanvasWrite(): void {
 export async function hydrateProjectFiles(): Promise<void> {
   if (!isServerMode()) return;
   if (!useAqvenor.getState().workspaceRoot) return;
+  const root = useAqvenor.getState().workspaceRoot!;
 
   try {
-    const res = await workspace.read(CANVAS_FILE, 1, 1_000_000);
+    const res = await workspace.readDocument(CANVAS_FILE, root);
+    if (res.isTruncated || useAqvenor.getState().workspaceRoot !== root) return;
     const parsed = JSON.parse(res.content) as Partial<CanvasFile>;
     if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
       const st = useAqvenor.getState();
@@ -106,8 +109,9 @@ export async function hydrateProjectFiles(): Promise<void> {
   }
 
   try {
-    const res = await workspace.read(MCP_FILE, 1, 100_000);
-    importMcpServers(JSON.parse(res.content));
+    const res = await workspace.readDocument(MCP_FILE, root);
+    if (res.isTruncated || useAqvenor.getState().workspaceRoot !== root) return;
+    importMcpServers(JSON.parse(res.content), root);
   } catch {
     /* no mcp.json */
   }
@@ -128,11 +132,13 @@ export function initProjectFileSync(): () => void {
 
   const unsubMcp = useAqvenor.subscribe((s, prev) => {
     if (s.mcpServers === prev.mcpServers) return;
-    void writeProjectFile(MCP_FILE, serializeMcpServers(s.mcpServers));
+    void configureMcpBridge().catch(() => {});
+    if (!isImportingMcpConfig()) void writeProjectFile(MCP_FILE, serializeMcpServers(s.mcpServers.filter((m) => m.projectRoot === s.workspaceRoot)));
   });
 
   const unsubRoot = useAqvenor.subscribe((s, prev) => {
     if (s.workspaceRoot === prev.workspaceRoot) return;
+    void configureMcpBridge().catch(() => {});
     if (s.workspaceRoot && s.workspaceRoot !== knownRoot) {
       knownRoot = s.workspaceRoot;
       void writeProjectFile(README_FILE, README_CONTENT);

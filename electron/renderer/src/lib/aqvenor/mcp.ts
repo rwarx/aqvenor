@@ -29,19 +29,27 @@ function bridge() {
 }
 
 async function mcpRequest(
-  cfg: { transport: "builtin" | "http"; target: string },
+  cfg: McpServerConfig,
   method: "probe" | "tools/list" | "tools/call",
   params?: Record<string, unknown>,
 ): Promise<{ tools?: { name: string; description: string }[] } & Record<string, unknown>> {
   const b = bridge();
   if (!b) throw new Error("MCP servers are available in the desktop app.");
-  const target = cfg.transport === "builtin" ? { builtin: cfg.target } : { url: cfg.target };
-  return b(target, method, params);
+  const st = useAqvenor.getState();
+  if (!st.mcpServers.some((s) => s.id === cfg.id && s.enabled && s.target === cfg.target)) throw new Error("MCP server is disabled.");
+  await configureMcpBridge();
+  return b({ id: cfg.id }, method, params);
+}
+
+export async function configureMcpBridge(): Promise<void> {
+  const st = useAqvenor.getState();
+  await window.aqvenor?.mcpConfigure(st.mcpServers.filter((s) => !s.projectRoot || s.projectRoot === st.workspaceRoot));
 }
 
 /** (Re)probe one configured server: initialize + tools/list, cache the result
  *  in the store so the settings page can show the connected set. */
 export async function probeMcpServer(cfg: McpServerConfig): Promise<void> {
+  if (!cfg.enabled || (cfg.projectRoot && cfg.projectRoot !== useAqvenor.getState().workspaceRoot)) return;
   const { setMcpStatus } = useAqvenor.getState();
   setMcpStatus(cfg.id, { state: "connecting", tools: [], checkedAt: Date.now() });
   try {
@@ -166,23 +174,29 @@ export function serializeMcpServers(servers: McpServerConfig[]): string {
 
 /** Merge servers parsed from a project's .aqvenor/mcp.json into the local
  *  set (by target) without duplicating what's already configured. */
-export function importMcpServers(parsed: unknown): number {
+let importing = false;
+export const isImportingMcpConfig = () => importing;
+export function importMcpServers(parsed: unknown, root = useAqvenor.getState().workspaceRoot): number {
   const file = parsed as Partial<McpProjectFile>;
-  if (!file || !Array.isArray(file.servers)) return 0;
+  if (!root || !file || !Array.isArray(file.servers)) return 0;
   const st = useAqvenor.getState();
   let added = 0;
+  importing = true;
+  try {
+  useAqvenor.setState({ mcpServers: st.mcpServers.filter((s) => !s.projectRoot) });
   for (const s of file.servers) {
     if (!s || typeof s.target !== "string") continue;
-    const exists = st.mcpServers.some((x) => x.transport === s.transport && x.target === s.target);
+    const exists = useAqvenor.getState().mcpServers.some((x) => x.transport === s.transport && x.target === s.target);
     if (exists) continue;
     st.addMcpServer({
       name: typeof s.name === "string" && s.name ? s.name : s.target,
       transport: s.transport === "builtin" ? "builtin" : "http",
       target: s.target,
-      enabled: s.enabled !== false,
+      enabled: false,
+      projectRoot: root,
     });
     added += 1;
   }
-  if (added > 0) void probeMcpServers();
   return added;
+  } finally { importing = false; }
 }
