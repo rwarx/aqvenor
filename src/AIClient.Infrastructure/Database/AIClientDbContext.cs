@@ -149,7 +149,7 @@ public sealed class AIClientDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Loading a conversation always reads its messages in order.
-            entity.HasIndex(e => new { e.ConversationId, e.SequenceNumber });
+            entity.HasIndex(e => new { e.ConversationId, e.SequenceNumber }).IsUnique();
         });
 
         modelBuilder.Entity<Attachment>(entity =>

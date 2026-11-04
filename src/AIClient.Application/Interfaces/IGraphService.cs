@@ -12,10 +12,9 @@ namespace AIClient.Application.Interfaces;
 /// applies, the timeline remembers" one pipeline rather than four that drift apart.
 /// </para>
 /// <para>
-/// Not thread-safe. Hosts marshal calls onto one thread (the UI thread), the same contract
-/// the rest of the application's observable state follows; events are raised inline on
-/// whatever thread completed the call, and it is the host that moves them where they are
-/// wanted.
+/// Implementations serialize mutations, history changes and store operations. Snapshots
+/// and published timeline arrays can be read concurrently. Events are raised inline on
+/// the thread that completed the operation; hosts marshal notifications to their UI.
 /// </para>
 /// <para>
 /// The service deliberately has no save policy of its own: applying, remembering and

@@ -42,13 +42,13 @@ public sealed class RunRegistry
     /// told no rather than silently orphaning the run already using it.
     /// </para>
     /// </remarks>
-    public RunEntry? Start(Guid runId)
+    public RunEntry? Start(Guid runId, Guid? conversationId = null)
     {
         var entry = new RunEntry(runId);
 
         lock (_lock)
         {
-            if (_runs.ContainsKey(runId))
+            if (_runs.ContainsKey(runId) || (conversationId is { } conversation && _runs.Values.Any(run => run.ConversationId == conversation)))
             {
                 entry.Dispose();
                 return null;
@@ -60,10 +60,23 @@ public sealed class RunRegistry
                 return null;
             }
 
+            entry.ConversationId = conversationId;
             _runs[runId] = entry;
         }
 
         return entry;
+    }
+
+    public void BindConversation(Guid runId, Guid conversationId)
+    {
+        lock (_lock)
+        {
+            if (_runs.Values.Any(run => run.RunId != runId && run.ConversationId == conversationId))
+            {
+                throw new InvalidOperationException("A run is already active in this conversation.");
+            }
+            if (_runs.TryGetValue(runId, out var entry)) { entry.ConversationId = conversationId; }
+        }
     }
 
     public bool TryGet(Guid runId, out RunEntry? entry)
@@ -98,6 +111,7 @@ public sealed class RunEntry : IDisposable
     }
 
     public Guid RunId { get; }
+    public Guid? ConversationId { get; internal set; }
 
     public CancellationTokenSource Cancellation { get; } = new();
 

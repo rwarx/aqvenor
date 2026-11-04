@@ -223,7 +223,7 @@ public sealed class WorkspaceGraphIndexer
 
         var addedNodes = targetNodes.Where(node => !currentIds.Contains(node.Id)).ToList();
         var removedIds = current.Nodes
-            .Where(node => Owns(node.Id) && !targetIds.Contains(node.Id))
+            .Where(node => !listing.IsTruncated && !cappedBySettings && Owns(node.Id) && !targetIds.Contains(node.Id))
             .Select(node => node.Id)
             .ToList();
         var addedEdges = targetEdges.Where(edge => !currentEdgeIds.Contains(edge.Id)).ToList();

@@ -1,6 +1,8 @@
 /* English — canonical dictionary (key convention mirrors S.<Area>.<Thing>) */
 
 export const en: Record<string, string> = {
+  "code.retrySave": "Retry save",
+  "code.discardReload": "Discard unsaved edits in this file and reload it from disk? Copy the edits first if you want to keep them.",
   "app.name": "Aqvenor",
   "app.tagline": "AI development environment",
 

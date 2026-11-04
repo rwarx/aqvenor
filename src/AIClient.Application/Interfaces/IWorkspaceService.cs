@@ -112,7 +112,8 @@ public interface IWorkspaceService
     Task<WorkspaceResult<WorkspaceWrite>> WriteAsync(
         WorkspacePath path,
         string content,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? expectedHash = null);
 
     /// <summary>
     /// Substitutes an exact piece of text inside a file.

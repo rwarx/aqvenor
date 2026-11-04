@@ -2068,7 +2068,7 @@ if (typeof window !== "undefined") {
     /* Best effort only: beforeunload cannot await, so this marks the state and relies on the
        document being kept alive long enough for the request to leave. Debouncing means there is
        normally nothing to flush. */
-    void useAqvenor.getState().flushPendingWrites?.();
+    void useAqvenor.getState().flushPendingWrites?.().catch(() => {});
   });
 
   window.setInterval(() => {

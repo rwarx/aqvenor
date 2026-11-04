@@ -127,6 +127,7 @@ public sealed class WorkspaceService : IWorkspaceService
     private string? _root;
     private bool _restored;
     private int _leases;
+    private readonly SemaphoreSlim _fileGate = new(1, 1);
     private bool _changing;
 
     public WorkspaceResult<IWorkspaceLease> AcquireLease(string? expectedRoot)
@@ -396,6 +397,7 @@ public sealed class WorkspaceService : IWorkspaceService
             {
                 Path = path,
                 Content = text!,
+                ContentHash = HashContent(text!),
                 FirstLine = 1,
                 LineCount = lines,
                 TotalLines = lines,
@@ -455,7 +457,8 @@ public sealed class WorkspaceService : IWorkspaceService
     public Task<WorkspaceResult<WorkspaceWrite>> WriteAsync(
         WorkspacePath path,
         string content,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        string? expectedHash = null) =>
         GuardAsync<WorkspaceWrite>(path, async () =>
         {
             ArgumentNullException.ThrowIfNull(content);
@@ -498,8 +501,17 @@ public sealed class WorkspaceService : IWorkspaceService
                 }
 
                 newline = TextContent.DominantNewline(previous!);
+                if (expectedHash is not null && !string.Equals(expectedHash, HashContent(previous!), StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(HashContent(TextContent.NormalizeNewlines(content, newline)), HashContent(previous!), StringComparison.OrdinalIgnoreCase))
+                {
+                    return WorkspaceResult<WorkspaceWrite>.Fail("The file changed on disk. Copy your edits and reload the document before saving.");
+                }
                 linesBefore = SplitLines(previous!).Length;
                 bom = await HasBomAsync(full, cancellationToken).ConfigureAwait(false);
+            }
+            else if (expectedHash is not null)
+            {
+                return WorkspaceResult<WorkspaceWrite>.Fail("The document was deleted on disk. Reload the project before saving.");
             }
 
             return await CommitAsync(path, full, content, newline, bom, existed, linesBefore, 0, cancellationToken)
@@ -880,6 +892,7 @@ public sealed class WorkspaceService : IWorkspaceService
         var pinned = AcquireLease(Root);
         if (!pinned.Success) { return WorkspaceResult<T>.Fail(pinned.Error!); }
         using var lease = pinned.Value!;
+        await _fileGate.WaitAsync().ConfigureAwait(false);
         try
         {
             return await operation().ConfigureAwait(false);
@@ -904,6 +917,7 @@ public sealed class WorkspaceService : IWorkspaceService
             _logger.LogError(ex, "A workspace operation failed unexpectedly.");
             return WorkspaceResult<T>.Fail($"'{path}' could not be used.");
         }
+        finally { _fileGate.Release(); }
     }
 
     /// <summary>
@@ -1464,6 +1478,7 @@ public sealed class WorkspaceService : IWorkspaceService
 
         return WorkspaceResult<WorkspaceWrite>.Ok(new WorkspaceWrite
         {
+            ContentHash = HashContent(body),
             Path = path,
             Created = !existed,
             LinesBefore = linesBefore,
@@ -1496,7 +1511,7 @@ public sealed class WorkspaceService : IWorkspaceService
             Directory.CreateDirectory(parent);
         }
 
-        var temp = full + ".aiclient.tmp";
+        var temp = full + "." + Guid.NewGuid().ToString("N") + ".aiclient.tmp";
 
         try
         {
@@ -1529,6 +1544,8 @@ public sealed class WorkspaceService : IWorkspaceService
     /// cosmetic: the count is what a model uses to ask for the next window, and an invented final
     /// line makes every read past the end of a file look like a real one.
     /// </remarks>
+    private static string HashContent(string text) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+
     private static string[] SplitLines(string text)
     {
         if (text.Length == 0)

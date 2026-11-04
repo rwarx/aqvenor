@@ -2,6 +2,8 @@ import type { Dictionary } from "./types-dict";
 
 /* Russian — полный словарь (Task 2-d) */
 export const ru: Dictionary = {
+  "code.retrySave": "Повторить сохранение",
+  "code.discardReload": "Отбросить несохранённые правки этого файла и загрузить его с диска? Скопируйте правки, если хотите их сохранить.",
   "app.name": "Aqvenor",
   "app.tagline": "Среда разработки с ИИ",
 

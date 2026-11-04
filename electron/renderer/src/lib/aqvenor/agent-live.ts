@@ -8,7 +8,7 @@
    ============================================================ */
 
 import { checkpoints, runs, type RunAttachment, type StreamFrame } from "./backend";
-import { ensureServerSession, isServerId, refreshCanvasAfterPlan, refreshCanvasAfterRun, refreshOpenTabs, reloadSession, syncCanvas, syncWorkspaceFiles } from "./sync";
+import { ensureServerSession, flushPendingWrites, isServerId, refreshCanvasAfterPlan, refreshCanvasAfterRun, refreshOpenTabs, reloadSession, syncCanvas, syncWorkspaceFiles } from "./sync";
 import { failPendingApprovals, isChatVisible, newId, onSessionDeleted, useAqvenor, waitForApproval } from "./store";
 import { memoryContextFor, rememberRun } from "./mcp";
 import { translate } from "./i18n";
@@ -117,6 +117,7 @@ export async function runAgentConversation(
 
   let conversationId: string;
   try {
+    await flushPendingWrites();
     conversationId = await ensureServerSession(sid);
   } catch {
     store.pushToast(translate(locale, "run.noBackend.title"), translate(locale, "run.noBackend.desc"), "destructive");

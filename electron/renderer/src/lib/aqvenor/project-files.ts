@@ -122,6 +122,17 @@ export async function hydrateProjectFiles(): Promise<void> {
 /** Subscribe the folder's writers to the store. Call once from the app shell;
  *  returns an unsubscribe for tests. */
 export function initProjectFileSync(): () => void {
+  const unsubClose = window.aqvenor?.onPrepareClose((request) => {
+    void (async () => {
+      try {
+        await useAqvenor.getState().flushPendingWrites();
+        await window.aqvenor?.finishClose(request, true);
+      } catch (error) {
+        useAqvenor.getState().pushToast("Save failed", error instanceof Error ? error.message : String(error), "destructive");
+        await window.aqvenor?.finishClose(request, false);
+      }
+    })();
+  });
   /* seed the folder's README once per workspace open */
   let knownRoot: string | null = null;
 
@@ -147,6 +158,7 @@ export function initProjectFileSync(): () => void {
   });
 
   return () => {
+    unsubClose?.();
     unsubCanvas();
     unsubMcp();
     unsubRoot();

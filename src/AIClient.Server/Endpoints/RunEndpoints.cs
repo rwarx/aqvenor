@@ -160,14 +160,21 @@ public static class RunEndpoints
             }
         }
 
-        using var heartbeat = new Timer(
-            // CancellationToken.None on purpose: the timer's own cancellation has already fired by the
-            // time this can run, and a heartbeat that stopped itself is the bug being fixed here.
-            _ => _ = Emit(new { type = "ping" }),
-            null,
-            StreamHeartbeatInterval,
-            StreamHeartbeatInterval);
-
+        using var heartbeatStop = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        async Task BeatAsync()
+        {
+            using var timer = new PeriodicTimer(StreamHeartbeatInterval);
+            try
+            {
+                while (await timer.WaitForNextTickAsync(heartbeatStop.Token).ConfigureAwait(false))
+                {
+                    await Emit(new { type = "ping" }).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (heartbeatStop.IsCancellationRequested) { }
+            catch (Exception) { response.HttpContext.Abort(); }
+        }
+        var heartbeat = BeatAsync();
         try
         {
             await produce(Emit).ConfigureAwait(false);
@@ -183,7 +190,8 @@ public static class RunEndpoints
         }
         finally
         {
-            await heartbeat.DisposeAsync().ConfigureAwait(false);
+            await heartbeatStop.CancelAsync().ConfigureAwait(false);
+            await heartbeat.ConfigureAwait(false);
             writeGate.Dispose();
         }
     }
@@ -196,7 +204,7 @@ public static class RunEndpoints
         HttpContext context)
     {
         var runId = req.RunId ?? Guid.NewGuid();
-        var entry = runs.Start(runId);
+        var entry = runs.Start(runId, req.ConversationId);
 
         if (entry is null)
         {
@@ -211,6 +219,7 @@ public static class RunEndpoints
             await WriteConflictAsync(context).ConfigureAwait(false);
             return;
         }
+        using var connection = context.RequestAborted.Register(entry.Cancel);
         try
         {
             await StreamAsync(context.Response, async emit =>
@@ -219,6 +228,7 @@ public static class RunEndpoints
                 var conversationId = await EnsureConversationAsync(
                     conversations, req.ConversationId, req.Title,
                     req.ProviderId, req.ModelId, entry.Cancellation.Token).ConfigureAwait(false);
+                runs.BindConversation(runId, conversationId);
 
                 var send = new SendMessageRequest
                 {
@@ -238,6 +248,7 @@ public static class RunEndpoints
         }
         finally
         {
+            connection.Dispose();
             runs.Finish(runId);
         }
     }
@@ -249,7 +260,7 @@ public static class RunEndpoints
         HttpContext context)
     {
         var runId = req.RunId ?? Guid.NewGuid();
-        var entry = runs.Start(runId);
+        var entry = runs.Start(runId, req.ConversationId);
 
         if (entry is null)
         {
@@ -264,6 +275,7 @@ public static class RunEndpoints
             await WriteConflictAsync(context).ConfigureAwait(false);
             return;
         }
+        using var connection = context.RequestAborted.Register(entry.Cancel);
         try
         {
             await StreamAsync(context.Response, async emit =>
@@ -285,6 +297,7 @@ public static class RunEndpoints
         }
         finally
         {
+            connection.Dispose();
             runs.Finish(runId);
         }
     }
@@ -293,11 +306,12 @@ public static class RunEndpoints
         AgentRunHttpRequest req,
         IConversationService conversations,
         IAgentService agent,
+        GraphPersistence persist,
         RunRegistry runs,
         HttpContext context)
     {
         var runId = req.RunId ?? Guid.NewGuid();
-        var entry = runs.Start(runId);
+        var entry = runs.Start(runId, req.ConversationId);
 
         if (entry is null)
         {
@@ -312,6 +326,7 @@ public static class RunEndpoints
             await WriteConflictAsync(context).ConfigureAwait(false);
             return;
         }
+        using var connection = context.RequestAborted.Register(entry.Cancel);
         try
         {
             await StreamAsync(context.Response, async emit =>
@@ -320,6 +335,8 @@ public static class RunEndpoints
                 var conversationId = await EnsureConversationAsync(
                     conversations, req.ConversationId, req.Title,
                     req.ProviderId, req.ModelId, entry.Cancellation.Token).ConfigureAwait(false);
+                await persist.WaitForReadyAsync(entry.Cancellation.Token).ConfigureAwait(false);
+                runs.BindConversation(runId, conversationId);
 
                 if (!Enum.TryParse<AgentMode>(req.Mode, ignoreCase: true, out var mode))
                 {
@@ -360,6 +377,7 @@ public static class RunEndpoints
         }
         finally
         {
+            connection.Dispose();
             runs.Finish(runId);
         }
     }
@@ -414,7 +432,7 @@ public static class RunEndpoints
         HttpContext context)
     {
         var runId = Guid.NewGuid();
-        var entry = runs.Start(runId);
+        var entry = runs.Start(runId, req.ConversationId);
 
         if (entry is null)
         {
@@ -429,6 +447,7 @@ public static class RunEndpoints
             await WriteConflictAsync(context).ConfigureAwait(false);
             return;
         }
+        using var connection = context.RequestAborted.Register(entry.Cancel);
         try
         {
             await StreamAsync(context.Response, async emit =>
@@ -483,6 +502,7 @@ public static class RunEndpoints
         }
         finally
         {
+            connection.Dispose();
             runs.Finish(runId);
         }
     }

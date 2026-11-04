@@ -1,10 +1,15 @@
 using System.Text;
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
+using AIClient.Application.Graph;
+using AIClient.Application.Interfaces;
+using AIClient.Domain.Graph;
 using AIClient.Domain.Workspace;
 using AIClient.Infrastructure.Configuration;
 using AIClient.Infrastructure.Workspace;
 using AIClient.Tests.Support;
+using AIClient.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AIClient.Tests;
 
@@ -95,6 +100,86 @@ public sealed class WorkspaceServiceTests : IAsyncLifetime
         Assert.Equal("project B", await File.ReadAllTextAsync(Path.Combine(second, "same.txt"), Token));
         using var valid = _service.AcquireLease(second).Value!;
         Assert.Equal(second, valid.Root);
+    }
+
+    [Fact]
+    public async Task Concurrent_read_modify_write_operations_preserve_both_changes()
+    {
+        var path = AIClient.Domain.Workspace.WorkspacePath.Parse("concurrent.txt");
+        await File.WriteAllTextAsync(Path.Combine(_root, path.Value), "first old\nsecond old\n", Token);
+        var results = await Task.WhenAll(
+            _service.ReplaceAsync(path, "first old", "first new", cancellationToken: Token),
+            _service.ReplaceAsync(path, "second old", "second new", cancellationToken: Token));
+        Assert.All(results, result => Assert.True(result.Success, result.Error));
+        Assert.Equal("first new\nsecond new\n", await File.ReadAllTextAsync(Path.Combine(_root, path.Value), Token));
+    }
+
+    [Fact]
+    public async Task A_stale_editor_hash_cannot_overwrite_an_external_change()
+    {
+        var path = WorkspacePath.Parse("conflict.txt");
+        var full = Path.Combine(_root, path.Value);
+        await File.WriteAllTextAsync(full, "original", Token);
+        var document = await _service.ReadDocumentAsync(path, Token);
+        await File.WriteAllTextAsync(full, "external change", Token);
+        var result = await _service.WriteAsync(path, "editor change", Token, document.Value!.ContentHash);
+        Assert.False(result.Success);
+        Assert.Equal("external change", await File.ReadAllTextAsync(full, Token));
+    }
+
+    [Fact]
+    public async Task A_write_retry_after_a_lost_response_is_idempotent()
+    {
+        var path = WorkspacePath.Parse("retry.txt");
+        await File.WriteAllTextAsync(Path.Combine(_root, path.Value), "original", Token);
+        var document = await _service.ReadDocumentAsync(path, Token);
+        Assert.True((await _service.WriteAsync(path, "edited", Token, document.Value!.ContentHash)).Success);
+        Assert.True((await _service.WriteAsync(path, "edited", Token, document.Value!.ContentHash)).Success);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_truncated_index_preserves_nodes_outside_the_returned_listing(bool listingCap)
+    {
+        var graph = new GraphService(new GraphStore());
+        var indexer = new WorkspaceGraphIndexer(_service, graph, _settings, NullLogger<WorkspaceGraphIndexer>.Instance);
+        await indexer.RebuildAsync(Token);
+        var original = graph.Current.Nodes.Select(n => n.Id).ToHashSet();
+        Assert.True(original.Count > 1);
+        if (listingCap) { _settings.With<AgentSettings>(s => s.MaxListEntries = 1); }
+        else { _settings.With<CanvasSettings>(s => s.MaxIndexedNodes = 1); }
+        await indexer.RebuildAsync(Token);
+        Assert.True(original.IsSubsetOf(graph.Current.Nodes.Select(n => n.Id)));
+    }
+
+    [Fact]
+    public async Task Opening_a_project_pins_its_root_until_the_graph_load_finishes()
+    {
+        var second = Path.Combine(_scratch, "second");
+        var third = Path.Combine(_scratch, "third");
+        Directory.CreateDirectory(second);
+        Directory.CreateDirectory(third);
+        var store = new GraphStore { DelayedKey = GraphPersistence.KeyForRoot(second) };
+        var graph = new GraphService(store);
+        using var persist = new GraphPersistence(graph, _service, NullLogger<GraphPersistence>.Instance);
+        await persist.InitializeAsync(Token);
+        Assert.True((await _service.OpenAsync(second, Token)).Success);
+        Assert.False(persist.WaitForReadyAsync(Token).IsCompleted);
+        Assert.False((await _service.OpenAsync(third, Token)).Success);
+        store.Loaded.SetResult(GraphSnapshot.Empty);
+        await persist.WaitForReadyAsync(Token);
+        Assert.True((await _service.OpenAsync(third, Token)).Success);
+        await persist.WaitForReadyAsync(Token);
+    }
+
+    private sealed class GraphStore : IGraphStore
+    {
+        public string? DelayedKey { get; init; }
+        public TaskCompletionSource<GraphSnapshot?> Loaded { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task SaveAsync(string key, GraphSnapshot snapshot, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<GraphSnapshot?> LoadAsync(string key, CancellationToken cancellationToken = default) =>
+            key == DelayedKey ? Loaded.Task.WaitAsync(cancellationToken) : Task.FromResult<GraphSnapshot?>(GraphSnapshot.Empty);
     }
 
     [Fact]

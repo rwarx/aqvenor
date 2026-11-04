@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld("aqvenor", {
      remote MCP never widens the page's connect-src. */
   mcp: (target, method, params) => ipcRenderer.invoke("aqvenor:mcp", target, method, params),
   mcpConfigure: (servers) => ipcRenderer.invoke("aqvenor:mcpConfigure", servers),
+  onPrepareClose: (cb) => {
+    const listener = (_event, request) => cb(request);
+    ipcRenderer.on("aqvenor:prepareClose", listener);
+    return () => ipcRenderer.removeListener("aqvenor:prepareClose", listener);
+  },
+  finishClose: (request, saved) => ipcRenderer.invoke("aqvenor:finishClose", request, saved),
   win: {
     minimize: () => ipcRenderer.invoke("aqvenor:winMinimize"),
     maximizeToggle: () => ipcRenderer.invoke("aqvenor:winMaximizeToggle"),

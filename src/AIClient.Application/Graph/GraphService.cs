@@ -45,6 +45,8 @@ public sealed class GraphService : IGraphService
 
     private readonly IGraphStore _store;
     private readonly GraphModel _model = new();
+    private readonly SemaphoreSlim _operations = new(1, 1);
+    private IReadOnlyList<GraphTimelineEntry> _publishedTimeline = Array.Empty<GraphTimelineEntry>();
 
     /// <summary>Oldest first, newest last: the snapshots each applied change set replaced.</summary>
     private readonly List<GraphSnapshot> _undo = [];
@@ -71,7 +73,7 @@ public sealed class GraphService : IGraphService
     public event EventHandler? TimelineChanged;
 
     /// <summary>The graph's history, newest first, bounded. See <see cref="HistoryLimit"/>.</summary>
-    public IReadOnlyList<GraphTimelineEntry> Timeline => _timeline;
+    public IReadOnlyList<GraphTimelineEntry> Timeline => _publishedTimeline;
 
     /// <summary>Whether an <see cref="UndoAsync"/> call would do anything.</summary>
     public bool CanUndo => _undo.Count > 0;
@@ -95,7 +97,10 @@ public sealed class GraphService : IGraphService
     /// <see cref="TimelineChanged"/> alone, since <see cref="Current"/> did not change.
     /// </para>
     /// </remarks>
-    public Task<GraphMutationResult> ApplyAsync(GraphChangeSet changeSet, CancellationToken cancellationToken = default)
+    public Task<GraphMutationResult> ApplyAsync(GraphChangeSet changeSet, CancellationToken cancellationToken = default) =>
+        SerializeAsync(() => ApplyCoreAsync(changeSet, cancellationToken), cancellationToken);
+
+    private Task<GraphMutationResult> ApplyCoreAsync(GraphChangeSet changeSet, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(changeSet);
         cancellationToken.ThrowIfCancellationRequested();
@@ -131,7 +136,10 @@ public sealed class GraphService : IGraphService
     /// a keystroke, and the honest answer to pressing Ctrl+Z at the bottom of history is
     /// "nothing to undo", shown quietly.
     /// </remarks>
-    public Task<GraphMutationResult> UndoAsync(CancellationToken cancellationToken = default)
+    public Task<GraphMutationResult> UndoAsync(CancellationToken cancellationToken = default) =>
+        SerializeAsync(() => UndoCoreAsync(cancellationToken), cancellationToken);
+
+    private Task<GraphMutationResult> UndoCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -165,7 +173,10 @@ public sealed class GraphService : IGraphService
     /// Re-applies the snapshot the last undo removed.
     /// </summary>
     /// <remarks>The mirror of <see cref="UndoAsync"/>: the snapshot being redone is pushed back onto the undo stack, so the next undo lands where the user expects.</remarks>
-    public Task<GraphMutationResult> RedoAsync(CancellationToken cancellationToken = default)
+    public Task<GraphMutationResult> RedoAsync(CancellationToken cancellationToken = default) =>
+        SerializeAsync(() => RedoCoreAsync(cancellationToken), cancellationToken);
+
+    private Task<GraphMutationResult> RedoCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -204,7 +215,10 @@ public sealed class GraphService : IGraphService
     /// because "the user cleared the canvas and closed the app" should not come back as
     /// "the last state before that".
     /// </remarks>
-    public Task SaveAsync(string key, CancellationToken cancellationToken = default)
+    public Task SaveAsync(string key, CancellationToken cancellationToken = default) =>
+        SerializeAsync(async () => { await SaveCoreAsync(key, cancellationToken).ConfigureAwait(false); return true; }, cancellationToken);
+
+    private Task SaveCoreAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
@@ -226,7 +240,10 @@ public sealed class GraphService : IGraphService
     /// timeline that mixed the two would describe steps that never happened together.
     /// </para>
     /// </remarks>
-    public async Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default)
+    public Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default) =>
+        SerializeAsync(() => LoadCoreAsync(key, cancellationToken), cancellationToken);
+
+    private async Task<GraphSnapshot> LoadCoreAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
@@ -237,6 +254,7 @@ public sealed class GraphService : IGraphService
         _undo.Clear();
         _redo.Clear();
         _timeline.Clear();
+        _publishedTimeline = Array.Empty<GraphTimelineEntry>();
 
         SnapshotChanged?.Invoke(this, new GraphSnapshotChangedEventArgs(snapshot, isReload: true));
         TimelineChanged?.Invoke(this, EventArgs.Empty);
@@ -297,6 +315,14 @@ public sealed class GraphService : IGraphService
         {
             _timeline.RemoveRange(HistoryLimit, _timeline.Count - HistoryLimit);
         }
+        _publishedTimeline = _timeline.ToArray();
+    }
+
+    private async Task<T> SerializeAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
+    {
+        await _operations.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { return await operation().ConfigureAwait(false); }
+        finally { _operations.Release(); }
     }
 
     /// <summary>

@@ -36,6 +36,8 @@ public sealed class GraphPersistence : IDisposable
     private readonly object _gate = new();
     private string _currentKey = "workspace:none";
     private bool _disposed;
+    private readonly SemaphoreSlim _operations = new(1, 1);
+    private Task _ready = Task.CompletedTask;
 
     public GraphPersistence(
         IGraphService graph,
@@ -65,18 +67,34 @@ public sealed class GraphPersistence : IDisposable
     }
 
     /// <summary>Persists the current graph under the current workspace key.</summary>
-    public Task SaveCurrentAsync(CancellationToken ct = default) =>
-        _graph.SaveAsync(_currentKey, ct);
+    public async Task SaveCurrentAsync(CancellationToken ct = default)
+    {
+        await WaitForReadyAsync(ct).ConfigureAwait(false);
+        await _operations.WaitAsync(ct).ConfigureAwait(false);
+        try { await _graph.SaveAsync(_currentKey, ct).ConfigureAwait(false); }
+        finally { _operations.Release(); }
+    }
+
+    public Task WaitForReadyAsync(CancellationToken ct = default)
+    {
+        lock (_gate) { return _ready.WaitAsync(ct); }
+    }
 
     private void OnRootChanged(object? sender, string? root)
     {
         // Fire-and-forget is honest here: the event has no async contract, and a
         // failed save is logged rather than thrown into whoever opened the folder.
-        _ = SwapAsync(root);
+        var pinned = _workspace.AcquireLease(root);
+        if (!pinned.Success) { throw new InvalidOperationException(pinned.Error); }
+        lock (_gate) { _ready = SwapAsync(_ready, root, pinned.Value!); }
     }
 
-    private async Task SwapAsync(string? root)
+    private async Task SwapAsync(Task previous, string? root, IWorkspaceLease lease)
     {
+        using var pinned = lease;
+        try { await previous.ConfigureAwait(false); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Retrying a failed graph swap."); }
+        await _operations.WaitAsync().ConfigureAwait(false);
         try
         {
             await _graph.SaveAsync(_currentKey).ConfigureAwait(false);
@@ -86,7 +104,9 @@ public sealed class GraphPersistence : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "The graph could not be swapped for the new workspace root.");
+            throw;
         }
+        finally { _operations.Release(); }
     }
 
     private void OnSnapshotChanged(object? sender, GraphSnapshotChangedEventArgs e)

@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface AqvenorBridge {
+  onPrepareClose: (cb: (request: string) => void) => () => void;
+  finishClose: (request: string, saved: boolean) => Promise<void>;
   mcpConfigure: (servers: import("./lib/aqvenor/types").McpServerConfig[]) => Promise<void>;
   getBackendUrl: () => Promise<string>;
   /**

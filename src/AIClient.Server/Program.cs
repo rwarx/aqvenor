@@ -22,6 +22,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<RunRegistry>();
 builder.Services.AddSingleton<JsonCheckpointStore>();
 builder.Services.AddSingleton<GraphPersistence>();
+builder.Services.AddSingleton<GraphWriteRegistry>();
 builder.Services.AddSingleton<HttpAgentApproval>();
 builder.Services.AddSingleton<IAgentApproval>(p => p.GetRequiredService<HttpAgentApproval>());
 

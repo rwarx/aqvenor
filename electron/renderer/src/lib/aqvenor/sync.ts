@@ -33,6 +33,8 @@ import {
 import { isPlaceholderTitle, newId, sessionModeOf, useAqvenor } from "./store";
 import { serverCreateTitle } from "./session-titles";
 import { loadEditorDocument, mergeListedFiles, readCompleteDocument } from "./editor-documents";
+import { FileWriteQueue } from "./file-write-queue";
+import { MutationQueue } from "./mutation-queue";
 import { looksLikeImageGenModel } from "./data";
 import { tp, translate } from "./i18n";
 import type {
@@ -1021,6 +1023,7 @@ export async function openWorkspaceByPath(dir: string): Promise<string | null> {
   workspaceChanging = true;
   try {
     await flushPendingWrites();
+    await graphWrites.flush();
     if (Object.values(S().saveStatus).some((status) => status === "error")) {
       throw new Error("Save the pending changes before switching projects.");
     }
@@ -1035,6 +1038,10 @@ export async function openWorkspaceByPath(dir: string): Promise<string | null> {
 }
 
 let workspaceChanging = false;
+const graphWrites = new MutationQueue<{ id: string; title: string; changes: GraphChangeInput[]; root: string | null }>(async (command) => {
+  const result = await graph.apply(command.title, command.changes, command.root, undefined, command.id);
+  if (result.rejected.length) S().pushToast("Canvas changes rejected", result.rejected.join("\n"), "destructive");
+});
 function assertWorkspaceIdle(): void {
   if (Object.values(S().runningSessions).some((run) => run.status === "running" || run.status === "awaiting-approval")) {
     throw new Error("Finish or stop the current run before switching or restoring a project.");
@@ -1097,8 +1104,9 @@ function toNodeStatus(raw: string | null | undefined): CanvasNodeStatus | undefi
 
 export async function syncCanvas(): Promise<void> {
   if (!serverMode) return;
+  const root = S().workspaceRoot;
   const snap = await graph.snapshot().catch(() => null);
-  if (!snap) return;
+  if (!snap || S().workspaceRoot !== root) return;
   applyGraphSnapshot(snap);
 }
 
@@ -1125,7 +1133,9 @@ export async function refreshCanvasAfterPlan(): Promise<void> {
  */
 export async function refreshCanvasAfterRun(): Promise<void> {
   if (!serverMode || !S().workspaceRoot) return;
-  const res = await graph.reindex().catch(() => null);
+  const root = S().workspaceRoot;
+  const res = await graph.reindex(root).catch(() => null);
+  if (S().workspaceRoot !== root) return;
   if (res) applyGraphSnapshot(res.snapshot);
   else await syncCanvas();
 }
@@ -1137,7 +1147,9 @@ export async function refreshCanvasAfterRun(): Promise<void> {
  */
 export async function reindexCanvas(): Promise<void> {
   if (!serverMode) return;
-  const res = await graph.reindex().catch(() => null);
+  const root = S().workspaceRoot;
+  const res = await graph.reindex(root);
+  if (S().workspaceRoot !== root) return;
   if (res) {
     applyGraphSnapshot(res.snapshot);
     requestCanvasFit();
@@ -1184,7 +1196,9 @@ function applyGraphSnapshot(snap: ServerGraphSnapshot): void {
 
 export function pushGraphChanges(title: string, changes: GraphChangeInput[]): void {
   if (!serverMode || changes.length === 0) return;
-  void graph.apply(title, changes).catch(() => undefined);
+  const root = S().workspaceRoot;
+  graphWrites.enqueue({ id: crypto.randomUUID(), title, changes, root });
+  void graphWrites.flush().catch((error) => S().pushToast("Canvas save failed", error instanceof Error ? error.message : String(error), "destructive"));
 }
 
 /** Push a canvas deletion (nodes + incident edges) as one server change set. */
@@ -1213,61 +1227,32 @@ export function pushCanvasMoves(): void {
  * Per path rather than one global timer, so that typing in a second file cannot
  * cancel an unsaved edit in the first.
  */
-const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
+const fileWrites = new FileWriteQueue(
+  async (entry) => {
+    const hash = S().files.find((f) => f.path === entry.path)?.contentHash;
+    const result = await workspace.write(entry.path, entry.content, entry.root, hash);
+    if (S().workspaceRoot === entry.root && result.contentHash) {
+      useAqvenor.setState((s) => ({ files: s.files.map((f) => f.path === entry.path ? { ...f, contentHash: result.contentHash } : f) }));
+    }
+  },
+  (entry, status) => {
+    const file = S().files.find((f) => f.path === entry.path);
+    if (S().workspaceRoot !== entry.root || file?.revision !== entry.revision) return;
+    S().markSave(entry.path, status);
+    if (status === "error") S().pushToast(translate(S().ui.locale, "file.saveFailed.title"), entry.path, "destructive");
+  },
+);
 
-/** Newest content queued for a path, so a burst of keystrokes sends one write of the last state. */
-const pendingContent = new Map<string, { content: string; root: string | null }>();
-
-/**
- * How long typing pauses before the file is written.
- *
- * Long enough that a normal burst of typing produces one request rather than
- * hundreds, short enough that closing the window a moment after stopping has
- * almost always already persisted the edit.
- */
-const WRITE_DEBOUNCE_MS = 700;
-
-/** Writes one path now, cancelling its pending timer. Returns the promise for callers that must wait. */
-function flushWrite(path: string): Promise<void> | null {
-  const timer = pendingWrites.get(path);
-  if (timer !== undefined) {
-    clearTimeout(timer);
-    pendingWrites.delete(path);
-  }
-
-  const pending = pendingContent.get(path);
-  if (pending === undefined) return null;
-  pendingContent.delete(path);
-
-  return workspace
-    .write(path, pending.content, pending.root)
-    .then(() => S().markSave(path, "saved"))
-    .catch(() => {
-      S().markSave(path, "error");
-      S().pushToast(translate(S().ui.locale, "file.saveFailed.title"), path, "destructive");
-    });
-}
-
-/**
- * Writes every path with a queued edit, now.
- *
- * Called wherever the renderer is about to lose the chance to write: a save
- * action, a session export, the tab closing, and window teardown. Without it a
- * debounce is a way to lose the last few characters typed before a quit.
- */
 export async function flushPendingWrites(): Promise<void> {
-  const inFlight = [...pendingWrites.keys()]
-    .map(flushWrite)
-    .filter((p): p is Promise<void> => p !== null);
-
-  await Promise.all(inFlight);
+  await fileWrites.flushAll();
+  await graphWrites.flush();
 }
-
-/** Every path with an edit still queued, for callers that report "unsaved changes". */
-export function pendingWritePaths(): string[] {
-  return [...pendingWrites.keys()];
+export const pendingWritePaths = (): string[] => fileWrites.paths();
+export async function discardFileEdits(path: string): Promise<void> {
+  fileWrites.discard(path, S().workspaceRoot);
+  S().markSave(path, "saved");
+  await loadEditorDocument(path, true);
 }
-
 function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
   useAqvenor.setState({
     openCodeTab: (path: string) => {
@@ -1288,17 +1273,7 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       // large file meant a full-document request per character, and on a flaky
       // connection a toast storm as every one of them failed.
       S().markSave(path, "unsaved");
-      pendingContent.set(path, { content, root: S().workspaceRoot });
-
-      const existing = pendingWrites.get(path);
-      if (existing !== undefined) clearTimeout(existing);
-
-      pendingWrites.set(
-        path,
-        setTimeout(() => {
-          void flushWrite(path);
-        }, WRITE_DEBOUNCE_MS),
-      );
+      fileWrites.enqueue({ path, content, root: S().workspaceRoot, revision: S().files.find((f) => f.path === path)?.revision ?? 0 });
     },
     addNodes: (nodes) => {
       prev.addNodes(nodes);
@@ -1378,7 +1353,8 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       }
       void (async () => {
         try {
-          await graph.undo();
+          await graphWrites.flush();
+          await graph.undo(S().workspaceRoot);
         } catch {
           /* nothing to undo — stay quiet */
         }
@@ -1392,7 +1368,8 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       }
       void (async () => {
         try {
-          await graph.redo();
+          await graphWrites.flush();
+          await graph.redo(S().workspaceRoot);
         } catch {
           /* nothing to redo — stay quiet */
         }

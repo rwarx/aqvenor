@@ -155,7 +155,7 @@ export function CommandPalette() {
               run: () => {
                 void (async () => {
                   try {
-                    const res = await graph.reindex();
+                    const res = await graph.reindex(useAqvenor.getState().workspaceRoot);
                     await syncCanvas().catch(() => undefined);
                     pushToast(t("palette.reindex"), res.rejected.length > 0 ? t("palette.reindex.rejected", res.rejected.length) : undefined);
                   } catch (err) {
@@ -172,7 +172,7 @@ export function CommandPalette() {
               keywords: t("palette.k.undoGraph"),
               run: () => {
                 void graph
-                  .undo()
+                  .undo(useAqvenor.getState().workspaceRoot)
                   .then(() => syncCanvas().catch(() => undefined))
                   .catch((err: unknown) =>
                     pushToast(t("palette.undoGraph"), err instanceof Error ? err.message : undefined, "destructive"),
@@ -187,7 +187,7 @@ export function CommandPalette() {
               keywords: t("palette.k.redoGraph"),
               run: () => {
                 void graph
-                  .redo()
+                  .redo(useAqvenor.getState().workspaceRoot)
                   .then(() => syncCanvas().catch(() => undefined))
                   .catch((err: unknown) =>
                     pushToast(t("palette.redoGraph"), err instanceof Error ? err.message : undefined, "destructive"),

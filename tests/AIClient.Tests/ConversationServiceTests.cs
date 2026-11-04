@@ -72,6 +72,17 @@ public sealed class ConversationServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_writers_allocate_unique_message_sequences_in_one_transaction()
+    {
+        var chat = await _db.Conversations().CreateAsync();
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(i =>
+            _db.Conversations().AddMessageAsync(chat.Id, User($"message {i}"))));
+        var detail = await _db.Conversations().GetAsync(chat.Id);
+        Assert.Equal(Enumerable.Range(0, 12), detail!.Messages.Select(m => m.SequenceNumber));
+        Assert.Equal(12, detail.Messages.Select(m => m.Content).Distinct().Count());
+    }
+
+    [Fact]
     public async Task Sequence_numbers_stay_unique_after_a_message_is_deleted_from_the_middle()
     {
         // The ordinal comes from MAX(SequenceNumber), not from the row count. With a hole in

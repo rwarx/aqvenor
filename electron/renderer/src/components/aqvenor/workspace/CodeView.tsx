@@ -5,7 +5,7 @@ import { Bookmark, Check, ChevronRight, Circle, CircleAlert, FileCode, FileStack
 import { useAqvenor, type SaveStatus } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { computeUnifiedDiff, diffStats } from "@/lib/aqvenor/diff";
-import { isServerMode, syncWorkspaceFiles, refreshOpenTabs } from "@/lib/aqvenor/sync";
+import { discardFileEdits, flushPendingWrites, isServerMode, syncWorkspaceFiles, refreshOpenTabs } from "@/lib/aqvenor/sync";
 import { loadEditorDocument } from "@/lib/aqvenor/editor-documents";
 import { canApplyCheckpoint } from "@/lib/aqvenor/checkpoint-safety";
 import { AqBadge, AqGhostButton, AqToolButton } from "@/components/aqvenor/ui";
@@ -197,6 +197,11 @@ export default function CodeView() {
           })}
         </div>
         <div className="flex shrink-0 items-center gap-2 border-l border-line-faint pl-2 pr-3">
+          {saveStatus[file.path] === "error" && (
+            <AqGhostButton onClick={() => { void flushPendingWrites().catch((err) => pushToast(t("file.saveFailed.title"), String(err), "destructive")); }}>
+              {t("code.retrySave")}
+            </AqGhostButton>
+          )}
           <AqToolButton
             onClick={() => setUi({ ghostText: !ghostTextOn })}
             active={ghostTextOn}
@@ -210,6 +215,10 @@ export default function CodeView() {
               // In server mode re-pull the workspace from disk (the agent may
               // have edited files); offline there is nothing to re-read.
               if (isServerMode()) {
+                if (saveStatus[file.path] === "error") {
+                  if (window.confirm(t("code.discardReload"))) void discardFileEdits(file.path).catch((err) => pushToast(t("code.reload"), String(err), "destructive"));
+                  return;
+                }
                 void syncWorkspaceFiles()
                   .then(() => refreshOpenTabs())
                   .then(() => pushToast(t("code.reloadedToast")))

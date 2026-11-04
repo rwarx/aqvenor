@@ -2,6 +2,8 @@ import type { Dictionary } from "./types-dict";
 
 /* German — vollständiges Wörterbuch (Task 2-d) */
 export const de: Dictionary = {
+  "code.retrySave": "Speichern wiederholen",
+  "code.discardReload": "Ungespeicherte Änderungen dieser Datei verwerfen und vom Datenträger neu laden? Kopieren Sie zuerst die Änderungen, die Sie behalten möchten.",
   "app.name": "Aqvenor",
   "app.tagline": "KI-Entwicklungsumgebung",
 

@@ -442,11 +442,11 @@ export const workspace = {
       `/api/workspace/read?path=${encodeURIComponent(path)}&startLine=${startLine}${lineCount ? `&lineCount=${lineCount}` : ""}`,
     ),
   readDocument: (path: string, expectedRoot: string) =>
-    api<{ path: string; content: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
+    api<{ path: string; content: string; contentHash?: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
       `/api/workspace/document?path=${encodeURIComponent(path)}&expectedRoot=${encodeURIComponent(expectedRoot)}`,
     ),
-  write: (path: string, content: string, expectedRoot: string | null) =>
-    api<{ created: boolean; linesAfter: number }>(`/api/workspace/write`, { method: "POST", body: JSON.stringify({ path, content, expectedRoot }) }),
+  write: (path: string, content: string, expectedRoot: string | null, expectedHash?: string) =>
+    api<{ created: boolean; linesAfter: number; contentHash?: string }>(`/api/workspace/write`, { method: "POST", body: JSON.stringify({ path, content, expectedRoot, expectedHash }) }),
   search: (query: string, path?: string, filePattern?: string) =>
     api<{ filesScanned: number; isTruncated: boolean; matches: { path: string; lineNumber: number; line: string }[] }>(
       `/api/workspace/search`,
@@ -517,13 +517,13 @@ export interface GraphChangeInput {
 export const graph = {
   snapshot: () => api<ServerGraphSnapshot>(`/api/graph`),
   timeline: () => api<ServerTimelineEntry[]>(`/api/graph/timeline`),
-  undo: () => api<{ applied: number; rejected: string[] }>(`/api/graph/undo`, { method: "POST" }),
-  redo: () => api<{ applied: number; rejected: string[] }>(`/api/graph/redo`, { method: "POST" }),
-  reindex: () => api<{ rejected: string[]; snapshot: ServerGraphSnapshot }>(`/api/graph/reindex`, { method: "POST" }),
-  apply: (title: string, changes: GraphChangeInput[], description?: string) =>
+  undo: (root: string | null) => api<{ applied: number; rejected: string[] }>(`/api/graph/undo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  redo: (root: string | null) => api<{ applied: number; rejected: string[] }>(`/api/graph/redo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  reindex: (root: string | null) => api<{ rejected: string[]; snapshot: ServerGraphSnapshot }>(`/api/graph/reindex${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  apply: (title: string, changes: GraphChangeInput[], expectedRoot: string | null, description?: string, requestId?: string) =>
     api<{ applied: number; rejected: string[]; snapshot: ServerGraphSnapshot }>(`/api/graph/apply`, {
       method: "POST",
-      body: JSON.stringify({ title, description, changes }),
+      body: JSON.stringify({ title, description, changes, expectedRoot, requestId }),
     }),
 };
 

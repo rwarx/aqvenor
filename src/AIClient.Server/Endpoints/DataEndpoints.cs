@@ -173,15 +173,17 @@ public static class DataEndpoints
         // ----- workspace -----
         g.MapGet("/workspace", (IWorkspaceService w) =>
             Results.Ok(new { isOpen = w.IsOpen, root = w.Root }));
-        g.MapPost("/workspace/open", async (OpenWorkspaceRequest req, IWorkspaceService w, CancellationToken ct) =>
+        g.MapPost("/workspace/open", async (OpenWorkspaceRequest req, IWorkspaceService w, GraphPersistence persist, CancellationToken ct) =>
         {
             var result = await w.OpenAsync(req.Directory, ct).ConfigureAwait(false);
+            if (result.Success) { await persist.WaitForReadyAsync(ct).ConfigureAwait(false); }
             return result.Success ? Results.Ok(new { root = result.Value }) : Results.BadRequest(new { error = result.Error });
         });
-        g.MapPost("/workspace/close", async (IWorkspaceService w, CancellationToken ct) =>
+        g.MapPost("/workspace/close", async (IWorkspaceService w, GraphPersistence persist, CancellationToken ct) =>
         {
             try { await w.CloseAsync(ct).ConfigureAwait(false); }
             catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             return Results.Ok(new { closed = true });
         });
         g.MapGet("/workspace/list", async (string? path, bool? recursive, IWorkspaceService w, CancellationToken ct) =>
@@ -245,6 +247,7 @@ public static class DataEndpoints
                 {
                     path = result.Value!.Path.Value,
                     content = result.Value.Content,
+                    contentHash = result.Value.ContentHash,
                     firstLine = result.Value.FirstLine,
                     lineCount = result.Value.LineCount,
                     totalLines = result.Value.TotalLines,
@@ -263,9 +266,9 @@ public static class DataEndpoints
                 return Results.BadRequest(new { error = perr });
             }
 
-            var result = await w.WriteAsync(p, req.Content, ct).ConfigureAwait(false);
+            var result = await w.WriteAsync(p, req.Content, ct, req.ExpectedHash).ConfigureAwait(false);
             return result.Success
-                ? Results.Ok(new { created = result.Value!.Created, linesAfter = result.Value.LinesAfter })
+                ? Results.Ok(new { created = result.Value!.Created, linesAfter = result.Value.LinesAfter, contentHash = result.Value.ContentHash })
                 : Results.BadRequest(new { error = result.Error });
         });
         g.MapPost("/workspace/search", async (WorkspaceSearchQuery req, IWorkspaceService w, CancellationToken ct) =>
@@ -322,7 +325,11 @@ public static class DataEndpoints
         });
 
         // ----- graph -----
-        g.MapGet("/graph", (IGraphService graph) => Results.Ok(MapSnapshot(graph.Current)));
+        g.MapGet("/graph", async (IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        {
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
+            return Results.Ok(MapSnapshot(graph.Current));
+        });
         g.MapGet("/graph/timeline", (IGraphService graph) =>
             Results.Ok(graph.Timeline.Select(t => new
             {
@@ -336,26 +343,42 @@ public static class DataEndpoints
                 edgeCount = t.EdgeCount,
                 wasRejected = t.WasRejected,
             })));
-        g.MapPost("/graph/undo", async (IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        g.MapPost("/graph/undo", async (string? expectedRoot, IWorkspaceService workspace, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(expectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await graph.UndoAsync(ct).ConfigureAwait(false);
             await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected });
         });
-        g.MapPost("/graph/redo", async (IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        g.MapPost("/graph/redo", async (string? expectedRoot, IWorkspaceService workspace, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(expectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await graph.RedoAsync(ct).ConfigureAwait(false);
             await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected });
         });
-        g.MapPost("/graph/reindex", async (WorkspaceGraphIndexer indexer, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        g.MapPost("/graph/reindex", async (string? expectedRoot, IWorkspaceService workspace, WorkspaceGraphIndexer indexer, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(expectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await indexer.RebuildAsync(ct).ConfigureAwait(false);
             await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             return Results.Ok(new { rejected = result.Rejected, snapshot = MapSnapshot(graph.Current) });
         });
-        g.MapPost("/graph/apply", async (GraphApplyRequest req, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        g.MapPost("/graph/apply", async (GraphApplyRequest req, IWorkspaceService workspace, IGraphService graph, GraphWriteRegistry writes, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(req.ExpectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var changes = new List<GraphChange>();
             foreach (var c in req.Changes)
             {
@@ -372,7 +395,7 @@ public static class DataEndpoints
                 Origin = GraphChangeOrigin.User,
                 Changes = changes,
             };
-            var result = await graph.ApplyAsync(set, ct).ConfigureAwait(false);
+            var result = await writes.ApplyAsync(req.RequestId, JsonSerializer.Serialize(req), set, graph, ct).ConfigureAwait(false);
             await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             return Results.Ok(new
             {
@@ -554,7 +577,7 @@ public static class DataEndpoints
     private sealed record EnabledRequest(bool IsEnabled);
     private sealed record CustomProviderRequest(string Name, string BaseUrl);
     private sealed record OpenWorkspaceRequest(string Directory);
-    private sealed record WriteFileRequest(string Path, string Content, string? ExpectedRoot);
+    private sealed record WriteFileRequest(string Path, string Content, string? ExpectedRoot, string? ExpectedHash);
     private sealed record PathRequest(string Path);
     private sealed record MoveRequest(string From, string To);
 
@@ -566,7 +589,7 @@ public static class DataEndpoints
         string Kind, string? NodeId, GraphNodeIn? Node, string? Title, string? Subtitle,
         string? Detail, string? NodeKind, double? X, double? Y, string? EdgeId,
         GraphEdgeIn? Edge, string? EdgeKind, string? Label, string? Status);
-    private sealed record GraphApplyRequest(string? Title, string? Description, IReadOnlyList<GraphChangeIn> Changes);
+    private sealed record GraphApplyRequest(string? Title, string? Description, IReadOnlyList<GraphChangeIn> Changes, string? ExpectedRoot, Guid? RequestId);
 
     private sealed record CheckpointCreateRequest(
         Guid ConversationId, string Label, Guid? MessageId,

@@ -53,6 +53,7 @@ public sealed record WorkspaceListing
 /// <summary>A slice of a text file.</summary>
 public sealed record WorkspaceFile
 {
+    public string? ContentHash { get; init; }
     public required WorkspacePath Path { get; init; }
 
     public required string Content { get; init; }
@@ -75,6 +76,7 @@ public sealed record WorkspaceFile
 /// <summary>What a write changed.</summary>
 public sealed record WorkspaceWrite
 {
+    public string? ContentHash { get; init; }
     public required WorkspacePath Path { get; init; }
 
     /// <summary>

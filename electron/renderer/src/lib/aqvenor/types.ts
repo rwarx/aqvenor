@@ -375,6 +375,7 @@ export interface McpServerStatus {
 /* ---------- workspace files (demo project) ---------- */
 
 export interface DemoFile {
+  contentHash?: string;
   path: string;
   language: "csharp" | "json" | "markdown" | "xml" | "text";
   content: string;

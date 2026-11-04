@@ -336,6 +336,7 @@ public sealed class ConversationService : IConversationService
         CancellationToken cancellationToken = default)
     {
         await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         // Read the current maximum rather than counting rows: deletions (from Regenerate)
         // make Count an unreliable source of the next ordinal.
@@ -385,7 +386,7 @@ public sealed class ConversationService : IConversationService
             .ConfigureAwait(false);
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return ToDto(entity);
     }
 

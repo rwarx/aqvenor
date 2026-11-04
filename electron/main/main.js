@@ -44,6 +44,9 @@ let mainWindow = null;
 let sidecar = null;
 /** @type {string} */
 let backendUrl = "";
+let closeAllowed = false;
+/** @type {string | null} */
+let closeRequest = null;
 /**
  * Resolved once the sidecar has started, failed, or timed out.
  *
@@ -240,6 +243,8 @@ function hardenSession() {
 }
 
 function createWindow() {
+  closeAllowed = false;
+  closeRequest = null;
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 900,
@@ -303,6 +308,17 @@ function createWindow() {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+  });
+  mainWindow.on("close", (event) => {
+    if (closeAllowed) return;
+    event.preventDefault();
+    if (closeRequest) return;
+    closeRequest = crypto.randomUUID();
+    mainWindow?.webContents.send("aqvenor:prepareClose", closeRequest);
+  });
+  mainWindow.webContents.on("render-process-gone", () => {
+    closeAllowed = true;
+    mainWindow?.close();
   });
 }
 
@@ -487,6 +503,13 @@ function registerIpc() {
 
   handle("aqvenor:winClose", () => {
     focusedWin()?.close();
+  });
+  handle("aqvenor:finishClose", (_event, request, saved) => {
+    if (!closeRequest || request !== closeRequest) return;
+    closeRequest = null;
+    if (saved !== true) return;
+    closeAllowed = true;
+    mainWindow?.close();
   });
 
   handle("aqvenor:winIsMaximized", () => focusedWin()?.isMaximized() ?? false);

@@ -45,7 +45,7 @@ export function loadEditorDocument(path: string, force = false): Promise<void> {
     if (current.workspaceRoot !== root || dirty(path)) return;
     useAqvenor.setState((s) => ({
       files: s.files.map((f) => f.path === path && (f.revision ?? 0) === revision
-        ? { ...f, content: document.content, loadState: "loaded", loadError: undefined, modified: false }
+        ? { ...f, content: document.content, contentHash: document.contentHash, loadState: "loaded", loadError: undefined, modified: false }
         : f),
     }));
   }).catch((error: unknown) => {
