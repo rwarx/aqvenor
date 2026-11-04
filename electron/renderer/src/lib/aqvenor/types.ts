@@ -391,6 +391,8 @@ export interface ContextFile {
 }
 
 export interface Checkpoint {
+  formatVersion?: number;
+  workspaceRoot?: string | null;
   id: string;
   label: string;
   createdAt: number;

@@ -39,11 +39,11 @@ interface CanvasFile {
   edges: CanvasEdge[];
 }
 
-async function writeProjectFile(path: string, content: string): Promise<void> {
+async function writeProjectFile(path: string, content: string, root = useAqvenor.getState().workspaceRoot): Promise<void> {
   if (!isServerMode()) return;
   if (!useAqvenor.getState().workspaceRoot) return;
   try {
-    await workspace.write(path, content);
+    await workspace.write(path, content, root);
   } catch {
     /* best-effort: a read-only workspace must never break the app */
   }
@@ -56,8 +56,10 @@ let canvasTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleCanvasWrite(): void {
   if (canvasTimer !== null) clearTimeout(canvasTimer);
+  const root = useAqvenor.getState().workspaceRoot;
   canvasTimer = setTimeout(() => {
     canvasTimer = null;
+    if (useAqvenor.getState().workspaceRoot !== root) return;
     const { canvas } = useAqvenor.getState();
     const file: CanvasFile = {
       version: 1,
@@ -66,7 +68,7 @@ function scheduleCanvasWrite(): void {
       nodes: canvas.nodes.map(({ ...n }) => n),
       edges: canvas.edges.map(({ ...e }) => e),
     };
-    void writeProjectFile(CANVAS_FILE, JSON.stringify(file, null, 2) + "\n");
+    void writeProjectFile(CANVAS_FILE, JSON.stringify(file, null, 2) + "\n", root);
   }, CANVAS_WRITE_DELAY_MS);
 }
 

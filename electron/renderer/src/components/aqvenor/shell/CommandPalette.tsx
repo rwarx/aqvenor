@@ -33,8 +33,8 @@ import {
 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
-import { graph, workspace } from "@/lib/aqvenor/backend";
-import { exportCurrentSession, isServerMode, reindexCanvas, syncCanvas, syncWorkspaceFiles } from "@/lib/aqvenor/sync";
+import { graph } from "@/lib/aqvenor/backend";
+import { exportCurrentSession, isServerMode, openWorkspaceByPath, syncCanvas } from "@/lib/aqvenor/sync";
 import {
   exportSessionJson,
   exportSessionMarkdown,
@@ -138,10 +138,7 @@ export function CommandPalette() {
                   const dir = await window.aqvenor.pickFolder();
                   if (!dir) return;
                   try {
-                    await workspace.open(dir);
-                    await syncWorkspaceFiles().catch(() => undefined);
-                    // Walk the new folder so the canvas fills in (empty graph otherwise).
-                    await reindexCanvas().catch(() => undefined);
+                    await openWorkspaceByPath(dir);
                     pushToast(t("palette.openWorkspace"), dir);
                   } catch (err) {
                     pushToast(t("palette.openWorkspace"), err instanceof Error ? err.message : undefined, "destructive");

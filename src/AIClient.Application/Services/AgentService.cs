@@ -82,6 +82,14 @@ public sealed class AgentService : IAgentService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var pinned = _workspace.AcquireLease(request.WorkspaceBound ? request.WorkspaceRoot : _workspace.Root);
+        if (!pinned.Success)
+        {
+            yield return new AgentEvent.Failed(Guid.Empty, AIErrorKind.InvalidRequest, pinned.Error!, null, true);
+            yield break;
+        }
+        using var workspaceLease = pinned.Value!;
+
         var task = await _conversations.AddMessageAsync(
             request.ConversationId,
             new NewMessage

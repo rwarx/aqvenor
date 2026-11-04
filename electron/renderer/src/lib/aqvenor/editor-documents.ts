@@ -5,8 +5,9 @@ import type { DemoFile } from "./types";
 const requests = new Map<string, Promise<void>>();
 const dirty = (path: string) => ["unsaved", "saving", "error"].includes(useAqvenor.getState().saveStatus[path]);
 
-export async function readCompleteDocument(path: string) {
-  const result = await workspace.readDocument(path);
+export async function readCompleteDocument(path: string, root = useAqvenor.getState().workspaceRoot) {
+  if (!root) throw new Error("Open a project before loading its documents.");
+  const result = await workspace.readDocument(path, root);
   if (result.isTruncated) throw new Error("The document is incomplete and cannot be edited.");
   return result;
 }
@@ -39,7 +40,7 @@ export function loadEditorDocument(path: string, force = false): Promise<void> {
   if (file.loadState !== "loaded") {
     useAqvenor.setState((s) => ({ files: s.files.map((f) => f.path === path ? { ...f, loadState: "loading", loadError: undefined } : f) }));
   }
-  const request = readCompleteDocument(path).then((document) => {
+  const request = readCompleteDocument(path, root).then((document) => {
     const current = useAqvenor.getState();
     if (current.workspaceRoot !== root || dirty(path)) return;
     useAqvenor.setState((s) => ({

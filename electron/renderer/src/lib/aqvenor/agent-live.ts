@@ -103,6 +103,7 @@ export async function runAgentConversation(
 ): Promise<void> {
   const store = S();
   const locale = store.ui.locale;
+  const workspaceRoot = store.workspaceRoot;
   // The run belongs to one chat: concurrent runs in different chats coexist,
   // a second send into the SAME chat is still refused while it streams.
   let sid = opts?.sessionId ?? store.currentSessionId;
@@ -262,13 +263,15 @@ export async function runAgentConversation(
       const paths = argPaths(argsNote ?? "{}");
       if (paths.length > 0 || risk === "Execute") {
         void checkpoints
-          .create(conversationId, `before ${tool}`, assistantId, paths, true)
+          .create(conversationId, `before ${tool}`, assistantId, paths, true, workspaceRoot)
           .then((c) =>
             checkpoints
               .get(c.id)
               .then((full) =>
                 S().addCheckpoint?.({
                   id: full.id,
+                  formatVersion: full.formatVersion,
+                  workspaceRoot: full.workspaceRoot,
                   label: full.label,
                   createdAt: Date.parse(full.createdAt) || Date.now(),
                   filesSnapshot: Object.entries(full.files).map(([path, content]) => ({ path, content })),
@@ -594,7 +597,7 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     } else {
       const serverMode = mode === "plan" ? "Plan" : mode === "plancanvas" ? "PlanCanvas" : "Build";
       await runs.agentRun(
-        { runId, conversationId, content: trimmed, providerId, modelId, mode: serverMode, attachments, focusNodeIds: focus },
+        { runId, conversationId, content: trimmed, providerId, modelId, mode: serverMode, attachments, focusNodeIds: focus, workspaceRoot, workspaceBound: true },
         onFrame,
         abort.signal,
       );

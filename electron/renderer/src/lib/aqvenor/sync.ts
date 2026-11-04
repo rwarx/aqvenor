@@ -413,6 +413,8 @@ export async function hydrateFromBackend(): Promise<HydrateResult> {
       const full = await checkpoints.get(c.id);
       mappedCps.push({
         id: full.id,
+        formatVersion: full.formatVersion,
+        workspaceRoot: full.workspaceRoot,
         label: full.label,
         createdAt: toMs(full.createdAt),
         filesSnapshot: Object.entries(full.files).map(([path, content]) => ({ path, content })),
@@ -770,23 +772,28 @@ function installServerActions() {
           const session = S().sessions.find((s) => s.id === S().currentSessionId);
           const convId = session && isServerId(session.id) ? session.id : S().currentSessionId;
           const files = cp.filesSnapshot.map((f) => f.path);
+          const root = S().workspaceRoot;
+          await flushPendingWrites();
           const created = await checkpoints.create(
             isServerId(convId) ? convId : "00000000-0000-0000-0000-000000000000",
             cp.label,
             null,
             files,
             !!cp.canvasSnapshot,
+            root,
           );
           useAqvenor.setState((st) => ({
-            checkpoints: [...st.checkpoints, { ...cp, id: created.id }],
+            checkpoints: [...st.checkpoints, { ...cp, id: created.id, formatVersion: 2, workspaceRoot: root }],
           }));
-        } catch {
-          useAqvenor.setState((st) => ({ checkpoints: [...st.checkpoints, cp] }));
+        } catch (error) {
+          S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), error instanceof Error ? error.message : String(error), "destructive");
         }
       })();
     },
     restoreCheckpoint: (id: string) => {
       void (async () => {
+        assertWorkspaceIdle();
+        await flushPendingWrites();
         if (isServerId(id)) {
           try {
             const res = await checkpoints.restore(id);
@@ -797,17 +804,17 @@ function installServerActions() {
             await syncWorkspaceFiles();
             await syncCanvas();
             return;
-          } catch {
+          } catch (error) {
             S().pushToast(
               translate(S().ui.locale, "checkpoint.restoreFailed.title"),
-              translate(S().ui.locale, "checkpoint.restoreFailed.desc"),
+              error instanceof Error ? error.message : translate(S().ui.locale, "checkpoint.restoreFailed.desc"),
               "destructive",
             );
             return;
           }
         }
-        prev.restoreCheckpoint(id);
-      })();
+        S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), "Create a new checkpoint before restoring.", "destructive");
+      })().catch((error) => S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), error instanceof Error ? error.message : String(error), "destructive"));
     },
   });
 }
@@ -975,11 +982,7 @@ export async function openWorkspaceDialog(): Promise<string | null> {
   if (!serverMode || !bridge) return null;
   const dir = await bridge.pickFolder();
   if (!dir) return null;
-  const res = await workspace.open(dir);
-  useAqvenor.setState({ workspaceRoot: res.root });
-  await syncWorkspaceFiles().catch(() => undefined);
-  await reindexCanvas().catch(() => undefined);
-  return res.root;
+  return openWorkspaceByPath(dir);
 }
 
 /** Open a workspace folder by a path already known (e.g. a Code project's
@@ -987,11 +990,29 @@ export async function openWorkspaceDialog(): Promise<string | null> {
  *  post-open sync. Returns the opened root, or null when there is no sidecar. */
 export async function openWorkspaceByPath(dir: string): Promise<string | null> {
   if (!serverMode || !dir) return null;
-  const res = await workspace.open(dir);
-  useAqvenor.setState({ workspaceRoot: res.root });
-  await syncWorkspaceFiles().catch(() => undefined);
-  await reindexCanvas().catch(() => undefined);
-  return res.root;
+  if (workspaceChanging) throw new Error("A project is already being opened.");
+  assertWorkspaceIdle();
+  workspaceChanging = true;
+  try {
+    await flushPendingWrites();
+    if (Object.values(S().saveStatus).some((status) => status === "error")) {
+      throw new Error("Save the pending changes before switching projects.");
+    }
+    const res = await workspace.open(dir);
+    if (S().workspaceRoot !== res.root) {
+      useAqvenor.setState({ workspaceRoot: res.root, files: [], codeTabs: [], activeCodeTab: null, saveStatus: {} });
+    }
+    await syncWorkspaceFiles();
+    await reindexCanvas();
+    return res.root;
+  } finally { workspaceChanging = false; }
+}
+
+let workspaceChanging = false;
+function assertWorkspaceIdle(): void {
+  if (Object.values(S().runningSessions).some((run) => run.status === "running" || run.status === "awaiting-approval")) {
+    throw new Error("Finish or stop the current run before switching or restoring a project.");
+  }
 }
 
 /** Prompt the OS folder picker and return the chosen absolute path (or null).
@@ -1169,7 +1190,7 @@ export function pushCanvasMoves(): void {
 const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** Newest content queued for a path, so a burst of keystrokes sends one write of the last state. */
-const pendingContent = new Map<string, string>();
+const pendingContent = new Map<string, { content: string; root: string | null }>();
 
 /**
  * How long typing pauses before the file is written.
@@ -1188,12 +1209,12 @@ function flushWrite(path: string): Promise<void> | null {
     pendingWrites.delete(path);
   }
 
-  const content = pendingContent.get(path);
-  if (content === undefined) return null;
+  const pending = pendingContent.get(path);
+  if (pending === undefined) return null;
   pendingContent.delete(path);
 
   return workspace
-    .write(path, content)
+    .write(path, pending.content, pending.root)
     .then(() => S().markSave(path, "saved"))
     .catch(() => {
       S().markSave(path, "error");
@@ -1241,7 +1262,7 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       // large file meant a full-document request per character, and on a flaky
       // connection a toast storm as every one of them failed.
       S().markSave(path, "unsaved");
-      pendingContent.set(path, content);
+      pendingContent.set(path, { content, root: S().workspaceRoot });
 
       const existing = pendingWrites.get(path);
       if (existing !== undefined) clearTimeout(existing);

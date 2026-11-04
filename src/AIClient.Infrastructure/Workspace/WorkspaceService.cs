@@ -126,6 +126,35 @@ public sealed class WorkspaceService : IWorkspaceService
 
     private string? _root;
     private bool _restored;
+    private int _leases;
+    private bool _changing;
+
+    public WorkspaceResult<IWorkspaceLease> AcquireLease(string? expectedRoot)
+    {
+        EnsureRestored();
+        lock (_gate)
+        {
+            if (_changing || !string.Equals(_root, expectedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return WorkspaceResult<IWorkspaceLease>.Fail("The workspace changed. Reopen the intended project and retry.");
+            }
+
+            _leases++;
+            return WorkspaceResult<IWorkspaceLease>.Ok(new Lease(this, _root));
+        }
+    }
+
+    private sealed class Lease(WorkspaceService owner, string? root) : IWorkspaceLease
+    {
+        private WorkspaceService? _owner = owner;
+        public string? Root { get; } = root;
+        public void Dispose()
+        {
+            var service = Interlocked.Exchange(ref _owner, null);
+            if (service is null) { return; }
+            lock (service._gate) { service._leases--; }
+        }
+    }
 
     public WorkspaceService(
         ISettingsService settings,
@@ -183,12 +212,23 @@ public sealed class WorkspaceService : IWorkspaceService
 
         lock (_gate)
         {
-            _root = full;
-            _restored = true;
+            if (_changing || _leases > 0)
+            {
+                return WorkspaceResult<string>.Fail("Finish or stop the current workspace operation before switching projects.");
+            }
+            _changing = true;
         }
 
-        await _settings.UpdateAsync<AgentSettings>(s => s.WorkspaceRoot = full, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            await _settings.UpdateAsync<AgentSettings>(s => s.WorkspaceRoot = full, cancellationToken)
+                .ConfigureAwait(false);
+            lock (_gate) { _root = full; _restored = true; }
+        }
+        finally
+        {
+            lock (_gate) { _changing = false; }
+        }
 
         // The path itself stays out of the log: it contains the user's name.
         _logger.LogInformation("Workspace opened.");
@@ -201,12 +241,23 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         lock (_gate)
         {
-            _root = null;
-            _restored = true;
+            if (_changing || _leases > 0)
+            {
+                throw new InvalidOperationException("Finish or stop the current workspace operation before closing the project.");
+            }
+            _changing = true;
         }
 
-        await _settings.UpdateAsync<AgentSettings>(s => s.WorkspaceRoot = null, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            await _settings.UpdateAsync<AgentSettings>(s => s.WorkspaceRoot = null, cancellationToken)
+                .ConfigureAwait(false);
+            lock (_gate) { _root = null; _restored = true; }
+        }
+        finally
+        {
+            lock (_gate) { _changing = false; }
+        }
 
         _logger.LogInformation("Workspace closed.");
 
@@ -826,6 +877,9 @@ public sealed class WorkspaceService : IWorkspaceService
         Func<Task<WorkspaceResult<T>>> operation)
         where T : class
     {
+        var pinned = AcquireLease(Root);
+        if (!pinned.Success) { return WorkspaceResult<T>.Fail(pinned.Error!); }
+        using var lease = pinned.Value!;
         try
         {
             return await operation().ConfigureAwait(false);

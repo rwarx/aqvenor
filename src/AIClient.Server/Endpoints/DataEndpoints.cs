@@ -180,7 +180,8 @@ public static class DataEndpoints
         });
         g.MapPost("/workspace/close", async (IWorkspaceService w, CancellationToken ct) =>
         {
-            await w.CloseAsync(ct).ConfigureAwait(false);
+            try { await w.CloseAsync(ct).ConfigureAwait(false); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
             return Results.Ok(new { closed = true });
         });
         g.MapGet("/workspace/list", async (string? path, bool? recursive, IWorkspaceService w, CancellationToken ct) =>
@@ -228,8 +229,11 @@ public static class DataEndpoints
                 })
                 : Results.BadRequest(new { error = result.Error });
         });
-        g.MapGet("/workspace/document", async (string path, IWorkspaceService w, CancellationToken ct) =>
+        g.MapGet("/workspace/document", async (string path, string expectedRoot, IWorkspaceService w, CancellationToken ct) =>
         {
+            var pinned = w.AcquireLease(expectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
             if (!WorkspacePath.TryParse(path, out var p, out var perr))
             {
                 return Results.BadRequest(new { error = perr });
@@ -251,6 +255,9 @@ public static class DataEndpoints
         });
         g.MapPost("/workspace/write", async (WriteFileRequest req, IWorkspaceService w, CancellationToken ct) =>
         {
+            var pinned = w.AcquireLease(req.ExpectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
             if (!WorkspacePath.TryParse(req.Path, out var p, out var perr))
             {
                 return Results.BadRequest(new { error = perr });
@@ -440,13 +447,16 @@ public static class DataEndpoints
         // ----- checkpoints -----
         g.MapGet("/checkpoints", async (JsonCheckpointStore store, CancellationToken ct) =>
             Results.Ok((await store.ListAsync(ct).ConfigureAwait(false))
-                .Select(c => new { c.Id, c.ConversationId, c.Label, c.CreatedAt, c.MessageId, fileCount = c.Files.Count, hasGraph = c.GraphKey != null })));
+                .Select(c => new { c.Id, c.ConversationId, c.Label, c.CreatedAt, c.MessageId, c.FormatVersion, c.WorkspaceRoot, fileCount = c.Files.Count, hasGraph = c.GraphKey != null })));
         g.MapGet("/checkpoints/{id:guid}", async (Guid id, JsonCheckpointStore store, CancellationToken ct) =>
             await store.GetAsync(id, ct).ConfigureAwait(false) is { } c ? Results.Ok(c) : Results.NotFound());
         g.MapPost("/checkpoints", async (
             CheckpointCreateRequest req, JsonCheckpointStore store, IWorkspaceService workspace,
             IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(req.ExpectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
             var files = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var path in req.Files ?? [])
             {
@@ -473,6 +483,8 @@ public static class DataEndpoints
 
             var record = new CheckpointRecord
             {
+                FormatVersion = 2,
+                WorkspaceRoot = lease.Root,
                 Id = Guid.NewGuid(),
                 ConversationId = req.ConversationId,
                 Label = req.Label,
@@ -493,6 +505,14 @@ public static class DataEndpoints
             {
                 return Results.NotFound();
             }
+
+            if (record.FormatVersion < 2)
+            {
+                return Results.Conflict(new { error = "This legacy checkpoint may contain incomplete files. Create a new checkpoint before restoring." });
+            }
+            var pinned = workspace.AcquireLease(record.WorkspaceRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = "This checkpoint belongs to another workspace." }); }
+            using var lease = pinned.Value!;
 
             var restored = 0;
             foreach (var (path, content) in record.Files)
@@ -534,7 +554,7 @@ public static class DataEndpoints
     private sealed record EnabledRequest(bool IsEnabled);
     private sealed record CustomProviderRequest(string Name, string BaseUrl);
     private sealed record OpenWorkspaceRequest(string Directory);
-    private sealed record WriteFileRequest(string Path, string Content);
+    private sealed record WriteFileRequest(string Path, string Content, string? ExpectedRoot);
     private sealed record PathRequest(string Path);
     private sealed record MoveRequest(string From, string To);
 
@@ -550,7 +570,7 @@ public static class DataEndpoints
 
     private sealed record CheckpointCreateRequest(
         Guid ConversationId, string Label, Guid? MessageId,
-        IReadOnlyList<string>? Files, bool IncludeGraph);
+        IReadOnlyList<string>? Files, bool IncludeGraph, string? ExpectedRoot);
 
     private static object MapSnapshot(GraphSnapshot s) => new
     {

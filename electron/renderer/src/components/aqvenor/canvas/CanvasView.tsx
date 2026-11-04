@@ -53,8 +53,7 @@ import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { hasSessionDrag, getSessionDragId } from "@/lib/aqvenor/dnd";
 import { fmtDate } from "@/lib/aqvenor/format";
-import { workspace } from "@/lib/aqvenor/backend";
-import { isServerMode, reindexCanvas, syncWorkspaceFiles, CANVAS_FIT_EVENT } from "@/lib/aqvenor/sync";
+import { isServerMode, openWorkspaceByPath, CANVAS_FIT_EVENT } from "@/lib/aqvenor/sync";
 import type { CanvasEdge, CanvasNode, EdgeKind } from "@/lib/aqvenor/types";
 import { AqGhostButton, AqPrimaryButton, AqToolButton } from "@/components/aqvenor/ui";
 import { cn } from "@/lib/utils";
@@ -1481,12 +1480,8 @@ export default function CanvasView() {
       if (!dir) return;
       const { pushToast } = useAqvenor.getState();
       try {
-        const res = await workspace.open(dir);
-        await syncWorkspaceFiles().catch(() => undefined);
-        // Rebuild the project graph so the canvas actually fills in — a fresh
-        // open has an empty server graph until the folder is walked.
-        await reindexCanvas().catch(() => undefined);
-        pushToast(t("settings.workspace.opened", res.root) ?? res.root);
+        const root = await openWorkspaceByPath(dir);
+        pushToast(t("settings.workspace.opened", root ?? dir));
       } catch (err) {
         pushToast(t("canvas.open"), err instanceof Error ? err.message : undefined, "destructive");
       }

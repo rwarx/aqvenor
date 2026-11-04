@@ -7,6 +7,7 @@ import { useT } from "@/lib/aqvenor/useT";
 import { computeUnifiedDiff, diffStats } from "@/lib/aqvenor/diff";
 import { isServerMode, syncWorkspaceFiles, refreshOpenTabs } from "@/lib/aqvenor/sync";
 import { loadEditorDocument } from "@/lib/aqvenor/editor-documents";
+import { canApplyCheckpoint } from "@/lib/aqvenor/checkpoint-safety";
 import { AqBadge, AqGhostButton, AqToolButton } from "@/components/aqvenor/ui";
 import { cn } from "@/lib/utils";
 import { CodeEditor } from "./CodeEditor";
@@ -34,6 +35,7 @@ export default function CodeView() {
   const pushToast = useAqvenor((s) => s.pushToast);
   const setSurface = useAqvenor((s) => s.setSurface);
   const checkpoints = useAqvenor((s) => s.checkpoints);
+  const workspaceRoot = useAqvenor((s) => s.workspaceRoot);
   const restoreCheckpoint = useAqvenor((s) => s.restoreCheckpoint);
   const ghostTextOn = useAqvenor((s) => s.ui.ghostText);
   const setUi = useAqvenor((s) => s.setUi);
@@ -73,10 +75,10 @@ export default function CodeView() {
     () =>
       activeCodeTab
         ? checkpoints
-            .filter((c) => c.filesSnapshot.some((snap) => snap.path === activeCodeTab))
+            .filter((c) => canApplyCheckpoint(c, workspaceRoot, isServerMode()) && c.filesSnapshot.some((snap) => snap.path === activeCodeTab))
             .sort((a, b) => b.createdAt - a.createdAt)
         : [],
-    [checkpoints, activeCodeTab],
+    [checkpoints, activeCodeTab, workspaceRoot],
   );
 
   const reviewCp = reviewId ? (covering.find((c) => c.id === reviewId) ?? null) : null;

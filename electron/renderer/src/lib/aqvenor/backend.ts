@@ -441,12 +441,12 @@ export const workspace = {
     api<{ path: string; content: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
       `/api/workspace/read?path=${encodeURIComponent(path)}&startLine=${startLine}${lineCount ? `&lineCount=${lineCount}` : ""}`,
     ),
-  readDocument: (path: string) =>
+  readDocument: (path: string, expectedRoot: string) =>
     api<{ path: string; content: string; firstLine: number; lineCount: number; totalLines: number; size: number; isTruncated: boolean }>(
-      `/api/workspace/document?path=${encodeURIComponent(path)}`,
+      `/api/workspace/document?path=${encodeURIComponent(path)}&expectedRoot=${encodeURIComponent(expectedRoot)}`,
     ),
-  write: (path: string, content: string) =>
-    api<{ created: boolean; linesAfter: number }>(`/api/workspace/write`, { method: "POST", body: JSON.stringify({ path, content }) }),
+  write: (path: string, content: string, expectedRoot: string | null) =>
+    api<{ created: boolean; linesAfter: number }>(`/api/workspace/write`, { method: "POST", body: JSON.stringify({ path, content, expectedRoot }) }),
   search: (query: string, path?: string, filePattern?: string) =>
     api<{ filesScanned: number; isTruncated: boolean; matches: { path: string; lineNumber: number; line: string }[] }>(
       `/api/workspace/search`,
@@ -586,6 +586,8 @@ export const exportApi = {
 /* ---------------- checkpoints ---------------- */
 
 export interface ServerCheckpointListItem {
+  formatVersion: number;
+  workspaceRoot: string | null;
   id: string;
   conversationId: string;
   label: string;
@@ -603,10 +605,10 @@ export interface ServerCheckpoint extends ServerCheckpointListItem {
 export const checkpoints = {
   list: () => api<ServerCheckpointListItem[]>(`/api/checkpoints`),
   get: (id: string) => api<ServerCheckpoint>(`/api/checkpoints/${id}`),
-  create: (conversationId: string, label: string, messageId: string | null, files: string[], includeGraph: boolean) =>
+  create: (conversationId: string, label: string, messageId: string | null, files: string[], includeGraph: boolean, expectedRoot: string | null) =>
     api<{ id: string }>(`/api/checkpoints`, {
       method: "POST",
-      body: JSON.stringify({ conversationId, label, messageId, files, includeGraph }),
+      body: JSON.stringify({ conversationId, label, messageId, files, includeGraph, expectedRoot }),
     }),
   restore: (id: string) => api<{ restoredFiles: number; graphRestored: boolean }>(`/api/checkpoints/${id}/restore`, { method: "POST" }),
   remove: (id: string) => api<void>(`/api/checkpoints/${id}`, { method: "DELETE" }),
@@ -632,7 +634,7 @@ export const runs = {
     signal?: AbortSignal,
   ) => streamNdjsonWithRetry(`/api/chat/regenerate`, body, onFrame, signal),
   agentRun: (
-    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; mode: string; attachments?: RunAttachment[]; focusNodeIds?: string[] },
+    body: { runId: string; conversationId?: string; title?: string; content: string; providerId: string; modelId: string; mode: string; attachments?: RunAttachment[]; focusNodeIds?: string[]; workspaceRoot?: string | null; workspaceBound?: boolean },
     onFrame: (f: StreamFrame) => void | Promise<void>,
     signal?: AbortSignal,
   ) => streamNdjsonWithRetry(`/api/agent/run`, body, onFrame, signal),

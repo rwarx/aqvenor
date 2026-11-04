@@ -47,6 +47,9 @@ public sealed record AgentRunRequest
     public required string ProviderId { get; init; }
     public required string ModelId { get; init; }
 
+    public string? WorkspaceRoot { get; init; }
+    public bool WorkspaceBound { get; init; }
+
     public IReadOnlyList<NewAttachment> Attachments { get; init; } = [];
 
     /// <summary>Canvas node ids selected when the run was started; empty means no selection.</summary>

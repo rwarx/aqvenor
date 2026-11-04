@@ -68,6 +68,36 @@ public sealed class WorkspaceServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_pinned_operation_prevents_switch_and_close_until_released()
+    {
+        var second = Path.Combine(_scratch, "second");
+        Directory.CreateDirectory(second);
+        var pinned = _service.AcquireLease(_root);
+        Assert.True(pinned.Success);
+        var lease = pinned.Value!;
+        Assert.False((await _service.OpenAsync(second, Token)).Success);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CloseAsync(Token));
+        Assert.Equal(_root, _service.Root);
+        lease.Dispose();
+        lease.Dispose(); // A repeated dispose must not unpin another operation.
+        Assert.True((await _service.OpenAsync(second, Token)).Success);
+    }
+
+    [Fact]
+    public async Task A_stale_workspace_cannot_acquire_permission_to_write_the_new_project()
+    {
+        var second = Path.Combine(_scratch, "second");
+        Directory.CreateDirectory(second);
+        await File.WriteAllTextAsync(Path.Combine(second, "same.txt"), "project B", Token);
+        Assert.True((await _service.OpenAsync(second, Token)).Success);
+        var pinned = _service.AcquireLease(_root);
+        Assert.False(pinned.Success);
+        Assert.Equal("project B", await File.ReadAllTextAsync(Path.Combine(second, "same.txt"), Token));
+        using var valid = _service.AcquireLease(second).Value!;
+        Assert.Equal(second, valid.Root);
+    }
+
+    [Fact]
     public async Task Opening_a_folder_announces_the_change()
     {
         string? announced = null;

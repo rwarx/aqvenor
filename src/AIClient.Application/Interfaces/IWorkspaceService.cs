@@ -30,6 +30,9 @@ public interface IWorkspaceService
     /// <summary>Raised after the root changes, carrying the new root or null.</summary>
     event EventHandler<string?>? RootChanged;
 
+    /// <summary>Pins the expected workspace until disposed. Folder changes are refused while pinned.</summary>
+    WorkspaceResult<IWorkspaceLease> AcquireLease(string? expectedRoot);
+
     /// <summary>
     /// Opens a folder as the workspace, or explains why it will not be opened.
     /// </summary>
@@ -154,4 +157,9 @@ public interface IWorkspaceService
         WorkspacePath from,
         WorkspacePath to,
         CancellationToken cancellationToken = default);
+}
+
+public interface IWorkspaceLease : IDisposable
+{
+    string? Root { get; }
 }

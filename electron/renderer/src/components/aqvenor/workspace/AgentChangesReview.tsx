@@ -8,6 +8,8 @@ import { computeUnifiedDiff, diffStats } from "@/lib/aqvenor/diff";
 import { HunkReview } from "./HunkReview";
 import { relativeTime } from "./helpers";
 import { cn } from "@/lib/utils";
+import { canApplyCheckpoint } from "@/lib/aqvenor/checkpoint-safety";
+import { isServerMode } from "@/lib/aqvenor/sync";
 
 /* ============================================================
    Unified "all agent changes" screen (Tier 1 #5, part 2).
@@ -28,6 +30,7 @@ export function AgentChangesReview({
 }) {
   const t = useT();
   const checkpoints = useAqvenor((s) => s.checkpoints);
+  const workspaceRoot = useAqvenor((s) => s.workspaceRoot);
   const files = useAqvenor((s) => s.files);
   const setFileContent = useAqvenor((s) => s.setFileContent);
   const restoreCheckpoint = useAqvenor((s) => s.restoreCheckpoint);
@@ -35,8 +38,8 @@ export function AgentChangesReview({
   const openCodeTab = useAqvenor((s) => s.openCodeTab);
 
   const ordered = useMemo(
-    () => [...checkpoints].sort((a, b) => b.createdAt - a.createdAt),
-    [checkpoints],
+    () => checkpoints.filter((c) => canApplyCheckpoint(c, workspaceRoot, isServerMode())).sort((a, b) => b.createdAt - a.createdAt),
+    [checkpoints, workspaceRoot],
   );
   const [cpId, setCpId] = useState(initialCheckpointId);
   const cp = ordered.find((c) => c.id === cpId) ?? ordered[0] ?? null;

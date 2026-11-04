@@ -61,7 +61,9 @@ public static class RunEndpoints
         string ModelId,
         string Mode,
         IReadOnlyList<AttachmentIn>? Attachments,
-        IReadOnlyList<string>? FocusNodeIds);
+        IReadOnlyList<string>? FocusNodeIds,
+        string? WorkspaceRoot,
+        bool WorkspaceBound);
 
     private sealed record ApprovalAnswerRequest(Guid ApprovalId, string Outcome, string? Reason);
 
@@ -333,6 +335,8 @@ public static class RunEndpoints
                     Attachments = ToAttachments(req.Attachments),
                     Mode = mode,
                     FocusNodeIds = req.FocusNodeIds ?? [],
+                    WorkspaceRoot = req.WorkspaceRoot,
+                    WorkspaceBound = req.WorkspaceBound,
                 };
 
                 HttpAgentApproval.CurrentRunId.Value = runId;

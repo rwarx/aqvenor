@@ -95,6 +95,8 @@ public sealed class JsonCheckpointStore
 /// <summary>One persisted checkpoint.</summary>
 public sealed record CheckpointRecord
 {
+    public int FormatVersion { get; init; }
+    public string? WorkspaceRoot { get; init; }
     public required Guid Id { get; init; }
     public required Guid ConversationId { get; init; }
     public required string Label { get; init; }
