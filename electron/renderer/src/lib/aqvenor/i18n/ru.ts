@@ -554,6 +554,8 @@ export const ru: Dictionary = {
   "code.lineCount.few": "строки: {0}",
   "code.lineCount.many": "строк: {0}",
   "code.reloadedToast": "Перечитано с диска",
+  "code.loading": "Загрузка документа…",
+  "code.loadFailed": "Не удалось загрузить документ",
   "code.openFiles": "Открыть файлы проекта",
   "code.project.required.title": "Выберите проект",
   "code.project.required.desc": "Режим Code работает с файлами проекта. Откройте папку, чтобы начать работу — режимам Chat и Cowork проект не нужен.",

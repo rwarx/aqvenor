@@ -32,6 +32,7 @@ import {
 } from "./backend";
 import { isPlaceholderTitle, newId, sessionModeOf, useAqvenor } from "./store";
 import { serverCreateTitle } from "./session-titles";
+import { loadEditorDocument, mergeListedFiles, readCompleteDocument } from "./editor-documents";
 import { looksLikeImageGenModel } from "./data";
 import { tp, translate } from "./i18n";
 import type {
@@ -950,6 +951,7 @@ const langOf = (path: string): DemoFile["language"] => {
 
 export async function syncWorkspaceFiles(): Promise<void> {
   if (!serverMode) return;
+  const previousRoot = S().workspaceRoot;
   const status = await workspace.status();
   // single source of truth for the open project (item 5) — every surface reads
   // store.workspaceRoot instead of fetching workspace.status() on its own.
@@ -957,10 +959,7 @@ export async function syncWorkspaceFiles(): Promise<void> {
   if (!status.isOpen) return;
   const listing = await workspace.list(".", true).catch(() => null);
   if (!listing) return;
-  const files: DemoFile[] = listing.entries
-    .filter((e) => !e.isDirectory)
-    .slice(0, 2000)
-    .map((e) => ({ path: e.path.replace(/\//g, "/"), language: langOf(e.path), content: "", modified: false }));
+  const files = mergeListedFiles(listing.entries, previousRoot === status.root);
   serverPaths.clear();
   for (const f of files) serverPaths.add(f.path);
   useAqvenor.setState({ files });
@@ -1005,8 +1004,7 @@ export async function pickFolderPath(): Promise<string | null> {
 
 export async function readServerFile(path: string): Promise<string | null> {
   try {
-    const res = await workspace.readDocument(path);
-    if (res.isTruncated) return null;
+    const res = await readCompleteDocument(path);
     return res.content;
   } catch {
     return null;
@@ -1016,18 +1014,9 @@ export async function readServerFile(path: string): Promise<string | null> {
 /** Re-read every open code tab from the server (after agent edits). */
 export async function refreshOpenTabs(): Promise<void> {
   if (!serverMode) return;
-  const tabs = S().codeTabs;
-  for (const path of tabs) {
-    if (!serverPaths.has(path)) continue;
-    const content = await readServerFile(path);
-    if (content == null) continue;
-    const current = S().files.find((f) => f.path === path);
-    if (current && current.content !== content) {
-      useAqvenor.setState((st) => ({
-        files: st.files.map((f) => (f.path === path ? { ...f, content, modified: false } : f)),
-      }));
-    }
-  }
+  await Promise.all(S().codeTabs.filter((path) => serverPaths.has(path)).map((path) => loadEditorDocument(path, true)));
+  const failed = S().files.find((file) => S().codeTabs.includes(file.path) && file.loadError);
+  if (failed) throw new Error(failed.loadError);
 }
 
 /* ---------------- canvas ⇄ graph ---------------- */
@@ -1237,16 +1226,10 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
     openCodeTab: (path: string) => {
       prev.openCodeTab(path);
       if (!serverMode || !serverPaths.has(path)) return;
-      const file = S().files.find((f) => f.path === path);
-      if (file && file.content) return;
-      void readServerFile(path).then((content) => {
-        if (content == null) return;
-        useAqvenor.setState((st) => ({
-          files: st.files.map((f) => (f.path === path ? { ...f, content } : f)),
-        }));
-      });
+      void loadEditorDocument(path);
     },
     setFileContent: (path: string, content: string) => {
+      if (serverMode && S().files.find((f) => f.path === path)?.loadState !== "loaded") return;
       // In memory immediately: the editor must never wait on a request to show a character.
       prev.setFileContent(path, content);
       if (!serverMode || !serverPaths.has(path)) return;

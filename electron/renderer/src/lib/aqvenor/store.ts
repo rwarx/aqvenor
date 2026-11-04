@@ -1790,7 +1790,7 @@ export const useAqvenor = create<AqvenorState>()(
 
       /* ---------- files & code ---------- */
       setFileContent: (path, content) =>
-        set({ files: get().files.map((f) => (f.path === path ? { ...f, content } : f)) }),
+        set({ files: get().files.map((f) => (f.path === path ? { ...f, content, revision: (f.revision ?? 0) + 1 } : f)) }),
       setFileModified: (path, modified) =>
         set({ files: get().files.map((f) => (f.path === path ? { ...f, modified } : f)) }),
       openCodeTab: (path) => {
@@ -1935,7 +1935,7 @@ export const useAqvenor = create<AqvenorState>()(
         checkpoints: state.checkpoints.map(({ filesSnapshot: _bodies, ...rest }) => rest),
         canvas: state.canvas,
         // Paths and sizes, not contents.
-        files: state.files.map(({ content: _content, ...rest }) => rest),
+        files: state.files.map(({ content: _content, loadState: _load, loadError: _error, ...rest }) => rest),
         codeTabs: state.codeTabs,
         activeCodeTab: state.activeCodeTab,
         contextFiles: state.contextFiles,

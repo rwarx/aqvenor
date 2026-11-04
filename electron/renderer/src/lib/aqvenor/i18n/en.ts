@@ -532,6 +532,8 @@ export const en: Record<string, string> = {
   "code.lineCount": "{0} lines",
   "code.lineCount.one": "{0} line",
   "code.reloadedToast": "Reloaded from disk",
+  "code.loading": "Loading document…",
+  "code.loadFailed": "The document could not be loaded",
   "code.openFiles": "Browse workspace files",
   "code.project.required.title": "Open a project",
   "code.project.required.desc": "Code mode works on a project's files. Open a folder to start your workspace — Chat and Cowork don't need one.",

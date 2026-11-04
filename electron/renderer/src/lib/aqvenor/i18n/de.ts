@@ -532,6 +532,8 @@ export const de: Dictionary = {
   "code.lineCount": "{0} Zeilen",
   "code.lineCount.one": "{0} Zeile",
   "code.reloadedToast": "Von der Festplatte neu geladen",
+  "code.loading": "Dokument wird geladen…",
+  "code.loadFailed": "Das Dokument konnte nicht geladen werden",
   "code.openFiles": "Projektdateien öffnen",
   "code.project.required.title": "Projekt öffnen",
   "code.project.required.desc": "Der Code-Modus arbeitet mit den Dateien eines Projekts. Öffne einen Ordner, um zu beginnen — Chat und Cowork benötigen keins.",

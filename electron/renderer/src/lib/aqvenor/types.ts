@@ -378,6 +378,10 @@ export interface DemoFile {
   language: "csharp" | "json" | "markdown" | "xml" | "text";
   content: string;
   modified?: boolean;
+  loadState?: "unloaded" | "loading" | "loaded" | "error";
+  loadError?: string;
+  revision?: number;
+  workspaceRoot?: string;
 }
 
 export interface ContextFile {

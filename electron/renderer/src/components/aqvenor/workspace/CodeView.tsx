@@ -5,7 +5,8 @@ import { Bookmark, Check, ChevronRight, Circle, CircleAlert, FileCode, FileStack
 import { useAqvenor, type SaveStatus } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { computeUnifiedDiff, diffStats } from "@/lib/aqvenor/diff";
-import { isServerMode, syncWorkspaceFiles } from "@/lib/aqvenor/sync";
+import { isServerMode, syncWorkspaceFiles, refreshOpenTabs } from "@/lib/aqvenor/sync";
+import { loadEditorDocument } from "@/lib/aqvenor/editor-documents";
 import { AqBadge, AqGhostButton, AqToolButton } from "@/components/aqvenor/ui";
 import { cn } from "@/lib/utils";
 import { CodeEditor } from "./CodeEditor";
@@ -60,6 +61,12 @@ export default function CodeView() {
   }, [codeTabs.length]);
 
   const file = activeCodeTab ? (files.find((f) => f.path === activeCodeTab) ?? null) : null;
+
+  useEffect(() => {
+    if (isServerMode() && file && (!file.loadState || file.loadState === "unloaded")) {
+      void loadEditorDocument(file.path);
+    }
+  }, [file?.path, file?.loadState]);
 
   /* checkpoints that snapshot the open file, newest first */
   const covering = useMemo(
@@ -202,6 +209,7 @@ export default function CodeView() {
               // have edited files); offline there is nothing to re-read.
               if (isServerMode()) {
                 void syncWorkspaceFiles()
+                  .then(() => refreshOpenTabs())
                   .then(() => pushToast(t("code.reloadedToast")))
                   .catch((err) =>
                     pushToast(t("code.reload"), err instanceof Error ? err.message : undefined, "destructive"),
@@ -323,7 +331,14 @@ export default function CodeView() {
       </div>
 
       {/* ---------------- document / checkpoint review ---------------- */}
-      {reviewCp && snapContent != null ? (
+      {isServerMode() && file.loadState !== "loaded" ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center" role="status">
+          {file.loadState === "error" ? <CircleAlert size={22} className="text-error" /> : <Loader2 size={22} className="animate-spin text-fg-3" />}
+          <p className="text-[13px] text-fg-2">{file.loadState === "error" ? t("code.loadFailed") : t("code.loading")}</p>
+          {file.loadError && <p className="max-w-lg text-[12px] text-fg-3">{file.loadError}</p>}
+          {file.loadState === "error" && <AqGhostButton onClick={() => void loadEditorDocument(file.path, true)}>{t("common.retry")}</AqGhostButton>}
+        </div>
+      ) : reviewCp && snapContent != null ? (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* review header */}
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-warning/25 bg-warning-soft/40 px-4 py-2">
