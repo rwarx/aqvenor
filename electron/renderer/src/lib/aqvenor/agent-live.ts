@@ -28,7 +28,8 @@ interface ActiveRun {
 const activeRuns = new Map<string, ActiveRun>();
 
 export function stopAgentRun(sessionId?: string) {
-  const sid = sessionId ?? S().currentSessionId;
+  const requested = sessionId ?? S().currentSessionId;
+  const sid = S().sessionAliases[requested] ?? requested;
   const activeRun = activeRuns.get(sid);
   if (!activeRun) return;
   const { runId, abort } = activeRun;
@@ -42,7 +43,7 @@ export function stopAgentRun(sessionId?: string) {
 }
 
 export function isAgentRunActive(sessionId?: string) {
-  if (sessionId !== undefined) return activeRuns.has(sessionId);
+  if (sessionId !== undefined) return activeRuns.has(S().sessionAliases[sessionId] ?? sessionId);
   return activeRuns.size > 0;
 }
 
@@ -123,7 +124,8 @@ export async function runAgentConversation(
   }
   // A first send upgrades the placeholder (local id → server GUID); the run
   // must write to the upgraded session, not the dropped placeholder.
-  sid = S().sessionAliases[sid] ?? sid;
+  sid = conversationId;
+  if (isAgentRunActive(sid)) return;
 
   // Each chat keeps its own agent: the picker's choice is stored on the
   // session, the global stays the default for chats created from here on.

@@ -918,7 +918,8 @@ export const useAqvenor = create<AqvenorState>()(
         return (st.allowForRunTools[sid] ?? []).includes(tool);
       },
       draftOf: (sessionId) => {
-        const id = sessionId ?? get().currentSessionId;
+        const requested = sessionId ?? get().currentSessionId;
+        const id = get().sessionAliases[requested] ?? requested;
         return get().drafts[id] ?? emptyDraft();
       },
       setBackendReachable: (ok) => {
@@ -941,11 +942,13 @@ export const useAqvenor = create<AqvenorState>()(
         set({ focusedChatSessionId: id });
       },
       setDraft: (draft, sessionId) => {
-        const id = sessionId ?? get().currentSessionId;
+        const requested = sessionId ?? get().currentSessionId;
+        const id = get().sessionAliases[requested] ?? requested;
         set((s) => ({ drafts: { ...s.drafts, [id]: { ...(s.drafts[id] ?? emptyDraft()), text: draft } } }));
       },
       addDraftAttachment: (attachment, sessionId) => {
-        const id = sessionId ?? get().currentSessionId;
+        const requested = sessionId ?? get().currentSessionId;
+        const id = get().sessionAliases[requested] ?? requested;
         set((s) => {
           const cur = s.drafts[id] ?? emptyDraft();
           if (cur.attachments.some((a) => a.id === attachment.id)) return {};
@@ -953,7 +956,8 @@ export const useAqvenor = create<AqvenorState>()(
         });
       },
       removeDraftAttachment: (id, sessionId) => {
-        const sid = sessionId ?? get().currentSessionId;
+        const requested = sessionId ?? get().currentSessionId;
+        const sid = get().sessionAliases[requested] ?? requested;
         set((s) => {
           const cur = s.drafts[sid];
           if (!cur) return {};
@@ -963,7 +967,8 @@ export const useAqvenor = create<AqvenorState>()(
         });
       },
       clearDraftAttachments: (sessionId) => {
-        const sid = sessionId ?? get().currentSessionId;
+        const requested = sessionId ?? get().currentSessionId;
+        const sid = get().sessionAliases[requested] ?? requested;
         set((s) => {
           const cur = s.drafts[sid];
           if (!cur || cur.attachments.length === 0) return {};

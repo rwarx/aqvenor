@@ -888,7 +888,19 @@ function mergeEvents(local: TrajectoryEvent[], server: TrajectoryEvent[]): Traje
  *  Upgrading a placeholder swaps the session object id (local → server GUID).
  *  The current chat is re-pointed as before; any other chat leaves an alias
  *  so dock panels bound to the old id keep following it. */
-export async function ensureServerSession(sessionId?: string): Promise<string> {
+const sessionUpgrades = new Map<string, Promise<string>>();
+export function ensureServerSession(sessionId?: string): Promise<string> {
+  const requested = sessionId ?? S().currentSessionId;
+  const id = S().sessionAliases[requested] ?? requested;
+  if (isServerId(id)) return Promise.resolve(id);
+  const existing = sessionUpgrades.get(id);
+  if (existing) return existing;
+  const pending = upgradeServerSession(id).finally(() => sessionUpgrades.delete(id));
+  sessionUpgrades.set(id, pending);
+  return pending;
+}
+
+async function upgradeServerSession(sessionId: string): Promise<string> {
   const st = S();
   const localId = sessionId ?? st.currentSessionId;
   if (isServerId(localId)) return localId;
@@ -929,16 +941,30 @@ export async function ensureServerSession(sessionId?: string): Promise<string> {
   const isCurrent = localId === S().currentSessionId;
   useAqvenor.setState((s) => ({
     sessions: [session, ...s.sessions.filter((x) => x.id !== session.id && x.id !== dropId)],
+    sessionAliases: { ...s.sessionAliases, [localId]: session.id },
+    drafts: moveSessionEntry(s.drafts, localId, session.id),
+    approvals: moveSessionEntry(s.approvals, localId, session.id),
+    allowForRunTools: moveSessionEntry(s.allowForRunTools, localId, session.id),
+    runningSessions: moveSessionEntry(s.runningSessions, localId, session.id),
+    unread: moveSessionEntry(s.unread, localId, session.id),
+    focusedChatSessionId: s.focusedChatSessionId === localId ? session.id : s.focusedChatSessionId,
+    goals: s.goals.map((g) => g.sessionId === localId ? { ...g, sessionId: session.id } : g),
+    checkpoints: s.checkpoints.map((c) => c.sessionId === localId ? { ...c, sessionId: session.id } : c),
     ...(isCurrent
       ? {
           currentSessionId: session.id,
           ui: { ...s.ui, activeSessionByMode: { ...s.ui.activeSessionByMode, [mode]: session.id } },
         }
-      : {
-          sessionAliases: { ...s.sessionAliases, [localId]: session.id },
-        }),
+      : {}),
   }));
   return session.id;
+}
+
+function moveSessionEntry<T>(entries: Record<string, T>, from: string, to: string): Record<string, T> {
+  if (!(from in entries)) return entries;
+  const moved = { ...entries, [to]: entries[from] };
+  delete moved[from];
+  return moved;
 }
 
 /** Back-compat alias: every pre-multitask caller means the current chat. */
