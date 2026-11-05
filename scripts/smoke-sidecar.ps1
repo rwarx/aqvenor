@@ -21,12 +21,32 @@ $probePort = $portProbe.LocalEndpoint.Port
 $portProbe.Stop()
 $base = "http://127.0.0.1:$probePort"
 function Call-Api([string]$Method, [string]$Path, $Payload = $null, [int]$Expected = 200, [bool]$Authenticated = $true) {
-    $options = @{ Uri = $base + $Path; Method = $Method; SkipHttpErrorCheck = $true; TimeoutSec = 15 }
+    # Compatible with Windows PowerShell 5.1 and PowerShell 7: 5.1 throws on non-2xx, 7 only does
+    # so without -SkipHttpErrorCheck, and the two exceptions carry different Response shapes.
+    $options = @{ Uri = $base + $Path; Method = $Method; TimeoutSec = 15; UseBasicParsing = $true }
     if ($Authenticated) { $options.Headers = @{ Authorization = "Bearer $token" } }
     if ($null -ne $Payload) { $options.Body = $Payload | ConvertTo-Json -Depth 20 -Compress; $options.ContentType = 'application/json' }
-    $response = Invoke-WebRequest @options
-    if ([int]$response.StatusCode -ne $Expected) { throw "$Method $Path expected $Expected, received $($response.StatusCode): $($response.Content)" }
-    if ($response.Content) { return $response.Content | ConvertFrom-Json }
+    $status = 0
+    $content = $null
+    try {
+        $response = Invoke-WebRequest @options
+        $status = [int]$response.StatusCode
+        $content = $response.Content
+    } catch {
+        $response = $_.Exception.Response
+        if (-not $response -and $_.Exception.InnerException) { $response = $_.Exception.InnerException.Response }
+        if (-not $response) { throw }
+        $status = [int]$response.StatusCode
+        if ($response -is [System.Net.HttpWebResponse]) {
+            $reader = New-Object System.IO.StreamReader($response.GetResponseStream())
+            $content = $reader.ReadToEnd()
+            $reader.Close()
+        } else {
+            $content = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        }
+    }
+    if ($status -ne $Expected) { throw "$Method $Path expected $Expected, received ${status}: $content" }
+    if ($content) { return $content | ConvertFrom-Json }
 }
 function Assert-Probe([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 try {
