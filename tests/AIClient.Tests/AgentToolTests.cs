@@ -562,4 +562,28 @@ public sealed class AgentToolTests : IAsyncLifetime
         public Task SaveAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(GraphSnapshot.Empty);
     }
+
+    [Fact]
+    public void External_file_tools_are_all_Execute_risk()
+    {
+        // Every call outside the folder is the user's to approve, reads and writes alike; a
+        // remembered yes must never accumulate for arbitrary paths (AQV-SEC-04).
+        AgentToolRisk[] risks =
+        [
+            new ReadExternalFileTool(_settings, new StubExternalFileService()).Risk,
+            new ListExternalFilesTool(_settings, new StubExternalFileService()).Risk,
+            new WriteExternalFileTool(_settings, new StubExternalFileService()).Risk,
+            new EditExternalFileTool(_settings, new StubExternalFileService()).Risk,
+        ];
+
+        Assert.All(risks, risk => Assert.Equal(AgentToolRisk.Execute, risk));
+    }
+
+    private sealed class StubExternalFileService : IExternalFileService
+    {
+        public Task<WorkspaceResult<ExternalFile>> ReadAsync(string path, int startLine = 1, int? lineCount = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<WorkspaceResult<ExternalWrite>> WriteAsync(string path, string content, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<WorkspaceResult<ExternalWrite>> ReplaceAsync(string path, string find, string replace, bool replaceAll, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<WorkspaceResult<ExternalListing>> ListAsync(string path, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 }

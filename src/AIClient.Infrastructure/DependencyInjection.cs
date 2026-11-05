@@ -229,11 +229,11 @@ public static class DependencyInjection
         services.AddSingleton<IAgentTool, FetchTool>();
 
         // Files outside the open project. Off until the user turns it on, and gated the way fetch and
-        // run_command are: the reads ask once and are remembered for the run (Risk.Write), the writes
-        // ask on every call (Risk.Execute), because a change to an arbitrary place on the disk is not a
-        // standing yes a file tool should accumulate. The service, not the tools, is what refuses this
-        // application's own data, every credential-shaped name and - for writes - the operating system's
-        // own folders, so those refusals hold however the tool is called. Reading first, writing second.
+        // run_command are: the reads and the writes alike are Risk.Execute - every call is the user's
+        // to approve, and no standing yes accumulates for an arbitrary place on the disk. The service,
+        // not the tools, is what refuses this application's own data, every credential-shaped name and
+        // - for writes - the operating system's own folders, so those refusals hold however the tool is
+        // called. Reading first, writing second.
         services.AddSingleton<IExternalFileService, ExternalFileService>();
         services.AddSingleton<IAgentTool, ReadExternalFileTool>();
         services.AddSingleton<IAgentTool, ListExternalFilesTool>();
