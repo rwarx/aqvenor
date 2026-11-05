@@ -1,5 +1,6 @@
 using System.Text;
 using AIClient.Application.Configuration;
+using Microsoft.AspNetCore.RateLimiting;
 using AIClient.Application.Interfaces;
 using AIClient.Domain.Models;
 using AIClient.Domain.Enums;
@@ -157,7 +158,7 @@ public static class AiEndpoints
             }
 
             return Results.Ok(new { text = text.ToString(), finishReason });
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting(SidecarRateLimiting.AiCompletePolicy);
 
         // Image generation from a text prompt. Only OpenAI-compatible providers have an image
         // path today; a provider that cannot generate answers 400 with a plain reason rather
@@ -221,7 +222,7 @@ public static class AiEndpoints
                 loggerFactory.CreateLogger("AiImage").LogWarning(ex, "Image generation failed.");
                 return Results.Json(new { error = ex.Message }, statusCode: 502);
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting(SidecarRateLimiting.AiCompletePolicy);
     }
 
     /// <summary>

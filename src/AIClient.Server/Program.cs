@@ -10,6 +10,10 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Explicit ceiling for request bodies instead of Kestrel's implicit ~30 MB default; see
+// SidecarRateLimiting.MaxRequestBodyBytes for the rationale.
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = SidecarRateLimiting.MaxRequestBodyBytes);
+
 // WebApplication.CreateBuilder has already read appsettings.json and the ambient environment.
 // Only the prefixed variables are added, because an unqualified one would let the machine's
 // environment redirect a provider endpoint; the AICLIENT_ prefix is the contract.
@@ -39,6 +43,7 @@ builder.Services
         SidecarTokenHandler.SchemeName,
         _ => { });
 SidecarAuthorization.Configure(builder.Services);
+SidecarRateLimiting.Configure(builder.Services);
 
 // AddCors (not just Configure<CorsOptions>) so UseCors can resolve ICorsService:
 // Configure alone registers the policy options but not the CORS services, and the
@@ -66,6 +71,7 @@ app.UseCors(SidecarCors.PolicyName);
 // endpoint and it is named in a comment on both sides.
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 using (var scope = app.Services.CreateScope())
 {

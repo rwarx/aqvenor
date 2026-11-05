@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -175,5 +176,88 @@ public sealed class SidecarSecurityTests
         // The readiness probe is the only anonymous route.
         var health = await client.GetAsync("/api/health");
         Assert.Equal(System.Net.HttpStatusCode.OK, health.StatusCode);
+    }
+
+    [Fact]
+    public async Task Ai_complete_is_rate_limited_after_sixty_requests_per_minute()
+    {
+        // The credit-spending endpoints must stop a runaway caller after 60 calls in a minute.
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSingleton(new SidecarToken("rt4-test-token"));
+        builder.Services
+            .AddAuthentication(SidecarTokenHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, SidecarTokenHandler>(
+                SidecarTokenHandler.SchemeName,
+                _ => { });
+        SidecarAuthorization.Configure(builder.Services);
+        SidecarRateLimiting.Configure(builder.Services);
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseRateLimiter();
+        app.MapGet("/api/ai/complete", () => Results.Ok(new { ok = true }))
+            .RequireAuthorization()
+            .RequireRateLimiting(SidecarRateLimiting.AiCompletePolicy);
+        await app.StartAsync();
+
+        var address = app.Services.GetRequiredService<IServer>()
+            .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        using var client = new HttpClient { BaseAddress = new Uri(address) };
+
+        var ok = 0;
+        var limited = 0;
+        for (var i = 0; i < 61; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/ai/complete");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "rt4-test-token");
+            using var response = await client.SendAsync(request);
+            if (response.StatusCode == System.Net.HttpStatusCode.OK) { ok++; }
+            else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests) { limited++; }
+        }
+
+        Assert.Equal(60, ok);
+        Assert.Equal(1, limited);
+    }
+
+    [Fact]
+    public async Task A_body_over_the_limit_is_refused_with_413()
+    {
+        // What Kestrel does once the explicit ceiling is configured; production sets 16 MB.
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1024);
+        builder.Services.AddSingleton(new SidecarToken("rt4-test-token"));
+        builder.Services
+            .AddAuthentication(SidecarTokenHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, SidecarTokenHandler>(
+                SidecarTokenHandler.SchemeName,
+                _ => { });
+        SidecarAuthorization.Configure(builder.Services);
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapPost("/api/echo", async (HttpRequest request) =>
+        {
+            // Kestrel enforces the ceiling when the body is actually read, not before.
+            await request.Body.CopyToAsync(Stream.Null);
+            return Results.Ok(new { ok = true });
+        }).RequireAuthorization();
+        await app.StartAsync();
+
+        var address = app.Services.GetRequiredService<IServer>()
+            .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        using var client = new HttpClient { BaseAddress = new Uri(address) };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/echo")
+        {
+            Content = new ByteArrayContent(new byte[2048]),
+        };
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "rt4-test-token");
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(System.Net.HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
     }
 }
