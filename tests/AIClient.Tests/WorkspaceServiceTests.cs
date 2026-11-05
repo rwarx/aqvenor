@@ -485,6 +485,17 @@ public sealed class WorkspaceServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Snapshot_restore_preserves_mixed_newlines_after_the_file_was_rewritten()
+    {
+        const string snapshot = "one\ntwo\r\nthree\n";
+        var path = Parse("snapshot.txt");
+        await _service.WriteAsync(path, "edited\r\n", Token);
+        var restored = await _service.WriteAsync(path, snapshot, Token, preserveNewlines: true);
+        Assert.True(restored.Success, restored.Error);
+        Assert.Equal(snapshot, await File.ReadAllTextAsync(Path.Combine(_root, "snapshot.txt"), Token));
+    }
+
+    [Fact]
     public async Task Document_read_refuses_files_over_the_byte_limit()
     {
         _settings.With<AgentSettings>(agent => agent.MaxFileBytes = 8);

@@ -653,6 +653,7 @@
     <sys:String x:Key="S.Settings.Providers.RemoveConfirm.Message">{0} und seine zwischengespeicherten Modelle werden zusammen mit dem gespeicherten API-Schlüssel gelöscht. Eingebaute Anbieter können nicht entfernt werden.</sys:String>
     <sys:String x:Key="S.Workspace.Open.Title">Arbeitsordner auswählen</sys:String>
     <sys:String x:Key="S.Workspace.Open.ErrorTitle">Ordner kann nicht geöffnet werden</sys:String>
+    <sys:String x:Key="S.Workspace.Close.ErrorTitle">Ordner kann nicht geschlossen werden</sys:String>
     <sys:String x:Key="S.Workspace.Open.Refused">Der Vorgang wurde abgelehnt.</sys:String>
     <sys:String x:Key="S.History.MoveNode">Knoten verschieben</sys:String>
     <sys:String x:Key="S.History.MoveNodes">{0} Knoten verschoben</sys:String>

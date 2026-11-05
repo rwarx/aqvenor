@@ -1,4 +1,7 @@
 using AIClient.Server;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AIClient.Tests;
 
@@ -13,6 +16,35 @@ namespace AIClient.Tests;
 /// </remarks>
 public sealed class SidecarSecurityTests
 {
+    [Theory]
+    [InlineData("http://127.0.0.1:45639", true)]
+    [InlineData("http://0.0.0.0:45639", false)]
+    [InlineData("http://127.0.0.1:45639;http://192.168.1.10:45639", false)]
+    public async Task Listener_validates_configuration_before_the_host_starts(string url, bool allowed)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = ["--urls", url] });
+        await using var app = builder.Build();
+        Assert.Empty(app.Urls);
+        if (allowed)
+        {
+            SidecarCors.Bind(app, NullLogger.Instance);
+            Assert.Contains(url, app.Urls);
+        }
+        else { Assert.Throws<InvalidOperationException>(() => SidecarCors.Bind(app, NullLogger.Instance)); }
+    }
+
+    [Fact]
+    public async Task Kestrel_endpoint_configuration_cannot_bypass_loopback_validation()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Kestrel:Endpoints:Network:Url"] = "http://0.0.0.0:45639",
+        });
+        await using var app = builder.Build();
+        Assert.Throws<InvalidOperationException>(() => SidecarCors.Bind(app, NullLogger.Instance));
+    }
+
     // ----- the token -----
 
     [Fact]

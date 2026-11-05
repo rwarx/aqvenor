@@ -42,7 +42,13 @@ public static class DependencyInjection
         services.Configure<ProviderEndpointOptions>(
             configuration.GetSection(ProviderEndpointOptions.SectionName));
 
-        services.AddSingleton<IAppPaths, AppPaths>();
+        services.AddSingleton<IAppPaths>(_ =>
+        {
+            var root = configuration["DataRoot"];
+            if (string.IsNullOrWhiteSpace(root)) { return new AppPaths(); }
+            if (!Path.IsPathFullyQualified(root)) { throw new ArgumentException("DataRoot must be an absolute directory path."); }
+            return new AppPaths(root);
+        });
 
         AddDatabase(services);
         AddSecureStorage(services);

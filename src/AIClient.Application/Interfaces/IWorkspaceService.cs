@@ -113,7 +113,8 @@ public interface IWorkspaceService
         WorkspacePath path,
         string content,
         CancellationToken cancellationToken = default,
-        string? expectedHash = null);
+        string? expectedHash = null,
+        bool preserveNewlines = false);
 
     /// <summary>
     /// Substitutes an exact piece of text inside a file.

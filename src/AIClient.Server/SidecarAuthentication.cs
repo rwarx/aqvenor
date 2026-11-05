@@ -183,15 +183,19 @@ public static class SidecarCors
     /// </remarks>
     public static void Bind(WebApplication app, ILogger logger)
     {
-        if (app.Urls.Count == 0)
+        // Kestrel populates Urls only when the host starts. Read configuration now,
+        // otherwise --urls is silently replaced before it can be validated.
+        var urls = app.Urls.Count > 0
+            ? app.Urls.ToArray()
+            : (app.Configuration["urls"] ?? LoopbackUrl)
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (urls.Length == 0) { urls = [LoopbackUrl]; }
+        if (app.Configuration.GetSection("Kestrel:Endpoints").GetChildren().Any())
         {
-            logger.LogInformation("No URL was supplied; binding {Url}.", LoopbackUrl);
-            app.Urls.Clear();
-            app.Urls.Add(LoopbackUrl);
-            return;
+            throw new InvalidOperationException("Use --urls to configure the loopback sidecar; Kestrel endpoint overrides are refused.");
         }
 
-        foreach (var url in app.Urls)
+        foreach (var url in urls)
         {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
                 || !string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
@@ -203,7 +207,9 @@ public static class SidecarCors
             }
         }
 
-        logger.LogInformation("Binding {Url}.", string.Join(", ", app.Urls));
+        app.Urls.Clear();
+        foreach (var url in urls) { app.Urls.Add(url); }
+        logger.LogInformation("Binding {Url}.", string.Join(", ", urls));
     }
 
     /// <summary>A short, non-sensitive label for the token's source, for the startup log.</summary>

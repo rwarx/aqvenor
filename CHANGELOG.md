@@ -11,6 +11,29 @@ Versions are also published on the
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- Complete editor documents and checkpoints preserve large files; loading, reload and retry keep unsaved buffers.
+- Workspace leases bind editor writes, agent runs and checkpoints to their project. Legacy snapshots with potentially truncated files cannot be restored.
+- The first message upgrades the local chat ID without losing drafts, approvals, attachments or live run state.
+- File and graph writes are serialized, remain retryable after transport errors and reject stale file hashes. Closing Electron waits for saves.
+- One agent run per conversation and a unique transactional message sequence prevent interleaved runs. Disconnect cancels the run and its approval wait.
+- Checkpoint restore preserves captured line endings and reports a failed write. Both desktop hosts pin graph loading during folder changes.
+- Sidecar startup validates configured listener URLs before binding, including command-line URLs, and rejects Kestrel endpoint overrides.
+
+### Security
+
+- Electron IPC checks the exact renderer entry and main frame. MCP trust belongs to the main process; project imports start disabled and privileged calls require native approval.
+- Electron updated to 44.10.2 and Vite to 7.3.7, with compatible transitive dependency fixes. Remaining moderate build-tool advisories are tracked in DEVELOPMENT.md.
+
+### Build and documentation
+
+- Stable .NET 10 SDK selection; renderer tests in CI and release. Release builds resolve and verify the tag's exact commit and include checksums and source identity.
+- Windows installers include the .NET runtime. A fresh-profile HTTP smoke checks authentication, full files, checkpoints, conflicts and project isolation.
+- Updated privacy storage map, development commands and desktop host capabilities. Existing message sequences are normalized before the unique-index migration.
+
 ## [0.3.1-alpha] — 2026-11-03
 
 ### Fixed

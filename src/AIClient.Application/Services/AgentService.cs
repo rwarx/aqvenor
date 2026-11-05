@@ -52,6 +52,7 @@ public sealed class AgentService : IAgentService
     private readonly IAgentApproval _approval;
     private readonly IWorkspaceService _workspace;
     private readonly ILogger<AgentService> _logger;
+    private readonly TimeProvider _time;
 
     public AgentService(
         IConversationService conversations,
@@ -62,7 +63,8 @@ public sealed class AgentService : IAgentService
         IAgentToolRegistry registry,
         IAgentApproval approval,
         IWorkspaceService workspace,
-        ILogger<AgentService> logger)
+        ILogger<AgentService> logger,
+        TimeProvider? timeProvider = null)
     {
         _conversations = conversations;
         _providers = providers;
@@ -73,6 +75,7 @@ public sealed class AgentService : IAgentService
         _approval = approval;
         _workspace = workspace;
         _logger = logger;
+        _time = timeProvider ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -109,7 +112,7 @@ public sealed class AgentService : IAgentService
             yield return new AgentEvent.TitleGenerated(request.ConversationId, title);
         }
 
-        var run = new RunState(request, _settings.Current.Agent, cancellationToken);
+        var run = new RunState(request, _settings.Current.Agent, cancellationToken, _time);
 
         try
         {
@@ -963,8 +966,10 @@ public sealed class AgentService : IAgentService
     /// </remarks>
     private sealed class RunState : IDisposable
     {
-        private readonly Stopwatch _clock = Stopwatch.StartNew();
+        private readonly TimeProvider _time;
+        private readonly long _started;
         private readonly CancellationTokenSource? _deadline;
+        private readonly ITimer? _deadlineTimer;
         private readonly TimeSpan _budget;
         private readonly int _maxIdentical;
         private readonly HashSet<string> _allowedForRun = new(StringComparer.OrdinalIgnoreCase);
@@ -972,8 +977,10 @@ public sealed class AgentService : IAgentService
         private readonly Dictionary<string, int> _attempts = new(StringComparer.Ordinal);
         private TimeSpan _waited;
 
-        public RunState(AgentRunRequest request, AgentSettings settings, CancellationToken userToken)
+        public RunState(AgentRunRequest request, AgentSettings settings, CancellationToken userToken, TimeProvider time)
         {
+            _time = time;
+            _started = time.GetTimestamp();
             ConversationId = request.ConversationId;
             ProviderId = request.ProviderId;
             ModelId = request.ModelId;
@@ -992,7 +999,11 @@ public sealed class AgentService : IAgentService
             {
                 _budget = TimeSpan.FromSeconds(settings.MaxDurationSeconds);
                 _deadline = CancellationTokenSource.CreateLinkedTokenSource(userToken);
-                _deadline.CancelAfter(_budget);
+                _deadlineTimer = time.CreateTimer(_ =>
+                {
+                    try { _deadline.Cancel(); }
+                    catch (ObjectDisposedException) { /* The run finished while the timer was firing. */ }
+                }, null, _budget, Timeout.InfiniteTimeSpan);
                 RunToken = _deadline.Token;
             }
         }
@@ -1037,13 +1048,13 @@ public sealed class AgentService : IAgentService
 
         public bool ModelResolved { get; set; }
 
-        public TimeSpan Elapsed => _clock.Elapsed;
+        public TimeSpan Elapsed => _time.GetElapsedTime(_started);
 
         /// <summary>
         /// Whether the run has spent its time. Measured on the work, which is the elapsed time less
         /// whatever the user spent deciding.
         /// </summary>
-        public bool OutOfTime => _budget > TimeSpan.Zero && _clock.Elapsed - _waited >= _budget;
+        public bool OutOfTime => _budget > TimeSpan.Zero && Elapsed - _waited >= _budget;
 
         /// <summary>
         /// Stops the deadline while a question is open, and is undone by <see cref="GiveBack"/>.
@@ -1053,7 +1064,7 @@ public sealed class AgentService : IAgentService
         /// the run with no time limit at all, which is the failure this whole mechanism exists to
         /// prevent.
         /// </remarks>
-        public void HoldDeadline() => _deadline?.CancelAfter(Timeout.InfiniteTimeSpan);
+        public void HoldDeadline() => _deadlineTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
         /// <summary>
         /// Gives back the time an approval question was open, so that a person taking a minute to
@@ -1073,8 +1084,8 @@ public sealed class AgentService : IAgentService
 
             // Re-armed unconditionally, even for a question answered in no measurable time: the
             // deadline is suspended before every question, and only this restarts it.
-            var left = _budget - (_clock.Elapsed - _waited);
-            _deadline?.CancelAfter(left > TimeSpan.Zero ? left : TimeSpan.Zero);
+            var left = _budget - (Elapsed - _waited);
+            _deadlineTimer?.Change(left > TimeSpan.Zero ? left : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         }
 
         /// <summary>
@@ -1115,7 +1126,11 @@ public sealed class AgentService : IAgentService
             }
         }
 
-        public void Dispose() => _deadline?.Dispose();
+        public void Dispose()
+        {
+            _deadlineTimer?.Dispose();
+            _deadline?.Dispose();
+        }
 
         /// <summary>
         /// What counts as the same call: the tool and the arguments exactly as they were sent.

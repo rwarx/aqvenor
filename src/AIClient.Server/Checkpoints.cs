@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AIClient.Application.Configuration;
 
 namespace AIClient.Server;
 
@@ -20,12 +21,9 @@ public sealed class JsonCheckpointStore
 
     private readonly string _directory;
 
-    public JsonCheckpointStore(IHostEnvironment env)
+    public JsonCheckpointStore(IAppPaths paths)
     {
-        _directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AIClient",
-            "checkpoints");
+        _directory = Path.Combine(paths.DataDirectory, "checkpoints");
         Directory.CreateDirectory(_directory);
     }
 

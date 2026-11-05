@@ -98,8 +98,9 @@ public sealed class GraphPersistence : IDisposable
         try
         {
             await _graph.SaveAsync(_currentKey).ConfigureAwait(false);
-            _currentKey = KeyForRoot(root);
-            await _graph.LoadAsync(_currentKey).ConfigureAwait(false);
+            var nextKey = KeyForRoot(root);
+            await _graph.LoadAsync(nextKey).ConfigureAwait(false);
+            _currentKey = nextKey;
         }
         catch (Exception ex)
         {

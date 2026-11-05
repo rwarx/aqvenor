@@ -203,7 +203,7 @@ git clone https://github.com/rwarx/aqvenor.git
 cd aqvenor
 
 # The sidecar has to be published next to where Electron looks for it
-dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained false -o electron/sidecar
+dotnet publish src/AIClient.Server -c Release -r win-x64 --self-contained true -o electron/sidecar
 
 cd electron
 npm install
@@ -268,16 +268,18 @@ Full reasoning, including the two doors to the file system and the two canvas re
 
 ```bash
 dotnet build AIClient.slnx     # warnings are errors — that is deliberate
-dotnet test                    # 987 tests, no network and no API key needed
+dotnet test                    # core and integration regressions; no API key needed
 
 cd electron
-npm install
-npm run typecheck
-npm test                       # 21 vitest suites for drag-drop, i18n plurals, multitask store
+npm ci
+npm run typecheck:all           # renderer, main and preload
+npm test                       # editor, persistence, IPC/MCP, chat and UI regressions
 npm run dev                    # renderer against a seeded demo workspace, no backend needed
 ```
 
 Requires Windows and the .NET 10 SDK. Node 22 is needed only for the renderer.
+`global.json` selects a stable .NET 10 SDK and permits newer .NET 10 feature bands.
+Release installers include the sidecar runtime; users do not need to install the SDK.
 
 Conventions that matter, and that `.editorconfig` cannot express, are in
 [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -323,7 +325,7 @@ Third-party components keep their own licences — 40-odd bundled packages plus 
 
 ## Status
 
-`0.2.0-alpha`. Published as a prerelease, deliberately.
+`0.3.1-alpha`. Published as a prerelease, deliberately.
 
 **Works:** streaming chat, parallel chats with per-chat models, both hosts, the spatial graph and
 canvas, the agent tool loop with its approval gate, the editor, git, sessions and bundles, three
@@ -344,8 +346,8 @@ losing your work:
 **Still open**, listed with file references in
 [SECURITY.md](SECURITY.md#known-gaps): conversations are not encrypted at rest (deliberate, and your
 Windows account can read them either way), the sidecar has no request-size limit or rate limiter beyond
-Kestrel's default, the Electron main and preload scripts get no type checking, and the newest agent
-tools have no test coverage.
+Kestrel's default, and some optional tools still need broader end-to-end coverage.
+Electron main/preload are typechecked, and regression tests cover their IPC/MCP boundaries.
 
 This is a `0.x` version from a small project with no funding behind it. It is built in the open,
 issues are answered best-effort, and there is no SLA. If you need one, that is a conversation with a

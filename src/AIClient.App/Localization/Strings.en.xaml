@@ -657,6 +657,7 @@
     <sys:String x:Key="S.Settings.Providers.RemoveConfirm.Message">{0} and its cached models will be deleted, along with the stored API key. Built-in providers cannot be removed.</sys:String>
     <sys:String x:Key="S.Workspace.Open.Title">Choose the workspace folder</sys:String>
     <sys:String x:Key="S.Workspace.Open.ErrorTitle">Cannot open that folder</sys:String>
+    <sys:String x:Key="S.Workspace.Close.ErrorTitle">Cannot close this folder</sys:String>
     <sys:String x:Key="S.Workspace.Open.Refused">It was refused.</sys:String>
     <sys:String x:Key="S.History.MoveNode">Move node</sys:String>
     <sys:String x:Key="S.History.MoveNodes">Move {0} nodes</sys:String>

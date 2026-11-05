@@ -11,7 +11,8 @@ way it is; this file is the day-to-day mechanics.
   macOS - DPAPI and WPF are both Windows-only, and the TFM says so rather than failing at
   run time.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download). The runtime alone is enough to run a
-  published build but not to build one.
+  framework-dependent build but not to build one. Release installers embed the runtime.
+  `global.json` accepts stable .NET 10 feature bands and refuses preview SDKs.
 - **Node.js 22 or later**, only if you are working on the renderer or building the
   installer. The .NET solution does not need it.
 - `dotnet-ef` only if you intend to add a migration:
@@ -46,7 +47,7 @@ sidecar over a loopback socket, so both halves are needed for a working app.
 
 ```bash
 dotnet build AIClient.slnx
-dotnet publish src/AIClient.Server -c Debug -r win-x64 --self-contained false -o electron/sidecar
+dotnet publish src/AIClient.Server -c Debug -r win-x64 --self-contained true -o electron/sidecar
 ```
 
 That last step is what the installer does, and skipping it means the Electron main
@@ -54,10 +55,11 @@ process will find no sidecar. Then:
 
 ```bash
 cd electron
-npm install
+npm ci
 npm start          # Electron; starts the sidecar itself if electron/sidecar exists
 npm run dev        # Vite only, for renderer work — needs a backend already running
-npm run typecheck
+npm run typecheck:all
+npm test
 npm run build:renderer
 npm run pack       # electron-builder, into electron/release/
 ```
@@ -70,6 +72,19 @@ sample sessions, a graph and files, and no network.
 alongside it when changing renderer code.
 
 ### Publishing
+
+Release CI checks out the exact commit behind the requested version tag before
+building. Both TypeScript projects and frontend tests are required. The installer
+includes a self-contained sidecar, a source-commit record and SHA-256 checksums.
+`./scripts/smoke-sidecar.ps1` checks the published sidecar with a fresh temporary
+profile: authentication, complete documents/checkpoints, conflicting writes and
+cross-workspace restore refusal. It does not call model providers.
+
+For isolated development, `AICLIENT_DataRoot` may name an absolute directory;
+core data is then created in its `AIClient` subfolder. Electron's own user data
+is separate. If your machine only has a preview SDK and a stable SDK was installed
+under `.tools/dotnet`, use `./.tools/dotnet/dotnet.exe` for .NET commands or add
+that directory to the current terminal's `PATH`.
 
 ```bash
 dotnet publish src/AIClient.App -c Release -r win-x64 --self-contained false
@@ -678,3 +693,12 @@ and §11's requirement that a key be held by a Windows storage mechanism.
 **A test leaves a directory in `%TEMP%`.** `TestDatabase` and `SecureStorageTests` both swallow
 `IOException` on cleanup rather than failing a run over a locked file. `%TEMP%\aiclient-tests` and
 `%TEMP%\aiclient-secrets` are safe to delete at any time.
+# Dependency audit follow-up
+
+The November 2026 dependency refresh upgrades Electron to 44.10.2 and Vite to
+7.3.7. The official npm registry reports no high/critical advisories; 15 moderate
+package records remain in the minimatch/glob/electron-builder build-tool chains.
+`npm audit fix --force` proposes downgrading electron-builder to 20.x, so it is
+not an acceptable fix. Upgrade these consumers together when compatible releases
+are available, then rebuild the Windows installer. Do not impose a new minimatch
+major on old consumers that expect its CommonJS function API.

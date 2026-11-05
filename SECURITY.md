@@ -180,7 +180,7 @@ before any check, and the resolved location is what the refusal list is applied 
 | --- | --- | --- | --- |
 | 1 | No request-size limit or rate limiter on the sidecar beyond Kestrel's 30 MB default. | A caller holding the token can ask for expensive work. Contained by the token and by the `/api/ai/complete` clamps. | Open. Low. |
 | 2 | Conversations are **not encrypted at rest**. | Anyone with your Windows account can read the database. Deliberate: an encrypted store would put the key where that account can reach it. | By design. Documented in [PRIVACY.md](PRIVACY.md). |
-| 3 | `main.js` and `preload.js` are plain JavaScript outside the TypeScript project, so they get no type checking. | The most security-critical surface in the shell is unchecked by the compiler. | Open. Low. |
+| 3 | Electron main, preload and MCP are checked by `typecheck:shell`; IPC accepts only the application main frame and exact entry URL. | Boundary regressions are covered in `electron-security.test.ts`. | Fixed. |
 | 4 | The editor's inline AI and ghost-text features can be driven repeatedly by cursor movement, not only typing. | Unbounded provider spend from a non-typing action. Off by default. | Open. Low. |
 | 5 | `SensitiveFiles` and `WorkspaceService` carry two copies of the credential-name list. | They agree today; nothing enforces that they continue to. A future edit to one is not picked up by the other. | Open. Low. |
 

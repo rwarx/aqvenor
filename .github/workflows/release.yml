@@ -32,9 +32,12 @@ jobs:
     runs-on: windows-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      sha: ${{ steps.tag.outputs.sha }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -58,13 +61,16 @@ jobs:
       - name: Resolve and verify the tag
         id: tag
         shell: pwsh
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          $fromRef = "${{ github.ref }}"
+          $fromRef = $env:RELEASE_REF
           if ($fromRef -like 'refs/tags/*') {
             $tag = $fromRef.Substring('refs/tags/'.Length)
           }
           else {
-            $tag = "${{ github.event.inputs.tag }}"
+            $tag = $env:INPUT_TAG
           }
 
           if ([string]::IsNullOrWhiteSpace($tag)) {
@@ -74,6 +80,13 @@ jobs:
           if (-not $tag.StartsWith('v')) {
             $tag = "v$tag"
           }
+          if ($tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') {
+            throw 'The release tag must be a version such as v0.3.1-alpha.'
+          }
+          $sha = git rev-parse --verify "refs/tags/$tag^{commit}"
+          if ($LASTEXITCODE -ne 0) { throw "The tag '$tag' does not exist." }
+          git checkout --detach $sha
+          if ($LASTEXITCODE -ne 0) { throw 'Could not check out the release commit.' }
           $expected = $tag.Substring(1)
 
           [xml]$props = Get-Content Directory.Build.props
@@ -102,6 +115,7 @@ jobs:
           }
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
+          "sha=$sha" >> $env:GITHUB_OUTPUT
 
           # Explicit so a clean run does not inherit the exit code of the last
           # native command, which would be 1 from a Test-Path that found nothing.
@@ -121,7 +135,9 @@ jobs:
       - name: Verify build and tests before packaging
         run: |
           dotnet restore AIClient.slnx
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build AIClient.slnx --no-restore -warnaserror
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet test AIClient.slnx --no-build
 
       - name: Publish the sidecar
@@ -129,16 +145,25 @@ jobs:
           dotnet publish src/AIClient.Server
           -c Release
           -r win-x64
-          --self-contained false
+          --self-contained true
           -o electron/sidecar
 
       - name: Install renderer dependencies
         working-directory: electron
         run: npm ci
+      - name: Smoke test the published sidecar
+        # The published apphost must boot with its embedded runtime and a fresh profile.
+        run: ./scripts/smoke-sidecar.ps1
 
       - name: Build renderer
         working-directory: electron
         run: npm run build:renderer
+      - name: Typecheck renderer and Electron shell
+        working-directory: electron
+        run: npm run typecheck:all
+      - name: Test renderer and shell boundaries
+        working-directory: electron
+        run: npm test
 
       # electron-builder picks the sidecar up through extraResources, so it has
       # to be a single directory beside the manifest. Verified here rather than
@@ -161,6 +186,9 @@ jobs:
 
       - name: Collect artefacts
         shell: pwsh
+        env:
+          SOURCE_SHA: ${{ steps.tag.outputs.sha }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
           Get-ChildItem electron/release -Filter '*.exe' |
@@ -174,6 +202,11 @@ jobs:
             exit 1
           }
           $assets | Select-Object Name, Length
+          "tag=$env:RELEASE_TAG`ncommit=$env:SOURCE_SHA" | Set-Content release-assets/build-source.txt
+          Get-ChildItem release-assets -File | ForEach-Object {
+            $digest = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$digest  $($_.Name)"
+          } | Set-Content release-assets/SHA256SUMS.txt
           exit 0
 
       - name: Upload build artefacts
@@ -199,7 +232,15 @@ jobs:
         with:
           # At the tag, not at the branch, so body_path resolves against the tree
           # that is actually being published.
-          ref: ${{ needs.build.outputs.tag }}
+          ref: ${{ needs.build.outputs.sha }}
+          fetch-depth: 0
+      - name: Verify the release tag still points to the built commit
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.sha }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          actual=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          test "$actual" = "$SOURCE_SHA"
 
       # Downloaded into a directory named differently from the artifact, because
       # upload-artifact can preserve the source directory name inside the archive
@@ -215,7 +256,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          find assets -type f \( -name '*.exe' -o -name '*.blockmap' -o -name '*.yml' \) \
+          find assets -type f \( -name '*.exe' -o -name '*.blockmap' -o -name '*.yml' -o -name '*.txt' \) \
             -exec mv -f {} release-assets/ \;
 
           echo "--- collected ---"
@@ -229,6 +270,7 @@ jobs:
             echo "::error::No .exe installer found in the artefact. Refusing to publish an empty release."
             exit 1
           fi
+          (cd release-assets && sha256sum --check SHA256SUMS.txt)
 
       - name: Publish
         uses: softprops/action-gh-release@v2

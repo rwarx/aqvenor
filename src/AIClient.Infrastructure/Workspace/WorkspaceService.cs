@@ -458,7 +458,8 @@ public sealed class WorkspaceService : IWorkspaceService
         WorkspacePath path,
         string content,
         CancellationToken cancellationToken = default,
-        string? expectedHash = null) =>
+        string? expectedHash = null,
+        bool preserveNewlines = false) =>
         GuardAsync<WorkspaceWrite>(path, async () =>
         {
             ArgumentNullException.ThrowIfNull(content);
@@ -514,7 +515,7 @@ public sealed class WorkspaceService : IWorkspaceService
                 return WorkspaceResult<WorkspaceWrite>.Fail("The document was deleted on disk. Reload the project before saving.");
             }
 
-            return await CommitAsync(path, full, content, newline, bom, existed, linesBefore, 0, cancellationToken)
+            return await CommitAsync(path, full, content, newline, bom, existed, linesBefore, 0, cancellationToken, preserveNewlines)
                 .ConfigureAwait(false);
         });
 
@@ -1462,9 +1463,10 @@ public sealed class WorkspaceService : IWorkspaceService
         bool existed,
         int linesBefore,
         int replacements,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool preserveNewlines = false)
     {
-        var body = TextContent.NormalizeNewlines(content, newline);
+        var body = preserveNewlines ? content : TextContent.NormalizeNewlines(content, newline);
         var cap = _settings.Current.Agent.MaxFileBytes;
         var size = Utf8NoBom.GetByteCount(body) + (bom ? 3 : 0);
 

@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Applies to Aqvenor `0.1.0-alpha` and every later build.**
-**Effective date: 3 October 2026.**
+**Effective date: 4 November 2026.**
 
 Aqvenor is free and open-source software. It runs on your own computer. It
 has no account system, no sign-up, and — this is the part that matters most —
@@ -26,9 +26,9 @@ that is only worth something if it is specific.
 | Is there an account? | No. No registration, no login, no user identifier. |
 | Is there telemetry or analytics? | **No.** See [§4](#4-what-is-never-collected). |
 | Is there a server run by this project? | **No.** Your conversation data never touches one. |
-| What leaves your machine? | Only what you send to a model provider, and only when you press Send. |
+| What leaves your machine? | Model requests, enabled network tools, Git remote operations and MCP requests you authorize. See §5. |
 | Where is your data stored? | In your own user profile directory. See [§3](#3-where-data-lives). |
-| How do I delete everything? | Delete one file and one folder. See [§8](#8-deleting-your-data). |
+| How do I delete everything? | Remove core data, Electron user data and each project's `.aqvenor` folder. See [§8](#8-deleting-your-data). |
 | How do I get my data out? | Export from the app, or copy it. See [§7](#7-exporting-your-data). |
 
 ---
@@ -77,9 +77,9 @@ anything to a model provider.
 
 ## 3. Where your data lives
 
-Everything Aqvenor writes is under your user profile, in a folder named
-`AIClient`. Nothing is written beside the executable and nothing is written into
-the source tree.
+Core data lives under your user profile in `AIClient`. Electron also stores local
+UI state and optional MCP memory in its own user-data directory. Project state
+is written to `.aqvenor` inside the workspace you open.
 
 | Path (under `%APPDATA%\AIClient` on Windows) | Contents | Format |
 | --- | --- | --- |
@@ -88,6 +88,12 @@ the source tree.
 | `logs\aiclient-<date>.log` | One file per day, older ones deleted at startup | Plain text |
 | `attachments\` | Copies of files you attached | Plain text, as the source was |
 | `graphs\`, `checkpoints\` | Spatial-graph state and session snapshots | JSON |
+
+Electron's `app.getPath("userData")` directory (usually `%APPDATA%\Aqvenor` or
+`%APPDATA%\aqvenor`) also contains Chromium storage, UI drafts and preferences,
+`mcp-memory.json` (saved cross-chat facts), and `mcp-trust.json` (servers you
+authorized). Project `.aqvenor/canvas.json` and `.aqvenor/mcp.json` are portable
+JSON files; they may be included in your repository if you commit them.
 
 Three consequences worth stating plainly:
 
@@ -117,8 +123,8 @@ business model, so it is worth being exact:
   where every outbound address in the product is named.
 - **No account, no identifier, no persistent user ID.** There is nothing to
   associate one install with another.
-- **No advertising, no profiling, no cross-site tracking, no cookies.** The app
-  has no cookie store and no web analytics tag.
+- **No advertising, no profiling, no cross-site tracking.** Aqvenor does not use
+  analytics cookies; Electron maintains ordinary local Chromium storage.
 - **No data sold or shared for anyone else's benefit.** The project receives no
   data to share, because it receives no data.
 
@@ -128,9 +134,10 @@ business model, so it is worth being exact:
 
 This is the entire list. If something is not here, the application does not do it.
 
-### 5.1 Model provider requests — the only outbound data flow
+### 5.1 Model provider requests
 
-When you press **Send**, the following goes to the provider you configured:
+When you press **Send** or request a model completion, the following goes to the provider you configured.
+Enabled inline AI and ghost text can request completions as you edit:
 
 - your message text, the conversation history Aqvenor has assembled for this
   turn, and any attachment text;
@@ -172,9 +179,25 @@ turn them on**, and both put every call in front of an approval prompt:
 The Git panel runs `git` on your machine to read status and diffs, and — only
 when you click — to stage, commit, push, pull and fetch. Remote names and branch
 names are validated before they reach the `git` argument list. Nothing about your
-repository is sent anywhere by Aqvenor.
+repository is sent by read-only status/diff operations. Push, pull and fetch
+communicate with the Git remote you selected.
 
-### 5.4 Update checks
+### 5.4 MCP servers and optional memory
+
+Project MCP configurations are imported disabled. Enabling a server requires a
+desktop confirmation stored locally outside the project. Probing an enabled
+remote server sends MCP initialization and tool-list requests to its URL.
+Calling a remote tool sends its arguments after a desktop approval. Computer
+tools also require approval; screenshot and clipboard results stay local until
+you include them in a request or export. Executable files cannot be launched
+through `open_path`.
+
+When the built-in memory server is enabled, completed chats can save short facts
+to `mcp-memory.json`. Relevant facts can become attachments in later model
+requests. Disable memory to stop retrieval and capture; remove its file to
+delete saved facts. Memory is shared across chats and projects.
+
+### 5.5 Update checks
 
 There are none. The application does not phone home to discover that a newer
 version exists. Releases are announced on the GitHub releases page, which you
@@ -250,6 +273,10 @@ request. Deleting is a file operation you control:
 1. **Individual conversations** — delete in the app; the rows cascade.
 2. **Everything** — quit the application, then delete `%APPDATA%\AIClient`. This
    removes the database, the encrypted keys, the logs and the attachments folder.
+   Also remove Electron's user-data directory described in §3, including
+   `mcp-memory.json`, `mcp-trust.json` and Chromium storage. Remove `.aqvenor`
+   from each project if you also want to delete portable canvas and MCP state.
+   Committed copies and backups require separate deletion in their own storage.
    The application recreates an empty database on next launch; you will need to
    re-enter your API keys.
 3. **To be certain a provider no longer holds it** — deleting your local copy

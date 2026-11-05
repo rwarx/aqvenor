@@ -545,10 +545,14 @@ public static class DataEndpoints
                     continue;
                 }
 
-                var write = await workspace.WriteAsync(p, content, ct).ConfigureAwait(false);
+                var write = await workspace.WriteAsync(p, content, ct, preserveNewlines: true).ConfigureAwait(false);
                 if (write.Success)
                 {
                     restored++;
+                }
+                else
+                {
+                    return Results.BadRequest(new { error = $"Cannot restore '{path}': {write.Error}", restoredFiles = restored });
                 }
             }
 

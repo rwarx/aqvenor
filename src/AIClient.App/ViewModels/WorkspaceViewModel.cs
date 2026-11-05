@@ -35,6 +35,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     private readonly WorkspaceGraphIndexer _indexer;
     private readonly IDialogSurface _dialogs;
     private readonly ILogger<WorkspaceViewModel> _logger;
+    private Task _rootChange = Task.CompletedTask;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsDocumentTabs))]
@@ -168,15 +169,22 @@ public sealed partial class WorkspaceViewModel : ObservableObject
             return;
         }
 
-        // RootChanged has done the graph swap already; this is only the user-facing cue.
+        await _rootChange.ConfigureAwait(true);
         SwitchMode(WorkspaceMode.Canvas);
     }
 
     [RelayCommand]
     private async Task CloseWorkspaceAsync(CancellationToken cancellationToken)
     {
-        await _workspace.CloseAsync(cancellationToken).ConfigureAwait(true);
-        await _graph.SaveAsync(WorkspaceGraphKeys.FromWorkspaceRoot(_workspace.Root)).ConfigureAwait(true);
+        try
+        {
+            await _workspace.CloseAsync(cancellationToken).ConfigureAwait(true);
+            await _rootChange.ConfigureAwait(true);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await _dialogs.ShowErrorAsync(Localization.T("S.Workspace.Close.ErrorTitle"), ex.Message).ConfigureAwait(true);
+        }
     }
 
     /// <summary>Re-indexes the workspace into the graph, positions and all.</summary>
@@ -207,26 +215,36 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         }
     }
 
-    private async void OnRootChanged(object? sender, string? root)
+    private void OnRootChanged(object? sender, string? root)
     {
+        var pinned = _workspace.AcquireLease(root);
+        if (!pinned.Success) { throw new InvalidOperationException(pinned.Error); }
+        _rootChange = SwapRootAsync(_rootChange, root, pinned.Value!);
+    }
+
+    private async Task SwapRootAsync(Task previous, string? root, IWorkspaceLease lease)
+    {
+        using var pinned = lease;
+        await previous.ConfigureAwait(false);
         // RootChanged can arrive from a background thread (the service persists settings
         // before raising); every subscriber below touches UI state.
-        await AIClient.App.Services.UiThread.RunAsync(async () =>
+        try
+        {
+            await AIClient.App.Services.UiThread.RunAsync(async () =>
         {
             // Save whatever was on the canvas under the OLD key before adopting the new
             // root - closing one workspace and opening another must not lose the first
             // one's plan drawings.
             var previousKey = Canvas.PersistenceKey;
 
-            if (_graph.Current.Nodes.Count > 0 && previousKey != "workspace-none")
+            if (previousKey != "workspace-none")
             {
                 await _graph.SaveAsync(previousKey).ConfigureAwait(true);
             }
 
             var key = WorkspaceGraphKeys.FromWorkspaceRoot(root);
-            Canvas.PersistenceKey = key;
-
             var loaded = await _graph.LoadAsync(key).ConfigureAwait(true);
+            Canvas.PersistenceKey = key;
 
             if (loaded.Nodes.Count == 0 && !string.IsNullOrEmpty(root))
             {
@@ -236,7 +254,14 @@ public sealed partial class WorkspaceViewModel : ObservableObject
 
             SyncRoot();
             Context.SetWorkspace(root);
-        }).ConfigureAwait(true);
+            }).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "The workspace graph could not be loaded.");
+            await UiThread.RunAsync(() => _dialogs.ShowErrorAsync(
+                Localization.T("S.Workspace.Open.ErrorTitle"), ex.Message)).ConfigureAwait(false);
+        }
     }
 
     private void SyncRoot()

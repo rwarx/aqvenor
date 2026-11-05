@@ -8,7 +8,7 @@ rewritten. That sets the constraint everything below follows from: the parts tha
 will still be true in an IDE — provider abstraction, streaming, context assembly,
 storage — are separated from the parts that are only true of a chat window.
 
-> **Status.** This describes `0.1.0-alpha`. Where the code and this document
+> **Status.** Updated for `0.3.1-alpha` and the November 2026 reliability fixes. Where the code and this document
 > disagree, the code is right and this document is a bug. Known gaps are listed in
 > [SECURITY.md](SECURITY.md#known-gaps).
 
@@ -54,6 +54,9 @@ trying to.** The WPF host has a richer canvas (`GraphCanvas` with retained
 `DrawingVisual`s); the Electron renderer has a richer editor (CodeMirror 6), a git
 panel, and session bundles. New work should go where the feature belongs, and the
 host that lacks it should say so rather than pretend.
+
+Both hosts remain built by CI. [HOST-FEATURES.md](docs/HOST-FEATURES.md) records their
+actual feature boundaries; new features do not imply automatic parity.
 
 ---
 

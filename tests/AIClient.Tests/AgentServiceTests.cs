@@ -532,35 +532,39 @@ public sealed class AgentServiceTests : IAsyncLifetime
         Assert.Equal(MessageStatus.Cancelled, assistant.Status);
     }
 
-    [Fact]
-    public async Task Time_spent_waiting_for_an_answer_is_not_charged_to_the_budget()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Time_spent_waiting_for_an_answer_is_not_charged_to_the_budget(bool spendBudgetAfterApproval)
     {
         var conversationId = await NewChatAsync();
 
-        // A two-second budget against a four-second wait, which is the ordinary case: a person
-        // reading a diff takes far longer than the model takes to produce it. If the wait were
-        // charged, the run would stop mid-approval and end as TimeLimit.
-        //
-        // The margin is deliberately two seconds rather than a fraction of one. The first version of
-        // this test used a one-second budget and a 1.4-second wait, which left 0.4s of headroom for
-        // the run's actual work — enough on a developer machine and not enough on a loaded CI runner,
-        // where the extra scheduling jitter produced a TimeLimit and failed the build for no reason
-        // connected to the behaviour under test. A timing assertion with a tight margin is a flaky
-        // test wearing a hat; the margin should be several times the work it is protecting.
+        // Advance the actual budget clock while approval is open. No wall-clock
+        // margin or scheduling speed is part of the assertion.
+        var clock = new ManualTimeProvider();
         _settings.With<AgentSettings>(agent => agent.MaxDurationSeconds = 2);
 
-        var probe = new ProbeTool("write_thing", AgentToolRisk.Write);
-        var approval = new ScriptedApproval(before: () => Task.Delay(TimeSpan.FromSeconds(4)));
+        var probe = new ProbeTool("write_thing", AgentToolRisk.Write, _ =>
+        {
+            if (spendBudgetAfterApproval) { clock.Advance(TimeSpan.FromSeconds(3)); }
+            return AgentToolResult.Ok("Written.", "ok");
+        });
+        var approval = new ScriptedApproval(before: () =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(40));
+            return Task.CompletedTask;
+        });
 
         var provider = Stepping(
             Calls(Call("write_thing", """{"path":"a.txt"}""")),
             Answer("Written."));
 
         var events = await CollectAsync(
-            Service(provider, [probe], approval).RunAsync(Ask(conversationId), Token));
+            Service(provider, [probe], approval, timeProvider: clock).RunAsync(Ask(conversationId), Token));
 
         Assert.Equal(1, probe.Ran);
-        Assert.Equal(AgentStopReason.Answered, Assert.IsType<AgentEvent.Completed>(events[^1]).Reason);
+        Assert.Equal(spendBudgetAfterApproval ? AgentStopReason.TimeLimit : AgentStopReason.Answered,
+            Assert.IsType<AgentEvent.Completed>(events[^1]).Reason);
     }
 
     [Fact]
@@ -736,7 +740,8 @@ public sealed class AgentServiceTests : IAsyncLifetime
         IEnumerable<IAgentTool>? tools = null,
         IAgentApproval? approval = null,
         IProviderRegistry? registry = null,
-        ICompactionService? compaction = null) =>
+        ICompactionService? compaction = null,
+        TimeProvider? timeProvider = null) =>
         new(_conversations,
             registry ?? new StubProviderRegistry(provider).WithModel(Model()),
             new ContextBuilder(
@@ -748,7 +753,7 @@ public sealed class AgentServiceTests : IAsyncLifetime
             new AgentToolRegistry(tools ?? []),
             approval ?? new ScriptedApproval(),
             _workspace,
-            NullLogger<AgentService>.Instance);
+            NullLogger<AgentService>.Instance, timeProvider);
 
     /// <summary>
     /// A model that can call tools, which is the only capability the loop insists on.

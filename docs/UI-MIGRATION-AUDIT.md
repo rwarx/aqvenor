@@ -1,6 +1,10 @@
 # UI Migration Audit — Aqvenor
 
-Status: Phase 0 of the desktop UI migration. This document records what actually exists in the
+**Historical planning document.** The Avalonia migration below was a proposal and is not the current host architecture.
+The supported source hosts are WPF and Electron; see [ARCHITECTURE.md](../ARCHITECTURE.md) and
+[HOST-FEATURES.md](HOST-FEATURES.md) for current contracts and capabilities. Findings below describe the original audit.
+
+Original status: Phase 0 of the desktop UI migration. This document records what actually exists in the
 repository as of this audit, what is worth keeping, what is broken or stale, and the architecture
 and stage plan for moving the interface from WPF to Avalonia with a custom-rendered canvas.
 
