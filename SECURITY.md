@@ -1,6 +1,6 @@
 # Security Policy
 
-**Applies to Aqvenor `0.1.0-alpha` and every later build.**
+**Applies to Aqvenor `0.3.1-alpha` and every later build.**
 
 Aqvenor runs a language-model agent with the ability to read and write files
 and to run programs. That is the product. A security document for this project is
@@ -89,6 +89,9 @@ CORS, read the response. So:
   generates one; a hardcoded fallback would be a published constant.
 - **A non-loopback bind is refused at startup**, loudly, rather than quietly
   opening a port.
+- **Authorization falls back to deny.** A route mapped without any annotation is
+  refused by a fallback policy, so a forgotten attribute can never publish a
+  route. `/api/health` is the only anonymous route, and it is annotated.
 - **CORS is restricted** to loopback origins, the `null` origin that a `file://`
   renderer reports, and requests with no `Origin` at all.
 - **Settings that reduce containment cannot be written over HTTP.** The command
@@ -102,6 +105,9 @@ CORS, read the response. So:
 - **`/api/ai/complete` is clamped**: prompt length, system length, temperature and
   output tokens are bounded, so even a caller legitimately inside the app cannot
   spend unbounded credit through it.
+- **`/api/ai/*` is rate-limited**: 60 requests per minute per bearer token (429
+  beyond that), and request bodies are capped at 16 MB instead of Kestrel's
+  implicit ~30 MB default.
 - **`git` arguments are validated.** A remote name containing `:` is refused,
   because `ext::` is a documented git transport that runs a local program;
   `--`-prefixed names are refused; branch and revision names carrying refspec
@@ -178,11 +184,12 @@ before any check, and the resolved location is what the refusal list is applied 
 
 | # | Gap | Impact | Status |
 | --- | --- | --- | --- |
-| 1 | No request-size limit or rate limiter on the sidecar beyond Kestrel's 30 MB default. | A caller holding the token can ask for expensive work. Contained by the token and by the `/api/ai/complete` clamps. | Open. Low. |
+| 1 | No request-size limit or rate limiter on the sidecar beyond Kestrel's 30 MB default. | A caller holding the token can ask for expensive work. | Closed. 16 MB explicit ceiling; `/api/ai/*` is limited to 60 requests per minute per token (429). |
 | 2 | Conversations are **not encrypted at rest**. | Anyone with your Windows account can read the database. Deliberate: an encrypted store would put the key where that account can reach it. | By design. Documented in [PRIVACY.md](PRIVACY.md). |
 | 3 | Electron main, preload and MCP are checked by `typecheck:shell`; IPC accepts only the application main frame and exact entry URL. | Boundary regressions are covered in `electron-security.test.ts`. | Fixed. |
 | 4 | The editor's inline AI and ghost-text features can be driven repeatedly by cursor movement, not only typing. | Unbounded provider spend from a non-typing action. Off by default. | Open. Low. |
-| 5 | `SensitiveFiles` and `WorkspaceService` carry two copies of the credential-name list. | They agree today; nothing enforces that they continue to. A future edit to one is not picked up by the other. | Open. Low. |
+| 5 | `SensitiveFiles` and `WorkspaceService` carry two copies of the credential-name list. | They agree today; nothing enforces that they continue to. A future edit to one is not picked up by the other. | Fixed. One list in Domain (`SensitiveFiles`); both guards consume it. |
+| 6 | Sidecar authorization relied on per-route and per-group annotations only. | One forgotten annotation would open a route with no token. | Fixed. Fallback authorization policy requires an authenticated user; `/api/health` is the single anonymous route; regression tests included. |
 
 If you find one of these exploited, report it privately as above — do not open a
 public issue.
@@ -209,6 +216,7 @@ public issue.
 
 ---
 
-*This document describes Aqvenor `0.1.0-alpha`. It is written by the project's
+*This document describes Aqvenor `0.3.1-alpha`. It is written by the project's
 contributors; treat the "protected" sections as claims about code that has tests
-behind them, and the "known gaps" section as the honest remainder.*
+behind them, and the "known gaps" section as the honest remainder. Last updated:
+2026-11-05.*

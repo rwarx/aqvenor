@@ -121,8 +121,7 @@ d'échantillonnage — tout est local, tout est conservé dans votre propre base
 - **Catalogue de modèles.** Récupéré auprès de chaque fournisseur et mis en cache dans SQLite, de
   sorte que le sélecteur fonctionne hors ligne ensuite. Fenêtre de contexte, tarifs et capacités
   viennent du fournisseur, pas d'une liste codée en dur.
-- **Deux fournisseurs prêts à l'emploi** — OpenRouter et NVIDIA NIM, tous deux compatibles
-  OpenAI. Pointez l'endpoint de NVIDIA vers un Ollama, LM Studio ou conteneur NIM auto-hébergé en
+- **Huit fournisseurs prêts à l'emploi** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral et DeepSeek. Pointez l'endpoint de NVIDIA vers un Ollama, LM Studio ou conteneur NIM auto-hébergé en
   local et rien ne quitte votre machine.
 - **Paquets de session.** Exportez toute la session — chat, canevas, fichiers, objectifs — dans un
   `.zip`.

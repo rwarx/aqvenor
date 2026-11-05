@@ -91,7 +91,7 @@ Tema, arayüz dili, uygulama ölçeği, sistem istemi, örnekleme parametreleri 
 - **Jeton sayımı.** Canlı kullanım, tahmini maliyet ve modelin bağlamda gerçekte tuttuğu şey — daha eski turları bir özete katlayan **Oturumu sıkıştır** düğmesiyle birlikte.
 - **Markdown işleme.** Başlıklar, listeler, tablolar, alıntılar, görev listeleri ve çevrelenmiş kod bloğu — sözdizimi vurgusuyla. Yapılandırılmış içerik olarak işlenir, **hiçbir zaman enjekte edilmiş HTML olarak değil**.
 - **Model kataloğu.** Her sağlayıcıdan çekilip SQLite'ta önbelleğe alınır, böylece seçici sonrasında çevrimdışı da çalışır. Bağlam penceresi, fiyat ve yetenekler sağlayıcıdan gelir, sabit bir listeden değil.
-- **Hazır iki sağlayıcı** — OpenRouter ve NVIDIA NIM, ikisi de OpenAI uyumlu. NVIDIA'nın uç noktasını yerel bir Ollama, LM Studio veya kendi sunduğunuz bir NIM kapsayıcısına yönlendirin; makinenizden hiçbir şey çıkmaz.
+- **Sekiz sağlayıcı hazır** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral ve DeepSeek. NVIDIA'nın uç noktasını yerel bir Ollama, LM Studio veya kendi sunduğunuz bir NIM kapsayıcısına yönlendirin; makinenizden hiçbir şey çıkmaz.
 - **Oturum paketleri.** Oturumun tamamını — sohbet, tuval, dosyalar, hedefler — bir `.zip` olarak dışa aktarın.
 - **Üç dil.** İngilizce, Rusça ve Almanca; tüm arayüze canlı olarak uygulanır.
 - **Açık ve koyu**, sistemi izler ya da sabitlenir.

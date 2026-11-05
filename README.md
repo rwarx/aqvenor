@@ -119,7 +119,7 @@ in your own database.
   highlighting. Rendered as structured content, **never as injected HTML**.
 - **Model catalogue.** Fetched from each provider and cached in SQLite, so the picker works offline
   afterwards. Context window, pricing and capabilities come from the provider, not a hardcoded list.
-- **Two providers out of the box** — OpenRouter and NVIDIA NIM, both OpenAI-compatible. Point
+- **Eight providers out of the box** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral and DeepSeek. Point
   NVIDIA's endpoint at a local Ollama, LM Studio or self-hosted NIM container and nothing leaves your
   machine.
 - **Session bundles.** Export the whole session — chat, canvas, files, goals — as a `.zip`.

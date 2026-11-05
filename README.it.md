@@ -119,7 +119,7 @@ locale, tutto salvato nel tuo database.
 - **Catalogo dei modelli.** Recuperato da ogni provider e messo in cache in SQLite, così il selettore
   funziona offline in seguito. Finestra di contesto, prezzi e capacità arrivano dal provider, non da un
   elenco scritto a mano.
-- **Due provider pronti** — OpenRouter e NVIDIA NIM, entrambi compatibili con OpenAI. Punta
+- **Otto provider pronti** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral e DeepSeek. Punta
   l'endpoint di NVIDIA verso una Ollama locale, LM Studio o un container NIM self-hosted e nulla
   esce dalla tua macchina.
 - **Bundle di sessione.** Esporta l'intera sessione — chat, tela, file, obiettivi — come `.zip`.

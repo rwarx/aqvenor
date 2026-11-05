@@ -121,7 +121,7 @@ in deiner eigenen Datenbank gespeichert.
 - **Modellkatalog.** Von jedem Anbieter abgerufen und in SQLite zwischengespeichert, sodass die
   Auswahl danach offline funktioniert. Kontextfenster, Preise und Fähigkeiten kommen vom Anbieter,
   nicht aus einer fest verdrahteten Liste.
-- **Zwei Anbieter ab Werk** — OpenRouter und NVIDIA NIM, beide OpenAI-kompatibel. Richte den
+- **Acht Anbieter ab Werk** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral und DeepSeek. Richte den
   Endpunkt von NVIDIA auf ein lokales Ollama, LM Studio oder einen selbst gehosteten NIM-Container
   aus, und nichts verlässt deinen Rechner.
 - **Sitzungs-Pakete.** Exportiere die ganze Sitzung — Chat, Canvas, Dateien, Ziele — als `.zip`.

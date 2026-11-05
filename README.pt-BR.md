@@ -119,7 +119,7 @@ local, tudo persistido no seu próprio banco de dados.
 - **Catálogo de modelos.** Buscado em cada provedor e mantido em cache no SQLite, então o seletor
   funciona offline depois. Janela de contexto, preços e capacidades vêm do provedor, não de uma lista
   fixa.
-- **Dois provedores prontos** — OpenRouter e NVIDIA NIM, ambos compatíveis com OpenAI. Aponte o
+- **Oito provedores prontos** — OpenRouter, NVIDIA NIM, OpenAI, Anthropic, Groq, xAI, Mistral e DeepSeek. Aponte o
   endpoint da NVIDIA para um Ollama local, LM Studio ou contêiner NIM auto-hospedado e nada sai da sua
   máquina.
 - **Pacotes de sessão.** Exporte a sessão inteira — conversa, canvas, arquivos, objetivos — como um

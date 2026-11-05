@@ -142,7 +142,7 @@ interface and about HTTP not at all.
   multi-step loop, discussed below. Beside it,
   [`AgentToolRegistry`](src/AIClient.Application/Services/AgentToolRegistry.cs),
   [`AgentModePolicy`](src/AIClient.Application/Services/AgentModePolicy.cs) and the
-  **20 tools** in `Services/Tools/`, each one an `IAgentTool` that declares its own
+  **24 tools** in `Services/Tools/`, each one an `IAgentTool` that declares its own
   JSON schema and its own risk level.
 - **Graph**: [`GraphService`](src/AIClient.Application/Graph/GraphService.cs) (state,
   undo/redo, persistence), [`WorkspaceGraphIndexer`](src/AIClient.Application/Graph/WorkspaceGraphIndexer.cs)
@@ -162,7 +162,8 @@ Every dependency on the outside world.
 - [`AIClientDbContext`](src/AIClient.Infrastructure/Database/AIClientDbContext.cs) and
   its migrations.
 - [`OpenAiCompatibleProvider`](src/AIClient.Infrastructure/Providers/OpenAiCompatible/OpenAiCompatibleProvider.cs)
-  plus `OpenRouterProvider` and `NvidiaProvider`, and
+  plus the eight built-in providers registered in DI as `IAIProvider` — OpenRouter, NVIDIA,
+  OpenAI, Anthropic, Groq, xAI, Mistral and DeepSeek — and
   [`ProviderRegistry`](src/AIClient.Infrastructure/Providers/ProviderRegistry.cs).
 - [`ServerSentEventReader`](src/AIClient.Infrastructure/Http/ServerSentEventReader.cs),
   [`DpapiSecureStorage`](src/AIClient.Infrastructure/SecureStorage/DpapiSecureStorage.cs),
