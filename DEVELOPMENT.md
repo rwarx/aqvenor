@@ -131,12 +131,12 @@ filtered to `Warning` in [App.xaml.cs](src/AIClient.App/App.xaml.cs) - at `Infor
 every statement it executes, which buries the application's own diagnostics and puts SQL one step
 away from user content. Sensitive-data logging stays off, so parameters appear as `?`.
 
-The file sink is configured with a default `StorageSettings`, at `Information` with seven days of
-retention, because the logging pipeline has to exist before the database it would read the values
-from. `MinimumLogLevel` and `LogRetentionDays` are therefore persisted and shown in Settings but do
-not yet reach the running logger; the attachment limits in the same section are read live by
-`AttachmentService` and do. Closing that gap means reconfiguring the sink after `LoadAsync`, not
-moving the settings.
+The file sink is created before the database exists, so it starts at `Information` with seven days of
+retention. After `LoadAsync` - and again whenever the storage section is saved from Settings - the
+sink is reconfigured with the persisted `MinimumLogLevel`, which applies to entries written from
+then on. `LogRetentionDays` is honoured when the sink is created at startup; lowering it does not
+delete existing files mid-session. The attachment limits in the same section are read live by
+`AttachmentService`.
 
 ## Configuration
 

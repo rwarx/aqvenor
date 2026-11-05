@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
-using AIClient.Application.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AIClient.App.Infrastructure.Logging;
@@ -23,7 +22,7 @@ namespace AIClient.App.Infrastructure.Logging;
 public sealed class FileLoggerProvider : ILoggerProvider
 {
     private readonly string _logsDirectory;
-    private readonly LogLevel _minimumLevel;
+    private volatile LogLevel _minimumLevel;
     private readonly int _retentionDays;
     private readonly BlockingCollection<string> _queue = new(boundedCapacity: 4096);
     private readonly Thread _writerThread;
@@ -50,6 +49,13 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
         _writerThread.Start();
     }
+
+    /// <summary>
+    /// Applies a new minimum level to entries written from now on. The level is read atomically,
+    /// so no lock is needed; retention is deliberately not re-applied here, because acting on a
+    /// lower value would delete existing log files mid-session.
+    /// </summary>
+    public void SetMinimumLevel(LogLevel level) => _minimumLevel = level;
 
     public ILogger CreateLogger(string categoryName) => new FileLogger(this, categoryName);
 
@@ -224,19 +230,4 @@ public sealed class FileLoggerProvider : ILoggerProvider
     }
 }
 
-/// <summary>Registration helper so the host wiring stays a single line.</summary>
-public static class FileLoggerExtensions
-{
-    public static ILoggingBuilder AddFileLogger(
-        this ILoggingBuilder builder,
-        IAppPaths paths,
-        StorageSettings storage)
-    {
-        var level = Enum.TryParse<LogLevel>(storage.MinimumLogLevel, ignoreCase: true, out var parsed)
-            ? parsed
-            : LogLevel.Information;
 
-        builder.AddProvider(new FileLoggerProvider(paths.LogsDirectory, level, storage.LogRetentionDays));
-        return builder;
-    }
-}

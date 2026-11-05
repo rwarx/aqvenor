@@ -28,6 +28,7 @@ namespace AIClient.App;
 public partial class App : System.Windows.Application
 {
     private IHost? _host;
+    private FileLoggerProvider? _fileLogger;
 
     /// <summary>
     /// Service locator of last resort, for the handful of places WPF constructs an object
@@ -61,6 +62,11 @@ public partial class App : System.Windows.Application
 
             var settings = _host.Services.GetRequiredService<ISettingsService>();
             await settings.LoadAsync().ConfigureAwait(true);
+
+            // The file sink started at the default level because the database was not readable
+            // yet; apply the persisted values now and on every later save of the section.
+            ApplyLogSettings(settings);
+            settings.SettingsChanged += OnSettingsChanged;
 
             // Custom providers are rows in the database; their implementations are built
             // from those rows once, here, so the registry can resolve them by id all session.
@@ -97,7 +103,7 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private static IHost BuildHost()
+    private IHost BuildHost()
     {
         var builder = Host.CreateApplicationBuilder();
 
@@ -114,7 +120,11 @@ public partial class App : System.Windows.Application
         var paths = probe.GetRequiredService<IAppPaths>();
 
         builder.Logging.ClearProviders();
-        builder.Logging.AddFileLogger(paths, new StorageSettings());
+
+        // The file sink has to exist before the database does, so it starts at the default
+        // level/retention and is reconfigured right after LoadAsync with the persisted values.
+        _fileLogger = new FileLoggerProvider(paths.LogsDirectory, LogLevel.Information, new StorageSettings().LogRetentionDays);
+        builder.Logging.AddProvider(_fileLogger);
 
         // EF Core logs every statement it executes at Information, which on a normal launch
         // buries the application's own diagnostics under a few hundred lines of SQL. Section
@@ -130,6 +140,34 @@ public partial class App : System.Windows.Application
 #endif
 
         return builder.Build();
+    }
+
+    private void OnSettingsChanged(object? sender, string section)
+    {
+        if (!string.Equals(section, AppSettings.Keys.Storage, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var settings = _host?.Services.GetRequiredService<ISettingsService>();
+        if (settings is not null)
+        {
+            ApplyLogSettings(settings);
+        }
+    }
+
+    private void ApplyLogSettings(ISettingsService settings)
+    {
+        if (_fileLogger is null)
+        {
+            return;
+        }
+
+        var configured = settings.Current.Storage.MinimumLogLevel;
+        var level = Enum.TryParse<LogLevel>(configured, ignoreCase: true, out var parsed)
+            ? parsed
+            : LogLevel.Information;
+        _fileLogger.SetMinimumLevel(level);
     }
 
     protected override async void OnExit(ExitEventArgs e)
