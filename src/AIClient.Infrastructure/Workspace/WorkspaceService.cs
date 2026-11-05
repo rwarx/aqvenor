@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Enumeration;
 using System.Text;
@@ -65,40 +65,8 @@ public sealed class WorkspaceService : IWorkspaceService
         MatchType = MatchType.Simple,
     };
 
-    /// <summary>
-    /// Names the agent may not touch at all, whether or not they were named explicitly.
-    /// </summary>
-    /// <remarks>
-    /// Not the same question as "can the user attach this file". A user picking a file in a dialog
-    /// is consent; a model naming one is not, which is why <c>.npmrc</c> is an attachable text
-    /// file and an unreadable workspace entry at the same time.
-    /// </remarks>
-    private static readonly string[] ProtectedNames =
-    [
-        // Version-control internals: the config alone can carry a remote URL with a token in it,
-        // and the object store carries every version of every file ever committed.
-        ".git", ".svn", ".hg",
-        // Key material, and the tools that keep it.
-        ".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker",
-        "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
-        // Files whose whole purpose is to hold a credential.
-        ".netrc", "_netrc", ".npmrc", ".pypirc", ".git-credentials", ".htpasswd",
-        "credentials", "credentials.json", "secrets.json", "secrets.yaml", "secrets.yml",
-        "appsettings.secrets.json", "serviceaccount.json",
-    ];
-
-    /// <summary>Extensions that only ever carry a private key, a certificate or a password store.</summary>
-    private static readonly string[] ProtectedExtensions =
-    [
-        ".pem", ".key", ".pfx", ".p12", ".jks", ".keystore", ".ppk", ".kdbx", ".gpg", ".asc",
-    ];
-
-    /// <summary>
-    /// The <c>.env</c> variants that exist in order to be committed, and are therefore ordinary
-    /// files rather than secrets.
-    /// </summary>
-    private static readonly string[] EnvTemplateSuffixes = [".example", ".sample", ".template", ".dist"];
-
+    // The single source of truth for protected path segments is AIClient.Domain.Workspace.SensitiveFiles;
+    // the external-file guard consults the same list, so the two paths cannot drift apart.
     /// <summary>
     /// Folders that cannot be opened as a workspace, nor contain one.
     /// </summary>
@@ -1257,7 +1225,7 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         foreach (var segment in path.Segments)
         {
-            if (IsProtectedName(segment))
+            if (SensitiveFiles.IsProtectedSegment(segment))
             {
                 return $"'{segment}' holds credentials or version-control internals, and is off limits. "
                     + "Ask the user to do anything that needs it.";
@@ -1265,35 +1233,6 @@ public sealed class WorkspaceService : IWorkspaceService
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Whether one path segment is protected.
-    /// </summary>
-    /// <remarks>
-    /// Exact names, never prefixes - a prefix test would refuse <c>.gitignore</c> along with
-    /// <c>.git</c>, and the agent has every reason to read the first. The one deliberate family
-    /// match is <c>.env</c>: the real file is <c>.env</c>, <c>.env.local</c> or
-    /// <c>.env.production</c> and they all hold secrets, while <c>.env.example</c> exists in order
-    /// to be committed and is an ordinary file.
-    /// </remarks>
-    private static bool IsProtectedName(string segment)
-    {
-        if (ProtectedNames.Contains(segment, StringComparer.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (segment.StartsWith(".env", StringComparison.OrdinalIgnoreCase)
-            && !EnvTemplateSuffixes.Any(suffix => segment.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
-        }
-
-        var extension = Path.GetExtension(segment);
-
-        return extension.Length > 0
-            && ProtectedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -1325,7 +1264,7 @@ public sealed class WorkspaceService : IWorkspaceService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (ignored.Contains(info.Name, StringComparer.OrdinalIgnoreCase) || IsProtectedName(info.Name))
+            if (ignored.Contains(info.Name, StringComparer.OrdinalIgnoreCase) || SensitiveFiles.IsProtectedSegment(info.Name))
             {
                 continue;
             }
