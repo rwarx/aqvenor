@@ -173,7 +173,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Equal(0.15, service.Current.Chat.Temperature);
         Assert.False(service.Current.Chat.SendWithEnter);
         Assert.Equal(100, service.Current.Chat.MaxHistoryMessages);
-        Assert.Equal(300, service.Current.Chat.RequestTimeoutSeconds);
+        Assert.Equal(1024, service.Current.Chat.ReservedOutputTokens);
     }
 
     [Fact]

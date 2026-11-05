@@ -90,7 +90,6 @@ public static partial class SettingsLimits
         }
 
         chat.MaxHistoryMessages = Math.Clamp(chat.MaxHistoryMessages, 2, 1000);
-        chat.RequestTimeoutSeconds = Math.Clamp(chat.RequestTimeoutSeconds, 10, 3600);
         chat.ReservedOutputTokens = Math.Clamp(chat.ReservedOutputTokens, 0, 32_000);
         chat.CompactAtPercent = Math.Clamp(chat.CompactAtPercent, 10, 100);
         chat.CompactKeepRecentMessages = Math.Clamp(chat.CompactKeepRecentMessages, 0, 100);

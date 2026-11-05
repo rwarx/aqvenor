@@ -158,15 +158,15 @@ the `Providers` section:
 | --- | --- | --- |
 | `Providers:Nvidia` | `https://integrate.api.nvidia.com/v1` | Base URL for the NVIDIA-compatible endpoint |
 | `Providers:StreamTimeoutSeconds` | `600` | Timeout on each provider's named `HttpClient`, floored at 30 |
-| `Providers:RequestTimeoutSeconds` | `100` | Bound, but not yet read by anything - see below |
+| `Providers:RequestTimeoutSeconds` | `100` | Bounds the catalogue call and the connection test (floored at 1s); see below |
 
 `StreamTimeoutSeconds` has to outlast a slow model rather than a slow network: a reasoning model
 routinely runs past two minutes before its last token. Because it is set on the named client it
 no longer governs the catalogue call and the connection test: those go through a linked
 `CancellationTokenSource` per call inside the provider base, bounded by
 `RequestTimeoutSeconds` (floored at 1 second) and reported as `AIErrorKind.Timeout`
-rather than as a user pressing Stop. `ChatSettings.RequestTimeoutSeconds` in the database is a
-different, retired knob: nothing reads it, so no UI offers it.
+rather than as a user pressing Stop. `ChatSettings.RequestTimeoutSeconds` in the database was a
+different, retired knob and has been removed; a stored key is ignored on read.
 
 OpenRouter's base URL is deliberately absent: it is a hosted gateway with no self-hosted equivalent,
 so the subclass hardcodes it. Only NVIDIA's is overridable, which is enough to point the app at a

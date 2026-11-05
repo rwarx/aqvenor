@@ -40,9 +40,6 @@ public sealed class ChatSettings
     /// <summary>Tokens held back for the answer when trimming history.</summary>
     public int ReservedOutputTokens { get; set; } = 1024;
 
-    /// <summary>Whole-request timeout in seconds, streaming included.</summary>
-    public int RequestTimeoutSeconds { get; set; } = 300;
-
     /// <summary>
     /// Whether a chat that is running out of window is summarised on its own.
     /// </summary>
