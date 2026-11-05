@@ -1,6 +1,12 @@
 using AIClient.Server;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AIClient.Tests;
@@ -130,5 +136,44 @@ public sealed class SidecarSecurityTests
         // The sidecar speaks plain HTTP on one address. An https origin is never ours, and allowing
         // "loopback on any scheme" would be a broader rule than the one the app needs.
         Assert.False(SidecarCors.IsAllowedOrigin("https://127.0.0.1:5173"));
+    }
+
+    [Fact]
+    public async Task Fallback_policy_requires_token_on_unannotated_routes()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddSingleton(new SidecarToken("rt1-test-token"));
+        builder.Services
+            .AddAuthentication(SidecarTokenHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, SidecarTokenHandler>(
+                SidecarTokenHandler.SchemeName,
+                _ => { });
+        SidecarAuthorization.Configure(builder.Services);
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapGet("/api/thing", () => Results.Ok(new { ok = true }));
+        app.MapGet("/api/health", () => Results.Ok(new { ok = true })).AllowAnonymous();
+        await app.StartAsync();
+
+        var address = app.Services.GetRequiredService<IServer>()
+            .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        using var client = new HttpClient { BaseAddress = new Uri(address) };
+
+        // No token: the fallback policy refuses an unannotated route.
+        var anonymous = await client.GetAsync("/api/thing");
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        // The token: the same route answers.
+        var authorized = new HttpRequestMessage(HttpMethod.Get, "/api/thing");
+        authorized.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "rt1-test-token");
+        var tokened = await client.SendAsync(authorized);
+        Assert.Equal(System.Net.HttpStatusCode.OK, tokened.StatusCode);
+
+        // The readiness probe is the only anonymous route.
+        var health = await client.GetAsync("/api/health");
+        Assert.Equal(System.Net.HttpStatusCode.OK, health.StatusCode);
     }
 }

@@ -38,7 +38,7 @@ builder.Services
     .AddScheme<AuthenticationSchemeOptions, SidecarTokenHandler>(
         SidecarTokenHandler.SchemeName,
         _ => { });
-builder.Services.AddAuthorization();
+SidecarAuthorization.Configure(builder.Services);
 
 // AddCors (not just Configure<CorsOptions>) so UseCors can resolve ICorsService:
 // Configure alone registers the policy options but not the CORS services, and the

@@ -30,7 +30,7 @@ public static class DataEndpoints
             ok = true,
             version = typeof(DataEndpoints).Assembly.GetName().Version?.ToString(3) ?? "0.0.0",
             authentication = "bearer",
-        }));
+        })).AllowAnonymous();
 
         // Everything else on this group is authorised. Two groups rather than an annotation per
         // route, so a route added later is protected by default and forgetting is not possible.
