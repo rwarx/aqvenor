@@ -1,7 +1,7 @@
 import type { DiffLine } from "./types";
 
 /* ============================================================
-   Unified line diff (LCS) with context collapsing + hunks.
+   Unified line diff with context collapsing + hunks.
    Used by the checkpoint review view in the Code surface:
    compares a checkpoint's file snapshot against the current
    content and renders through the chat DiffView component.
@@ -16,39 +16,145 @@ function toLines(text: string | null | undefined): string[] {
   return body.length ? body.split("\n") : [];
 }
 
-/**
- * Longest-common-subsequence opcodes: for each old line either
- * "keep", "del" or (for new lines) "add". Classic DP — workspace
- * files are small (< 100 lines), O(n·m) is plenty.
- */
-function lcsOps(a: string[], b: string[]): { op: "keep" | "del" | "add"; line: string }[] {
-  const n = a.length;
-  const m = b.length;
-  /* dp[i][j] = LCS length of a[i..] and b[j..] */
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+type LineOp = { op: "keep" | "del" | "add"; line: string };
+
+/* Keep the legacy tie breaking for small files, with a table capped at
+   256 KiB. Large files never allocate a table proportional to n * m. */
+const SMALL_DIFF_CELLS = 65_536;
+/* Myers' frontier and saved paths have a fixed memory ceiling (about
+   4 MiB), and the work budget also bounds repeated-line comparisons.
+   A difficult remaining region becomes one replacement, preserving every
+   line so accepting/rejecting it still reconstructs the file exactly. */
+const MAX_EDIT_DISTANCE = 1_024;
+const MAX_DIFF_WORK = 1_000_000;
+
+function smallLcsOps(a: string[], b: string[], aStart: number, aEnd: number, bStart: number, bEnd: number): LineOp[] {
+  const n = aEnd - aStart;
+  const m = bEnd - bStart;
+  const width = m + 1;
+  const dp = new Uint32Array((n + 1) * width);
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      dp[i * width + j] = a[aStart + i] === b[bStart + j]
+        ? dp[(i + 1) * width + j + 1] + 1
+        : Math.max(dp[(i + 1) * width + j], dp[i * width + j + 1]);
     }
   }
-  const ops: { op: "keep" | "del" | "add"; line: string }[] = [];
+  const ops: LineOp[] = [];
   let i = 0;
   let j = 0;
   while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      ops.push({ op: "keep", line: a[i] });
+    if (a[aStart + i] === b[bStart + j]) {
+      ops.push({ op: "keep", line: a[aStart + i] });
       i++;
       j++;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      ops.push({ op: "del", line: a[i] });
+    } else if (dp[(i + 1) * width + j] >= dp[i * width + j + 1]) {
+      ops.push({ op: "del", line: a[aStart + i] });
       i++;
     } else {
-      ops.push({ op: "add", line: b[j] });
+      ops.push({ op: "add", line: b[bStart + j] });
       j++;
     }
   }
-  while (i < n) ops.push({ op: "del", line: a[i++] });
-  while (j < m) ops.push({ op: "add", line: b[j++] });
+  while (i < n) ops.push({ op: "del", line: a[aStart + i++] });
+  while (j < m) ops.push({ op: "add", line: b[bStart + j++] });
+  return ops;
+}
+
+/** Shortest edit script in O((n + m) * edits) work, subject to fixed caps. */
+function myersOps(a: string[], b: string[], aStart: number, aEnd: number, bStart: number, bEnd: number): LineOp[] | null {
+  const n = aEnd - aStart;
+  const m = bEnd - bStart;
+  const maxDistance = Math.min(MAX_EDIT_DISTANCE, n + m);
+  const offset = maxDistance + 1;
+  const frontier = new Int32Array(2 * maxDistance + 3).fill(-1);
+  frontier[offset + 1] = 0;
+  const trace: Int32Array[] = [];
+  let work = 0;
+
+  for (let distance = 0; distance <= maxDistance; distance++) {
+    const path = new Int32Array(2 * distance + 1);
+    for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
+      if (++work > MAX_DIFF_WORK) return null;
+      let x = diagonal === -distance || (diagonal !== distance && frontier[offset + diagonal - 1] < frontier[offset + diagonal + 1])
+        ? frontier[offset + diagonal + 1]
+        : frontier[offset + diagonal - 1] + 1;
+      let y = x - diagonal;
+      while (x < n && y < m) {
+        if (++work > MAX_DIFF_WORK) return null;
+        if (a[aStart + x] !== b[bStart + y]) break;
+        x++;
+        y++;
+      }
+      frontier[offset + diagonal] = x;
+      path[diagonal + distance] = x;
+      if (x >= n && y >= m) {
+        trace.push(path);
+        return backtrackMyers(a, b, aStart, bStart, n, m, trace);
+      }
+    }
+    trace.push(path);
+  }
+  return null;
+}
+
+function backtrackMyers(a: string[], b: string[], aStart: number, bStart: number, x: number, y: number, trace: Int32Array[]): LineOp[] {
+  const ops: LineOp[] = [];
+  for (let distance = trace.length - 1; distance > 0; distance--) {
+    const diagonal = x - y;
+    const previous = trace[distance - 1];
+    const previousOffset = distance - 1;
+    const previousDiagonal = diagonal === -distance || (diagonal !== distance && previous[diagonal - 1 + previousOffset] < previous[diagonal + 1 + previousOffset])
+      ? diagonal + 1
+      : diagonal - 1;
+    const previousX = previous[previousDiagonal + previousOffset];
+    const previousY = previousX - previousDiagonal;
+    while (x > previousX && y > previousY) {
+      ops.push({ op: "keep", line: a[aStart + --x] });
+      y--;
+    }
+    if (x === previousX) ops.push({ op: "add", line: b[bStart + --y] });
+    else ops.push({ op: "del", line: a[aStart + --x] });
+  }
+  while (x > 0 && y > 0) {
+    ops.push({ op: "keep", line: a[aStart + --x] });
+    y--;
+  }
+  return ops.reverse();
+}
+
+function lcsOps(a: string[], b: string[]): LineOp[] {
+  if ((a.length + 1) * (b.length + 1) <= SMALL_DIFF_CELLS) {
+    return smallLcsOps(a, b, 0, a.length, 0, b.length);
+  }
+
+  const ops: LineOp[] = [];
+  let start = 0;
+  let aEnd = a.length;
+  let bEnd = b.length;
+  while (start < aEnd && start < bEnd && a[start] === b[start]) {
+    ops.push({ op: "keep", line: a[start++] });
+  }
+  while (aEnd > start && bEnd > start && a[aEnd - 1] === b[bEnd - 1]) {
+    aEnd--;
+    bEnd--;
+  }
+
+  if (aEnd === start || bEnd === start) {
+    for (let i = start; i < aEnd; i++) ops.push({ op: "del", line: a[i] });
+    for (let i = start; i < bEnd; i++) ops.push({ op: "add", line: b[i] });
+  } else {
+    const middle = (aEnd - start + 1) * (bEnd - start + 1) <= SMALL_DIFF_CELLS
+      ? smallLcsOps(a, b, start, aEnd, start, bEnd)
+      : myersOps(a, b, start, aEnd, start, bEnd);
+    if (middle) {
+      for (const op of middle) ops.push(op);
+    } else {
+      for (let i = start; i < aEnd; i++) ops.push({ op: "del", line: a[i] });
+      for (let i = start; i < bEnd; i++) ops.push({ op: "add", line: b[i] });
+    }
+  }
+  for (let i = aEnd; i < a.length; i++) ops.push({ op: "keep", line: a[i] });
   return ops;
 }
 
@@ -64,58 +170,40 @@ export function computeUnifiedDiff(oldText: string | null | undefined, newText: 
   if (a.join("\n") === b.join("\n")) return [];
 
   const ops = lcsOps(a, b);
-  const changed = ops.map((o) => o.op !== "keep");
-
   /* mark windows of CONTEXT around every change */
-  const visible = new Array<boolean>(ops.length).fill(false);
+  const visible = new Uint8Array(ops.length);
   for (let k = 0; k < ops.length; k++) {
-    if (!changed[k]) continue;
+    if (ops[k].op === "keep") continue;
     for (let w = Math.max(0, k - CONTEXT); w <= Math.min(ops.length - 1, k + CONTEXT); w++) {
-      visible[w] = true;
+      visible[w] = 1;
     }
   }
 
   /* walk old/new line numbers for hunk headers */
   let oldNo = 0;
   let newNo = 0;
-  const numbered = ops.map((o) => {
-    if (o.op === "keep") {
-      oldNo++;
-      newNo++;
-      return { ...o, oldNo, newNo };
-    }
-    if (o.op === "del") {
-      oldNo++;
-      return { ...o, oldNo, newNo };
-    }
-    newNo++;
-    return { ...o, oldNo, newNo };
-  });
-
   const out: DiffLine[] = [];
   let inHunk = false;
   let skippedSinceHunk = false;
-  let gap = 0;
-  for (let k = 0; k < numbered.length; k++) {
+  for (let k = 0; k < ops.length; k++) {
+    const o = ops[k];
+    if (o.op !== "add") oldNo++;
+    if (o.op !== "del") newNo++;
     if (visible[k]) {
       if (!inHunk) {
         if (skippedSinceHunk) out.push({ kind: "context", text: "⋯" });
-        const first = numbered[k];
         out.push({
           kind: "header",
-          text: `@@ ${first.oldNo},${countHunk(numbered, visible, k, "old")} → ${first.newNo},${countHunk(numbered, visible, k, "new")} @@`,
+          text: `@@ ${oldNo},${countHunk(ops, visible, k, "old")} → ${newNo},${countHunk(ops, visible, k, "new")} @@`,
         });
         inHunk = true;
       }
-      const o = numbered[k];
       out.push({ kind: o.op === "keep" ? "context" : o.op === "del" ? "del" : "add", text: o.line });
-      gap = 0;
     } else {
       if (inHunk) {
         inHunk = false;
         skippedSinceHunk = true;
       }
-      gap++;
     }
   }
   return out;
@@ -123,14 +211,14 @@ export function computeUnifiedDiff(oldText: string | null | undefined, newText: 
 
 /** number of old/new lines the hunk starting at `start` will emit */
 function countHunk(
-  numbered: { op: "keep" | "del" | "add" }[],
-  visible: boolean[],
+  ops: LineOp[],
+  visible: Uint8Array,
   start: number,
   which: "old" | "new",
 ): number {
   let count = 0;
-  for (let k = start; k < numbered.length && visible[k]; k++) {
-    const op = numbered[k].op;
+  for (let k = start; k < ops.length && visible[k]; k++) {
+    const op = ops[k].op;
     if (op === "keep" || (which === "old" ? op === "del" : op === "add")) count++;
   }
   return count;
@@ -158,7 +246,7 @@ export function diffStats(lines: DiffLine[]): { add: number; del: number } {
 export interface Hunk {
   /** stable index within the file's ordered hunk list */
   index: number;
-  /** 1-based line where the change begins in the OLD text (0 → pure insert at top) */
+  /** 1-based OLD position; insertions use the next line (length + 1 at EOF). */
   oldStart: number;
   /** 1-based line where the change begins in the NEW text */
   newStart: number;
@@ -205,9 +293,11 @@ export function computeHunks(oldText: string | null | undefined, newText: string
  * With all hunks accepted the result equals `newText`; with none, `oldText`.
  */
 export function applyHunkSelection(oldText: string | null | undefined, newText: string | null | undefined, accepted: Set<number>): string {
+  if (accepted.size === 0) return oldText ?? "";
   const ops = lcsOps(toLines(oldText), toLines(newText));
   const out: string[] = [];
   let hunkIdx = -1;
+  let acceptedCount = 0;
   let i = 0;
   while (i < ops.length) {
     if (ops[i].op === "keep") {
@@ -216,17 +306,18 @@ export function applyHunkSelection(oldText: string | null | undefined, newText: 
       continue;
     }
     hunkIdx++;
-    const dels: string[] = [];
-    const adds: string[] = [];
+    const keep = accepted.has(hunkIdx);
+    if (keep) acceptedCount++;
     while (i < ops.length && ops[i].op !== "keep") {
-      if (ops[i].op === "del") dels.push(ops[i].line);
-      else adds.push(ops[i].line);
+      /* Append individually: a large hunk would exceed push's argument
+         limit if its lines were spread into the call. */
+      if (ops[i].op === (keep ? "add" : "del")) out.push(ops[i].line);
       i++;
     }
-    if (accepted.has(hunkIdx)) out.push(...adds);
-    else out.push(...dels);
   }
-  const keepNewline = accepted.size > 0 ? (newText ?? "").endsWith("\n") : (oldText ?? "").endsWith("\n");
+  if (acceptedCount === 0) return oldText ?? "";
+  if (acceptedCount === hunkIdx + 1) return newText ?? "";
+  const keepNewline = (newText ?? "").endsWith("\n");
   return out.join("\n") + (out.length && keepNewline ? "\n" : "");
 }
 
