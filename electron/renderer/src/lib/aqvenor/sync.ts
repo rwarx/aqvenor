@@ -77,6 +77,7 @@ function requestCanvasFit(): void {
 }
 
 let booted = false;
+let hydration: Promise<HydrateResult> | null = null;
 
 /* ---------------- mapping ---------------- */
 
@@ -335,8 +336,21 @@ export interface HydrateResult {
 }
 
 export async function hydrateFromBackend(): Promise<HydrateResult> {
+  if (hydration) return hydration;
   if (booted) return { ok: serverMode, sessions: 0, providers: 0 };
-  booted = true;
+  const pending = hydrateBackendState();
+  hydration = pending;
+  try {
+    const result = await pending;
+    booted = result.ok;
+    return result;
+  } finally {
+    if (!booted) serverMode = false;
+    hydration = null;
+  }
+}
+
+async function hydrateBackendState(): Promise<HydrateResult> {
   /* The sidecar boots in parallel with this page, and on a cold start the
      first probe can lose the race — a Kestrel that has not bound yet reads
      as "backend down", and without the retries below that one loss stuck for

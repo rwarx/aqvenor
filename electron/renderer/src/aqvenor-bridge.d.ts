@@ -11,6 +11,8 @@ interface AqvenorBridge {
    * except `/api/health` returns 401 without it.
    */
   getBackendAuth: () => Promise<string>;
+  /** Reports an unexpected local-server exit; returns an unsubscribe function. */
+  onSidecarGone?: (cb: (code: number | null) => void) => () => void;
   pickFolder: () => Promise<string | null>;
   saveDialog: (defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>;
   openDialog: (filters: { name: string; extensions: string[] }[]) => Promise<string[]>;

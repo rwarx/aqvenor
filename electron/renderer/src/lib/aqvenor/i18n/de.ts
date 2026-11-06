@@ -1231,4 +1231,8 @@ export const de: Dictionary = {
   "mcp.builtin.thinking.desc": "Ein Heft nummerierter Gedanken fuer schrittweises Denken, Korrekturen und Verzweigungen.",
   "mcp.builtin.computer.name": "Computer",
   "mcp.builtin.computer.desc": "Nutzt diesen Computer: Screenshots, Dateien oeffnen, Benachrichtigungen und Zwischenablage.",
+  "connection.unavailable": "Lokaler Server nicht erreichbar",
+  "connection.description": "Neue Anfragen und das Speichern brauchen eine Verbindung. Lassen Sie Ihre Änderungen offen und speichern Sie erneut, sobald die Verbindung wiederhergestellt ist.",
+  "connection.retry": "Verbindung prüfen",
+  "connection.checking": "Verbindung wird geprüft…",
 };

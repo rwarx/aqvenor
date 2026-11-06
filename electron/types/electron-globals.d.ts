@@ -18,6 +18,7 @@
 interface AqvenorMainBridge {
   getBackendUrl(): Promise<string>;
   getBackendAuth(): Promise<string>;
+  onSidecarGone(cb: (code: number | null) => void): () => void;
   pickFolder(): Promise<string | null>;
   saveDialog(defaultName: string, filters?: unknown[]): Promise<string | null>;
   openDialog(filters?: unknown[]): Promise<string[]>;

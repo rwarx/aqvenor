@@ -6,9 +6,13 @@
    real Application/Infrastructure services.
    ============================================================ */
 
+import { useAqvenor } from "./store";
+
 let cachedBase: string | null = null;
 let cachedToken: string | null = null;
 let backendAvailable: boolean | null = null;
+let availabilityRevision = 0;
+let backendProbe: Promise<boolean> | null = null;
 
 export async function getBackendUrl(): Promise<string> {
   if (cachedBase) return cachedBase;
@@ -53,7 +57,30 @@ export function isBackendKnownAvailable(): boolean | null {
   return backendAvailable;
 }
 
-export async function checkBackend(): Promise<boolean> {
+function mirrorAvailability(ok: boolean, revision: number): void {
+  try {
+    if (revision === availabilityRevision) useAqvenor.getState().setBackendReachable(ok);
+  } catch {
+    /* A full local cache must not prevent reporting availability in the module. */
+  }
+}
+
+/** An exit event wins over a health response already in flight. */
+export function markBackendUnavailable(): void {
+  availabilityRevision++;
+  backendAvailable = false;
+  mirrorAvailability(false, availabilityRevision);
+}
+
+export function checkBackend(): Promise<boolean> {
+  if (backendProbe) return backendProbe;
+  const pending = probeBackend(availabilityRevision);
+  backendProbe = pending;
+  void pending.finally(() => { if (backendProbe === pending) backendProbe = null; });
+  return pending;
+}
+
+async function probeBackend(revision: number): Promise<boolean> {
   let ok = false;
   try {
     const base = await getBackendUrl();
@@ -61,16 +88,21 @@ export async function checkBackend(): Promise<boolean> {
     // is also the right place to learn whether one can be had at all.
     const res = await fetch(`${base}/api/health`, { signal: AbortSignal.timeout(4000) });
     ok = res.ok;
+    // A different process can answer on the same port after our child exits. In the desktop shell,
+    // availability means our launch token is accepted, not merely that some HTTP server is alive.
+    if (ok && window.aqvenor) {
+      const authorized = await fetch(`${base}/api/workspace`, {
+        headers: await authHeaders(),
+        signal: AbortSignal.timeout(4000),
+      });
+      ok = authorized.ok;
+    }
   } catch {
     ok = false;
   }
+  if (revision !== availabilityRevision) return false;
   backendAvailable = ok;
-  // Mirror into the store (no import cycle: the store never imports this module).
-  try {
-    (await import("./store")).useAqvenor.getState().setBackendReachable(ok);
-  } catch {
-    /* store unavailable (tests) — the module flag above still answers */
-  }
+  mirrorAvailability(ok, revision);
   return ok;
 }
 

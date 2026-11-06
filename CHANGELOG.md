@@ -15,6 +15,9 @@ Versions are also published on the
 
 ### Fixed
 
+- Workspace recipes use the open folder and the correct Code or Cowork mode; busy chats, drafts, attachments and chats from another project block the launch with an explanation.
+- Large-file diffs use a bounded search instead of an unbounded quadratic table; selecting changes preserves complete contents, including very large insertions and deletions.
+- Electron reports a lost backend connection on every surface. Connection checks verify the launch token, ignore stale health responses after an exit, and allow startup hydration to retry without reloading open edits.
 - Complete editor documents and checkpoints preserve large files; loading, reload and retry keep unsaved buffers.
 - Workspace leases bind editor writes, agent runs and checkpoints to their project. Legacy snapshots with potentially truncated files cannot be restored.
 - The first message upgrades the local chat ID without losing drafts, approvals, attachments or live run state.

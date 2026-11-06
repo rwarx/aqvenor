@@ -10,6 +10,11 @@ contextBridge.exposeInMainWorld("aqvenor", {
   /* The sidecar's per-launch bearer token. It is fetched, never bundled, and the renderer only ever
      attaches it as an Authorization header. */
   getBackendAuth: () => ipcRenderer.invoke("aqvenor:getBackendAuth"),
+  onSidecarGone: (cb) => {
+    const listener = (_event, code) => cb(code);
+    ipcRenderer.on("aqvenor:sidecarGone", listener);
+    return () => ipcRenderer.removeListener("aqvenor:sidecarGone", listener);
+  },
   pickFolder: () => ipcRenderer.invoke("aqvenor:pickFolder"),
   saveDialog: (defaultName, filters) => ipcRenderer.invoke("aqvenor:saveDialog", defaultName, filters),
   openDialog: (filters) => ipcRenderer.invoke("aqvenor:openDialog", filters),

@@ -1229,4 +1229,8 @@ export const en: Record<string, string> = {
   "mcp.builtin.thinking.desc": "A numbered-thought scratchpad for step-by-step reasoning, revisions and branches.",
   "mcp.builtin.computer.name": "Computer",
   "mcp.builtin.computer.desc": "Uses this computer: screenshots, opening files, notifications and the clipboard.",
+  "connection.unavailable": "Local server unavailable",
+  "connection.description": "New requests and file saves need a connection. Keep your edits open and retry saving once the connection returns.",
+  "connection.retry": "Check connection",
+  "connection.checking": "Checking connection…",
 };

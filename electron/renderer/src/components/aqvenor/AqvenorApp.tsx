@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TitleBar } from "./shell/TitleBar";
 import { Sidebar } from "./shell/Sidebar";
 import { StatusBar } from "./shell/StatusBar";
+import { BackendConnectionBanner } from "./shell/BackendConnectionBanner";
 import { WorkspaceHeader } from "./shell/WorkspaceHeader";
 import { Onboarding } from "./shell/Onboarding";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -240,6 +241,7 @@ export function AqvenorApp() {
         <Sidebar />
         <main className="flex min-w-0 flex-1 flex-col">
           <WorkspaceHeader />
+          <BackendConnectionBanner />
           <div className="min-h-0 flex-1">
             {needsProject ? <ProjectGate /> : <DockWorkspace />}
           </div>
