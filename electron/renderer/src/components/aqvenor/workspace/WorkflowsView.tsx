@@ -13,9 +13,8 @@ import {
 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
-import { sendMessage } from "@/lib/aqvenor/scenario";
+import { WORKFLOW_RECIPES, recipeBlockReason, recipeControls, runWorkflowRecipe, type WorkflowRecipe } from "@/lib/aqvenor/recipes";
 import { SKILLS } from "@/lib/aqvenor/data";
-import type { AgentMode } from "@/lib/aqvenor/types";
 import { AqCard, AqPrimaryButton, Overline, StatusDot } from "@/components/aqvenor/ui";
 import { Switch } from "@/components/ui/switch";
 
@@ -25,78 +24,12 @@ import { Switch } from "@/components/ui/switch";
    mode, sends the recipe prompt and follows the run in Chat.
    ============================================================ */
 
-interface Recipe {
-  id: string;
-  icon: React.ElementType;
-  mode: AgentMode;
-  nameKey: string;
-  descKey: string;
-  stepKeys: string[];
-  prompt: string;
-}
-
-const RECIPES: Recipe[] = [
-  {
-    id: "fix-test",
-    icon: FlaskConical,
-    mode: "build",
-    nameKey: "workflows.recipe.fixTest.name",
-    descKey: "workflows.recipe.fixTest.desc",
-    stepKeys: [
-      "workflows.recipe.fixTest.s1",
-      "workflows.recipe.fixTest.s2",
-      "workflows.recipe.fixTest.s3",
-      "workflows.recipe.fixTest.s4",
-    ],
-    prompt:
-      "Run the full agent loop to fix the failing test in the AuthFlow workspace: reproduce it, diagnose the root cause, apply the minimal fix, then verify with build and tests.",
-  },
-  {
-    id: "draft-readme",
-    icon: FileText,
-    mode: "plan",
-    nameKey: "workflows.recipe.readme.name",
-    descKey: "workflows.recipe.readme.desc",
-    stepKeys: [
-      "workflows.recipe.readme.s1",
-      "workflows.recipe.readme.s2",
-      "workflows.recipe.readme.s3",
-      "workflows.recipe.readme.s4",
-    ],
-    prompt:
-      "Draft a README.md for the AuthFlow solution: inspect the four projects, outline structure, build and test instructions, then review for accuracy.",
-  },
-  {
-    id: "refactor-service",
-    icon: Wrench,
-    mode: "build",
-    nameKey: "workflows.recipe.refactor.name",
-    descKey: "workflows.recipe.refactor.desc",
-    stepKeys: [
-      "workflows.recipe.refactor.s1",
-      "workflows.recipe.refactor.s2",
-      "workflows.recipe.refactor.s3",
-      "workflows.recipe.refactor.s4",
-    ],
-    prompt:
-      "Refactor TokenService for clarity: map its callers, propose the refactor plan, apply edits with diff approvals, and keep tests green.",
-  },
-  {
-    id: "review-changes",
-    icon: GitCompare,
-    mode: "plan",
-    nameKey: "workflows.recipe.review.name",
-    descKey: "workflows.recipe.review.desc",
-    stepKeys: [
-      "workflows.recipe.review.s1",
-      "workflows.recipe.review.s2",
-      "workflows.recipe.review.s3",
-      "workflows.recipe.review.s4",
-    ],
-    prompt:
-      "Review the recent changes in the workspace: read the git diff, inspect the touched files, and report findings with severity levels.",
-  },
-];
+const RECIPE_ICONS: Record<WorkflowRecipe["id"], React.ElementType> = {
+  "fix-test": FlaskConical,
+  "draft-readme": FileText,
+  "refactor-service": Wrench,
+  "review-changes": GitCompare,
+};
 
 const RUN_STEPS: { icon: React.ElementType; titleKey: string; captionKey: string }[] = [
   { icon: ListChecks, titleKey: "workflows.runs.s1.title", captionKey: "workflows.runs.s1.caption" },
@@ -105,9 +38,12 @@ const RUN_STEPS: { icon: React.ElementType; titleKey: string; captionKey: string
   { icon: CircleCheck, titleKey: "workflows.runs.s4.title", captionKey: "workflows.runs.s4.caption" },
 ];
 
-function RecipeCard({ recipe, busy, onRun }: { recipe: Recipe; busy: boolean; onRun: (recipe: Recipe) => void }) {
+function RecipeCard({ recipe }: { recipe: WorkflowRecipe }) {
   const t = useT();
-  const Icon = recipe.icon;
+  const blocked = useAqvenor((state) => recipeBlockReason(recipe, state));
+  const Icon = RECIPE_ICONS[recipe.id];
+  const { workMode, workMethod } = recipeControls(recipe);
+  const blockedDescription = blocked ? t(`workflows.${blocked}.description`) : undefined;
   return (
     <AqCard as="article" className="flex flex-col p-4 transition-colors duration-100 hover:border-line">
       <header className="flex items-start gap-2.5">
@@ -135,11 +71,21 @@ function RecipeCard({ recipe, busy, onRun }: { recipe: Recipe; busy: boolean; on
         ))}
       </div>
 
+      {blocked && (
+        <p id={`recipe-${recipe.id}-blocked`} className="mt-3 text-[11px] leading-[1.45] text-fg-3">
+          {blockedDescription}
+        </p>
+      )}
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line-faint pt-3">
         <span className="font-mono text-[10.5px] text-fg-3">
-          {t("workflows.modeBadge", t(`agent.mode.${recipe.mode}`))}
+          {t("workflows.modeBadge", `${t(`work.mode.${workMode}`)} · ${t(`work.method.${workMethod}`)}`)}
         </span>
-        <AqPrimaryButton onClick={() => onRun(recipe)} title={busy ? t("workflows.busy.description") : undefined}>
+        <AqPrimaryButton
+          onClick={() => runWorkflowRecipe(recipe)}
+          disabled={blocked !== null}
+          title={blockedDescription}
+          aria-describedby={blocked ? `recipe-${recipe.id}-blocked` : undefined}
+        >
           <Play size={12} />
           {t("workflows.run")}
         </AqPrimaryButton>
@@ -219,26 +165,8 @@ function RunsStrip() {
 export default function WorkflowsView() {
   const t = useT();
   const runner = useAqvenor((s) => s.runner);
-  const setWorkMode = useAqvenor((s) => s.setWorkMode);
-  const setWorkMethod = useAqvenor((s) => s.setWorkMethod);
-  const setSurface = useAqvenor((s) => s.setSurface);
-  const pushToast = useAqvenor((s) => s.pushToast);
 
   const busy = runner.status === "running" || runner.status === "awaiting-approval";
-
-  const runRecipe = (recipe: Recipe) => {
-    if (busy) {
-      pushToast(t("workflows.busy.title"), t("workflows.busy.description"), "destructive");
-      return;
-    }
-    /* apply through the work-mode axes so the composer/header stay in sync
-       (a recipe always runs the agent, i.e. Cowork) */
-    setWorkMode("cowork");
-    setWorkMethod(recipe.mode === "plan" ? "plan" : "ask");
-    sendMessage(recipe.prompt);
-    setSurface("chat");
-    pushToast(t(recipe.nameKey), t("workflows.started.description", t(`agent.mode.${recipe.mode}`)));
-  };
 
   return (
     <div className="h-full w-full overflow-y-auto">
@@ -262,8 +190,8 @@ export default function WorkflowsView() {
           </div>
           <p className="mb-2.5 text-[11.5px] text-fg-3">{t("workflows.recipes.hint")}</p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {RECIPES.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} busy={busy} onRun={runRecipe} />
+            {WORKFLOW_RECIPES.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
           </div>
         </section>
