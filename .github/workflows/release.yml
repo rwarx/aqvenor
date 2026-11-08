@@ -6,12 +6,10 @@ name: Release
 # There is no automatic versioning here on purpose. A release is a decision, and
 # the tag is that decision made explicit.
 #
-# Release notes live in docs/releases/<tag>.md and are passed in with
-# `body-path`, not written into this file as a block scalar. Prose with Markdown
-# lists inside YAML is a trap: the parser rejects the whole workflow, and the
-# failure is a zero-job red X with no message. Keeping the notes in a file also
-# means they are reviewable content rather than something hidden in a
-# `run:` block.
+# Release notes live in docs/releases/<tag>.md and are passed to gh with
+# --notes-file. Installer names follow the update metadata exactly. Assets are
+# uploaded to a draft and verified before publication; existing releases cannot
+# be overwritten by a retry.
 
 on:
   push:
@@ -25,6 +23,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -132,6 +134,18 @@ jobs:
           Write-Host "All required documents present."
           exit 0
 
+      - name: Refuse to overwrite an existing release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          $tags = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[].tag_name'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify existing releases.' }
+          if ($tags -contains $env:RELEASE_TAG) {
+            throw "Release $env:RELEASE_TAG already exists. Publish a new version instead of replacing installed update metadata."
+          }
+
       - name: Verify build and tests before packaging
         run: |
           dotnet restore AIClient.slnx
@@ -164,6 +178,8 @@ jobs:
       - name: Test renderer and shell boundaries
         working-directory: electron
         run: npm test
+      - name: Test release asset validation
+        run: node --test scripts/collect-release-assets.test.cjs
 
       # electron-builder picks the sidecar up through extraResources, so it has
       # to be a single directory beside the manifest. Verified here rather than
@@ -180,7 +196,7 @@ jobs:
 
       - name: Package the installer
         working-directory: electron
-        run: npx electron-builder --win --publish never
+        run: npx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -190,24 +206,7 @@ jobs:
           SOURCE_SHA: ${{ steps.tag.outputs.sha }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
-          Get-ChildItem electron/release -Filter '*.exe' |
-            Where-Object { $_.Name -notlike '*unins*' } |
-            ForEach-Object { Copy-Item $_.FullName "release-assets/$($_.Name)" }
-          Get-ChildItem electron/release -Filter '*.blockmap' -ErrorAction SilentlyContinue |
-            ForEach-Object { Copy-Item $_.FullName "release-assets/$($_.Name)" }
-          $assets = Get-ChildItem release-assets
-          if ($assets.Count -eq 0) {
-            Write-Error 'electron-builder produced no .exe. Nothing would be attached to the release.'
-            exit 1
-          }
-          $assets | Select-Object Name, Length
-          "tag=$env:RELEASE_TAG`ncommit=$env:SOURCE_SHA" | Set-Content release-assets/build-source.txt
-          Get-ChildItem release-assets -File | ForEach-Object {
-            $digest = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$digest  $($_.Name)"
-          } | Set-Content release-assets/SHA256SUMS.txt
-          exit 0
+          node scripts/collect-release-assets.cjs electron/release release-assets $env:RELEASE_TAG $env:SOURCE_SHA
 
       - name: Upload build artefacts
         uses: actions/upload-artifact@v4
@@ -239,6 +238,8 @@ jobs:
           SOURCE_SHA: ${{ needs.build.outputs.sha }}
           RELEASE_TAG: ${{ needs.build.outputs.tag }}
         run: |
+          set -euo pipefail
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
           actual=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
           test "$actual" = "$SOURCE_SHA"
 
@@ -253,6 +254,9 @@ jobs:
 
       - name: Normalise and verify the artefacts
         shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.build.outputs.sha }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir -p release-assets
@@ -271,19 +275,38 @@ jobs:
             exit 1
           fi
           (cd release-assets && sha256sum --check SHA256SUMS.txt)
+          grep -Fx "tag=$RELEASE_TAG" release-assets/build-source.txt
+          grep -Fx "commit=$SOURCE_SHA" release-assets/build-source.txt
+          channel=$(sed -n 's/^channel=//p' release-assets/build-source.txt)
+          test -n "$channel"
+          test -f "release-assets/$channel.yml"
+          test -f release-assets/latest.yml
 
       - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.build.outputs.tag }}
-          name: Aqvenor ${{ needs.build.outputs.tag }}
-          prerelease: true
-          # Underscore, not hyphen. The action silently warns and drops an
-          # unrecognised input, which would have published the release with an
-          # auto-generated body instead of the notes written for it.
-          body_path: docs/releases/${{ needs.build.outputs.tag }}.md
-          files: |
-            release-assets/*
-          # The default is to warn and carry on, which is how a release with zero
-          # assets gets published looking like a success.
-          fail_on_unmatched_files: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ needs.build.outputs.sha }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # `create` refuses an existing release rather than replacing its assets.
+          # Keep the release hidden until every upload and asset name is verified.
+          options=(--draft --verify-tag --target "$SOURCE_SHA")
+          visibility=(--draft=false)
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            options+=(--prerelease --latest=false)
+            visibility+=(--latest=false)
+          else
+            visibility+=(--latest=true)
+          fi
+          gh release create "$RELEASE_TAG" release-assets/* \
+            "${options[@]}" --title "Aqvenor $RELEASE_TAG" \
+            --notes-file "docs/releases/$RELEASE_TAG.md"
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > published-assets.txt
+          find release-assets -maxdepth 1 -type f -printf '%f\n' | sort > expected-assets.txt
+          diff -u expected-assets.txt published-assets.txt
+          # Re-read the remote immediately before making the release visible.
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$SOURCE_SHA"
+          gh release edit "$RELEASE_TAG" "${visibility[@]}"

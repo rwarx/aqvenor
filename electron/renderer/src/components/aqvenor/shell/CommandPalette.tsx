@@ -33,8 +33,7 @@ import {
 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
-import { graph } from "@/lib/aqvenor/backend";
-import { exportCurrentSession, isServerMode, openWorkspaceByPath, syncCanvas } from "@/lib/aqvenor/sync";
+import { exportCurrentSession, isServerMode, openWorkspaceByPath, reindexCanvas } from "@/lib/aqvenor/sync";
 import {
   exportSessionJson,
   exportSessionMarkdown,
@@ -155,9 +154,8 @@ export function CommandPalette() {
               run: () => {
                 void (async () => {
                   try {
-                    const res = await graph.reindex(useAqvenor.getState().workspaceRoot);
-                    await syncCanvas().catch(() => undefined);
-                    pushToast(t("palette.reindex"), res.rejected.length > 0 ? t("palette.reindex.rejected", res.rejected.length) : undefined);
+                    await reindexCanvas();
+                    pushToast(t("palette.reindex"));
                   } catch (err) {
                     pushToast(t("palette.reindex"), err instanceof Error ? err.message : undefined, "destructive");
                   }
@@ -171,12 +169,7 @@ export function CommandPalette() {
               icon: Undo2,
               keywords: t("palette.k.undoGraph"),
               run: () => {
-                void graph
-                  .undo(useAqvenor.getState().workspaceRoot)
-                  .then(() => syncCanvas().catch(() => undefined))
-                  .catch((err: unknown) =>
-                    pushToast(t("palette.undoGraph"), err instanceof Error ? err.message : undefined, "destructive"),
-                  );
+                useAqvenor.getState().undoCanvas();
               },
             },
             {
@@ -186,12 +179,7 @@ export function CommandPalette() {
               icon: Redo2,
               keywords: t("palette.k.redoGraph"),
               run: () => {
-                void graph
-                  .redo(useAqvenor.getState().workspaceRoot)
-                  .then(() => syncCanvas().catch(() => undefined))
-                  .catch((err: unknown) =>
-                    pushToast(t("palette.redoGraph"), err instanceof Error ? err.message : undefined, "destructive"),
-                  );
+                useAqvenor.getState().redoCanvas();
               },
             },
             {

@@ -52,21 +52,20 @@ public abstract record GraphChange;
 public sealed record AddNode(GraphNode Node) : GraphChange;
 
 /// <summary>
-/// Rewrites the descriptive fields of a node that is already there.
+/// Rewrites the descriptive fields, size or path of a node that is already there.
 /// </summary>
 /// <param name="NodeId">The node to update, by id.</param>
 /// <param name="Title">The new title, or null to leave it unchanged.</param>
 /// <param name="Subtitle">The new subtitle, or null to leave it unchanged.</param>
 /// <param name="Detail">The new detail, or null to leave it unchanged.</param>
 /// <param name="Kind">The new kind, or null to leave it unchanged.</param>
+/// <param name="Width">The new positive, finite width, or null to leave it unchanged.</param>
+/// <param name="Height">The new positive, finite height, or null to leave it unchanged.</param>
+/// <param name="Path">The new workspace-relative path, or null to leave it unchanged.</param>
 /// <remarks>
 /// <para>
-/// A null member means "leave it alone", and that is the whole protocol - which leaves one
-/// thing it cannot say: "clear this value". Clearing a subtitle means removing the node and
-/// adding it back. That limitation is accepted on purpose rather than fixed with a
-/// sentinel, because a sentinel ("empty string means clear, but only sometimes") has to be
-/// remembered by every producer of a change, while remove-and-add is already the honest
-/// way to replace a node outright.
+/// A null member leaves its field unchanged. An empty string clears optional text fields
+/// (subtitle, detail or path); the required title must remain nonempty.
 /// </para>
 /// <para>
 /// Position is deliberately absent: moving is a separate change (<see cref="MoveNode"/>),
@@ -79,7 +78,10 @@ public sealed record UpdateNode(
     string? Title = null,
     string? Subtitle = null,
     string? Detail = null,
-    GraphNodeKind? Kind = null) : GraphChange;
+    GraphNodeKind? Kind = null,
+    double? Width = null,
+    double? Height = null,
+    string? Path = null) : GraphChange;
 
 /// <summary>
 /// Moves a node to a new canvas position.

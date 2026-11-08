@@ -26,6 +26,29 @@ interface ActiveRun {
 /* Live runs keyed by chat session: three chats side by side run three
    independent generations. Stopping one never touches the others. */
 const activeRuns = new Map<string, ActiveRun>();
+let agentWorkInFlight = 0;
+const pendingCancellations = new Set<Promise<unknown>>();
+const unconfirmedCancellations = new Set<string>();
+
+/** Includes preparation, final file/graph refresh and server cancellation. */
+export function hasAgentWorkInFlight() {
+  return agentWorkInFlight > 0 || pendingCancellations.size > 0 || unconfirmedCancellations.size > 0;
+}
+
+function cancelOnServer(runId: string) {
+  const cancellation: Promise<unknown> = Promise.resolve().then(() => runs.cancel(runId))
+    .then(() => unconfirmedCancellations.delete(runId))
+    .catch(() => { unconfirmedCancellations.add(runId); })
+    .finally(() => pendingCancellations.delete(cancellation));
+  pendingCancellations.add(cancellation);
+  return cancellation;
+}
+
+/** Retry failed Stop requests before granting an update permission to restart. */
+export async function retryAgentCancellations() {
+  await Promise.all([...unconfirmedCancellations].map(cancelOnServer));
+  return unconfirmedCancellations.size === 0;
+}
 
 export function stopAgentRun(sessionId?: string) {
   const requested = sessionId ?? S().currentSessionId;
@@ -39,7 +62,7 @@ export function stopAgentRun(sessionId?: string) {
   abort.abort();
   if (S().approvalOf(sid)) S().resolveApproval("denied", undefined, sid);
   S().clearSessionRunner(sid);
-  void runs.cancel(runId);
+  void cancelOnServer(runId);
 }
 
 export function isAgentRunActive(sessionId?: string) {
@@ -102,7 +125,19 @@ export async function runAgentConversation(
   mode: AgentMode,
   opts?: { rebindUserId?: string; sessionId?: string },
 ): Promise<void> {
+  if (S().updateClosing || S().workspaceSwitching) return;
+  agentWorkInFlight += 1;
+  try { await runConversation(text, mode, opts); }
+  finally { agentWorkInFlight -= 1; }
+}
+
+async function runConversation(
+  text: string,
+  mode: AgentMode,
+  opts?: { rebindUserId?: string; sessionId?: string },
+): Promise<void> {
   const store = S();
+  if (store.updateClosing || store.workspaceSwitching) return;
   const locale = store.ui.locale;
   const workspaceRoot = store.workspaceRoot;
   // The run belongs to one chat: concurrent runs in different chats coexist,
@@ -118,6 +153,7 @@ export async function runAgentConversation(
   let conversationId: string;
   try {
     await flushPendingWrites();
+    if (S().updateClosing || S().workspaceSwitching) return;
     conversationId = await ensureServerSession(sid);
   } catch {
     store.pushToast(translate(locale, "run.noBackend.title"), translate(locale, "run.noBackend.desc"), "destructive");
@@ -126,6 +162,7 @@ export async function runAgentConversation(
   // A first send upgrades the placeholder (local id → server GUID); the run
   // must write to the upgraded session, not the dropped placeholder.
   sid = conversationId;
+  if (S().updateClosing || S().workspaceSwitching) return;
   if (isAgentRunActive(sid)) return;
 
   // Each chat keeps its own agent: the picker's choice is stored on the

@@ -561,6 +561,7 @@ public sealed class AgentToolTests : IAsyncLifetime
         public Task<GraphMutationResult> RedoAsync(CancellationToken cancellationToken = default) => Empty();
         public Task SaveAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(GraphSnapshot.Empty);
+        public Task<GraphSnapshot> RestoreAsync(GraphSnapshot snapshot, CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
     }
 
     [Fact]

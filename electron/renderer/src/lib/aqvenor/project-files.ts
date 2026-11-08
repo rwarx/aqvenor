@@ -6,18 +6,17 @@
      .aqvenor/canvas.json — the spatial graph (nodes/edges/viewport)
      .aqvenor/mcp.json   — the MCP servers configured for the project
      .aqvenor/README.md  — one line saying what this folder is
-   Writes are debounced and best-effort: the folder is a portable
-   export, never a blocker for the app itself.
+   The backend owns canvas.json; the renderer writes MCP configuration.
    ============================================================ */
 
 import { workspace } from "./backend";
 import { isServerMode } from "./sync";
 import { useAqvenor } from "./store";
+import { translate } from "./i18n";
+import { hasAgentWorkInFlight, retryAgentCancellations } from "./agent-live";
 import { configureMcpBridge, importMcpServers, isImportingMcpConfig, serializeMcpServers } from "./mcp";
-import type { CanvasEdge, CanvasNode } from "./types";
 
 const AQ_DIR = ".aqvenor";
-const CANVAS_FILE = `${AQ_DIR}/canvas.json`;
 const MCP_FILE = `${AQ_DIR}/mcp.json`;
 const README_FILE = `${AQ_DIR}/README.md`;
 
@@ -28,16 +27,9 @@ Aqvenor keeps its per-project state in this folder:
 - \`canvas.json\` — the spatial canvas (nodes, edges, viewport)
 - \`mcp.json\`    — MCP servers configured for this project
 
+The backend saves canvas.json as a portable export of its canonical graph.
 Both files are plain JSON; commit them to share the workspace setup.
 `;
-
-interface CanvasFile {
-  version: number;
-  savedAt: number;
-  viewport: { zoom: number; panX: number; panY: number };
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
-}
 
 async function writeProjectFile(path: string, content: string, root = useAqvenor.getState().workspaceRoot): Promise<void> {
   if (!isServerMode()) return;
@@ -50,63 +42,13 @@ async function writeProjectFile(path: string, content: string, root = useAqvenor
   }
 }
 
-/* ---------- canvas ---------- */
-
-const CANVAS_WRITE_DELAY_MS = 1500;
-let canvasTimer: ReturnType<typeof setTimeout> | null = null;
-
-function scheduleCanvasWrite(): void {
-  if (canvasTimer !== null) clearTimeout(canvasTimer);
-  const root = useAqvenor.getState().workspaceRoot;
-  canvasTimer = setTimeout(() => {
-    canvasTimer = null;
-    if (useAqvenor.getState().workspaceRoot !== root) return;
-    const { canvas } = useAqvenor.getState();
-    const file: CanvasFile = {
-      version: 1,
-      savedAt: Date.now(),
-      viewport: { zoom: canvas.zoom, panX: canvas.panX, panY: canvas.panY },
-      nodes: canvas.nodes.map(({ ...n }) => n),
-      edges: canvas.edges.map(({ ...e }) => e),
-    };
-    void writeProjectFile(CANVAS_FILE, JSON.stringify(file, null, 2) + "\n", root);
-  }, CANVAS_WRITE_DELAY_MS);
-}
-
 /* ---------- hydration ---------- */
 
-/** Read .aqvenor from a freshly opened workspace: restore the canvas when the
- *  graph is still empty, and merge any MCP servers the project declares. */
+/** Merge MCP servers declared by the project. Graph import belongs to the backend. */
 export async function hydrateProjectFiles(): Promise<void> {
   if (!isServerMode()) return;
   if (!useAqvenor.getState().workspaceRoot) return;
   const root = useAqvenor.getState().workspaceRoot!;
-
-  try {
-    const res = await workspace.readDocument(CANVAS_FILE, root);
-    if (res.isTruncated || useAqvenor.getState().workspaceRoot !== root) return;
-    const parsed = JSON.parse(res.content) as Partial<CanvasFile>;
-    if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
-      const st = useAqvenor.getState();
-      /* only seed from the file when there is nothing on screen yet — the
-         server graph (and the person's current session) always win */
-      if (st.canvas.nodes.length === 0) {
-        st.setCanvas({
-          nodes: parsed.nodes,
-          edges: parsed.edges,
-          selectedIds: [],
-          primaryId: null,
-          selectedEdgeId: null,
-          selectedEdgeIds: [],
-          ...(parsed.viewport
-            ? { zoom: parsed.viewport.zoom, panX: parsed.viewport.panX, panY: parsed.viewport.panY }
-            : {}),
-        });
-      }
-    }
-  } catch {
-    /* no canvas.json — a fresh project */
-  }
 
   try {
     const res = await workspace.readDocument(MCP_FILE, root);
@@ -122,24 +64,42 @@ export async function hydrateProjectFiles(): Promise<void> {
 /** Subscribe the folder's writers to the store. Call once from the app shell;
  *  returns an unsubscribe for tests. */
 export function initProjectFileSync(): () => void {
-  const unsubClose = window.aqvenor?.onPrepareClose((request) => {
+  const unsubUpdates = window.aqvenor?.updates?.onChanged((state) => {
+    if (state.status !== "installing" && useAqvenor.getState().updateClosing) {
+      useAqvenor.setState({ updateClosing: false });
+    }
+  });
+  const unsubClose = window.aqvenor?.onPrepareClose((request, forUpdate = false) => {
+    if (forUpdate) useAqvenor.setState({ updateClosing: true });
+    const refuseUnsafeUpdate = async () => {
+      if (!forUpdate) return false;
+      const state = useAqvenor.getState();
+      const activeSession = Object.values(state.runningSessions).some((run) => run.status === "running" || run.status === "awaiting-approval");
+      if (!state.workspaceSwitching && !hasAgentWorkInFlight() && !activeSession) return false;
+      state.pushToast(translate(state.ui.locale, "update.activeRun.title"), translate(state.ui.locale, state.workspaceSwitching ? "update.workspaceBusy" : "update.activeRun.description"), "destructive");
+      useAqvenor.setState({ updateClosing: false });
+      await window.aqvenor?.finishClose(request, false);
+      return true;
+    };
     void (async () => {
       try {
+        if (forUpdate && !await retryAgentCancellations()) throw new Error(translate(useAqvenor.getState().ui.locale, "update.cancellationFailed"));
+        if (await refuseUnsafeUpdate()) return;
         await useAqvenor.getState().flushPendingWrites();
+        if (await refuseUnsafeUpdate()) return;
         await window.aqvenor?.finishClose(request, true);
       } catch (error) {
-        useAqvenor.getState().pushToast("Save failed", error instanceof Error ? error.message : String(error), "destructive");
-        await window.aqvenor?.finishClose(request, false);
+        if (forUpdate) useAqvenor.setState({ updateClosing: false });
+        const state = useAqvenor.getState();
+        state.pushToast(translate(state.ui.locale, "update.closeFailed"), error instanceof Error ? error.message : String(error), "destructive");
+        // A disconnected bridge can reject both acknowledgements. Keep the
+        // failed save visible without leaking an unhandled promise rejection.
+        try { await window.aqvenor?.finishClose(request, false); } catch { /* bridge is unavailable */ }
       }
     })();
   });
   /* seed the folder's README once per workspace open */
   let knownRoot: string | null = null;
-
-  const unsubCanvas = useAqvenor.subscribe((s, prev) => {
-    if (s.canvas.nodes === prev.canvas.nodes && s.canvas.edges === prev.canvas.edges) return;
-    scheduleCanvasWrite();
-  });
 
   const unsubMcp = useAqvenor.subscribe((s, prev) => {
     if (s.mcpServers === prev.mcpServers) return;
@@ -159,7 +119,7 @@ export function initProjectFileSync(): () => void {
 
   return () => {
     unsubClose?.();
-    unsubCanvas();
+    unsubUpdates?.();
     unsubMcp();
     unsubRoot();
   };

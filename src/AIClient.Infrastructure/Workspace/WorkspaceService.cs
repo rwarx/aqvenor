@@ -478,7 +478,7 @@ public sealed class WorkspaceService : IWorkspaceService
                 linesBefore = SplitLines(previous!).Length;
                 bom = await HasBomAsync(full, cancellationToken).ConfigureAwait(false);
             }
-            else if (expectedHash is not null)
+            else if (!string.IsNullOrEmpty(expectedHash))
             {
                 return WorkspaceResult<WorkspaceWrite>.Fail("The document was deleted on disk. Reload the project before saving.");
             }

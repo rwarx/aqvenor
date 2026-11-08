@@ -263,6 +263,12 @@ public sealed class GraphModel
             return false;
         }
 
+        if (!double.IsFinite(node.X) || !double.IsFinite(node.Y))
+        {
+            rejected.Add($"Node '{node.Id}' cannot be added at a position that is not a finite number.");
+            return false;
+        }
+
         _nodes.Add(node.Id, node);
         return true;
     }
@@ -281,7 +287,8 @@ public sealed class GraphModel
             return false;
         }
 
-        if (change.Title is null && change.Subtitle is null && change.Detail is null && change.Kind is null)
+        if (change.Title is null && change.Subtitle is null && change.Detail is null && change.Kind is null
+            && change.Width is null && change.Height is null && change.Path is null)
         {
             rejected.Add($"Node '{change.NodeId}' has nothing to change.");
             return false;
@@ -293,12 +300,21 @@ public sealed class GraphModel
             return false;
         }
 
+        if (change.Width is { } width && !IsUsableSize(width) || change.Height is { } height && !IsUsableSize(height))
+        {
+            rejected.Add($"Node '{change.NodeId}' cannot be resized to a width or height that is zero, negative or not a number.");
+            return false;
+        }
+
         _nodes[change.NodeId] = node with
         {
             Title = change.Title ?? node.Title,
             Subtitle = change.Subtitle ?? node.Subtitle,
             Detail = change.Detail ?? node.Detail,
             Kind = change.Kind ?? node.Kind,
+            Width = change.Width ?? node.Width,
+            Height = change.Height ?? node.Height,
+            Path = change.Path ?? node.Path,
         };
 
         return true;

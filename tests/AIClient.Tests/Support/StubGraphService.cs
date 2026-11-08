@@ -53,4 +53,7 @@ public sealed class StubGraphService : IGraphService
 
     public Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default) =>
         Task.FromResult(GraphSnapshot.Empty);
+
+    public Task<GraphSnapshot> RestoreAsync(GraphSnapshot snapshot, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Current = snapshot);
 }

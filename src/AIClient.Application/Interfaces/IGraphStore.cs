@@ -34,3 +34,9 @@ public interface IGraphStore
     /// </summary>
     Task<GraphSnapshot?> LoadAsync(string key, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Optional read diagnostics for hosts that show recoverable persistence failures.</summary>
+public interface IGraphStoreDiagnostics
+{
+    string? LastLoadError { get; }
+}

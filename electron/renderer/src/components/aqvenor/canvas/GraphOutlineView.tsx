@@ -21,6 +21,7 @@ import { ALL_EDGE_KINDS, EDGE_KIND_ICONS, KIND_ICONS, KIND_ORDER, dispatchFocusN
 
 export default function GraphOutlineView() {
   const t = useT();
+  const graphReady = useAqvenor((s) => s.graphSync.ready);
   const nodes = useAqvenor((s) => s.canvas.nodes);
   const edges = useAqvenor((s) => s.canvas.edges);
   const primaryId = useAqvenor((s) => s.canvas.primaryId);
@@ -231,7 +232,7 @@ export default function GraphOutlineView() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-surface-1">
+    <div className="flex h-full w-full flex-col bg-surface-1" inert={!graphReady} aria-busy={!graphReady}>
       {/* header */}
       <div className="flex items-center justify-between gap-2 px-3 pb-2 pt-3">
         <Overline>{t("outline.title")}</Overline>

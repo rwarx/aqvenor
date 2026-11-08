@@ -24,6 +24,7 @@ function Call-Api([string]$Method, [string]$Path, $Payload = $null, [int]$Expect
     # Compatible with Windows PowerShell 5.1 and PowerShell 7: 5.1 throws on non-2xx, 7 only does
     # so without -SkipHttpErrorCheck, and the two exceptions carry different Response shapes.
     $options = @{ Uri = $base + $Path; Method = $Method; TimeoutSec = 15; UseBasicParsing = $true }
+    if ($PSVersionTable.PSVersion.Major -ge 7) { $options.SkipHttpErrorCheck = $true }
     if ($Authenticated) { $options.Headers = @{ Authorization = "Bearer $token" } }
     if ($null -ne $Payload) { $options.Body = $Payload | ConvertTo-Json -Depth 20 -Compress; $options.ContentType = 'application/json' }
     $status = 0

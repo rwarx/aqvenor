@@ -8,6 +8,7 @@ import { TitleBar } from "./shell/TitleBar";
 import { Sidebar } from "./shell/Sidebar";
 import { StatusBar } from "./shell/StatusBar";
 import { BackendConnectionBanner } from "./shell/BackendConnectionBanner";
+import { UpdateBanner } from "./shell/UpdateBanner";
 import { WorkspaceHeader } from "./shell/WorkspaceHeader";
 import { Onboarding } from "./shell/Onboarding";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -50,6 +51,7 @@ export function AqvenorApp() {
   const surface = useAqvenor((s) => s.surface);
   const workMode = useAqvenor((s) => s.ui.workMode);
   const workspaceRoot = useAqvenor((s) => s.workspaceRoot);
+  const workspaceSwitching = useAqvenor((s) => s.workspaceSwitching);
   const appZoom = useAqvenor((s) => s.ui.appZoom);
   const hydrated = useAqvenor((s) => s.hydrated);
   const checkpointJumpOpen = useAqvenor((s) => s.checkpointJumpOpen);
@@ -99,14 +101,14 @@ export function AqvenorApp() {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  /* .aqvenor project folder: mirror the canvas + MCP set into the open
-     workspace (and hydrate them back when a workspace opens) */
+  /* Portable graph persistence belongs to the server; the shell synchronizes MCP and close saves. */
   useEffect(() => initProjectFileSync(), []);
 
   /* global keyboard layer */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useAqvenor.getState();
+      if (s.workspaceSwitching) return;
       const mod = e.ctrlKey || e.metaKey;
 
       if (e.key === "Escape") {
@@ -235,13 +237,14 @@ export function AqvenorApp() {
     surface !== "tasks";
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-app text-fg-1" aria-label={t("app.name")}>
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-app text-fg-1" aria-label={t("app.name")} inert={workspaceSwitching} aria-busy={workspaceSwitching}>
       <TitleBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <main className="flex min-w-0 flex-1 flex-col">
           <WorkspaceHeader />
           <BackendConnectionBanner />
+          <UpdateBanner />
           <div className="min-h-0 flex-1">
             {needsProject ? <ProjectGate /> : <DockWorkspace />}
           </div>

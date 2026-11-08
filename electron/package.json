@@ -1,6 +1,6 @@
 {
     "name": "aqvenor",
-    "version": "0.3.1-alpha",
+    "version": "0.3.2-alpha",
     "private": true,
     "description": "Aqvenor вЂ” Electron shell over the ported new-interface renderer and the .NET sidecar backend",
     "main": "main/main.js",
@@ -106,6 +106,7 @@
         "clsx": "^2.1.1",
         "dockview-core": "8.4.1",
         "dockview-react": "8.4.1",
+        "electron-updater": "^6.8.11",
         "lucide-react": "^0.525.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",

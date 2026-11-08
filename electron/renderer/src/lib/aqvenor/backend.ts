@@ -109,6 +109,10 @@ async function probeBackend(revision: number): Promise<boolean> {
 /** Default ceiling for a single request, so a wedged sidecar surfaces as an error and not a hang. */
 const REQUEST_TIMEOUT_MS = 120_000;
 
+export class BackendRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly payload?: unknown) { super(message); }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const base = await getBackendUrl();
   const res = await fetch(`${base}${path}`, {
@@ -135,9 +139,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     // bubbles — and fall back to a bare status line when there's nothing
     // user-facing to show (empty body or an HTML error page).
     let message = detail.trim();
+    let payload: unknown;
     if (message.startsWith("{")) {
       try {
         const body = JSON.parse(message) as { error?: string; message?: string; title?: string };
+        payload = body;
         message = body.error ?? body.message ?? body.title ?? "";
       } catch {
         message = "";
@@ -145,7 +151,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     } else if (message.startsWith("<")) {
       message = "";
     }
-    throw new Error(message ? message.slice(0, 300) : `Request failed (${res.status})`);
+    throw new BackendRequestError(message ? message.slice(0, 300) : `Request failed (${res.status})`, res.status, payload);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -516,6 +522,29 @@ export interface ServerGraphSnapshot {
   version: number;
   nodes: ServerGraphNode[];
   edges: ServerGraphEdge[];
+  workspaceRoot?: string | null;
+  revision?: number;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  hasSavedGraph?: boolean;
+  viewport?: GraphViewport;
+  persistence?: GraphPersistenceState;
+}
+
+export interface GraphViewport { zoom: number; panX: number; panY: number }
+export interface GraphPersistenceState {
+  state: "saved" | "pending" | "error";
+  privateSaved: boolean;
+  error?: string | null;
+  portableError?: string | null;
+  revision?: number;
+}
+export interface GraphResult {
+  applied?: number;
+  rejected: string[];
+  saved?: boolean;
+  snapshot: ServerGraphSnapshot;
+  persistence?: GraphPersistenceState;
 }
 
 export interface ServerTimelineEntry {
@@ -533,11 +562,14 @@ export interface ServerTimelineEntry {
 export interface GraphChangeInput {
   kind: "add-node" | "update-node" | "move-node" | "remove-node" | "add-edge" | "update-edge" | "remove-edge";
   nodeId?: string;
-  node?: { id: string; kind: string; title: string; subtitle?: string; detail?: string; path?: string; x: number; y: number; width?: number; height?: number };
+  node?: { id: string; kind: string; title: string; subtitle?: string; detail?: string; path?: string; x: number; y: number; width?: number; height?: number; status?: string };
   title?: string;
   subtitle?: string;
   detail?: string;
   nodeKind?: string;
+  path?: string;
+  width?: number;
+  height?: number;
   x?: number;
   y?: number;
   edgeId?: string;
@@ -547,16 +579,25 @@ export interface GraphChangeInput {
 }
 
 export const graph = {
-  snapshot: () => api<ServerGraphSnapshot>(`/api/graph`),
+  snapshot: (root?: string | null) => api<ServerGraphSnapshot>(`/api/graph${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`),
   timeline: () => api<ServerTimelineEntry[]>(`/api/graph/timeline`),
-  undo: (root: string | null) => api<{ applied: number; rejected: string[] }>(`/api/graph/undo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
-  redo: (root: string | null) => api<{ applied: number; rejected: string[] }>(`/api/graph/redo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
-  reindex: (root: string | null) => api<{ rejected: string[]; snapshot: ServerGraphSnapshot }>(`/api/graph/reindex${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
-  apply: (title: string, changes: GraphChangeInput[], expectedRoot: string | null, description?: string, requestId?: string) =>
-    api<{ applied: number; rejected: string[]; snapshot: ServerGraphSnapshot }>(`/api/graph/apply`, {
+  undo: (root: string | null) => api<GraphResult>(`/api/graph/undo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  redo: (root: string | null) => api<GraphResult>(`/api/graph/redo${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  reindex: (root: string | null) => api<GraphResult>(`/api/graph/reindex${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  save: (root: string | null) => api<{ saved: boolean; snapshot: ServerGraphSnapshot; persistence: GraphPersistenceState }>(`/api/graph/save${root ? `?expectedRoot=${encodeURIComponent(root)}` : ""}`, { method: "POST" }),
+  viewport: (root: string | null, viewport: GraphViewport) => api<{ saved: boolean; persistence: GraphPersistenceState; viewport: GraphViewport }>(`/api/graph/viewport`, { method: "POST", body: JSON.stringify({ expectedRoot: root, ...viewport }) }),
+  apply: async (title: string, changes: GraphChangeInput[], expectedRoot: string | null, description?: string, requestId?: string): Promise<GraphResult> => {
+    try { return await api<GraphResult>(`/api/graph/apply`, {
       method: "POST",
       body: JSON.stringify({ title, description, changes, expectedRoot, requestId }),
-    }),
+    }); } catch (error) {
+      const result = error instanceof BackendRequestError ? error.payload as Partial<GraphResult> | undefined : undefined;
+      if (error instanceof BackendRequestError && error.status === 400 && result?.snapshot && Array.isArray(result.rejected)) {
+        return result as GraphResult;
+      }
+      throw error;
+    }
+  },
 };
 
 /* ---------------- settings ---------------- */
@@ -687,7 +728,10 @@ export const runs = {
       method: "POST",
       body: JSON.stringify({ approvalId, outcome, reason }),
     }),
-  cancel: (runId: string) => api<void>(`/api/runs/${runId}/cancel`, { method: "POST" }).catch(() => undefined),
+  cancel: async (runId: string): Promise<void> => {
+    const result = await api<{ cancelled: boolean; completed: boolean }>(`/api/runs/${runId}/cancel`, { method: "POST" });
+    if (result?.cancelled !== true || result.completed !== true) throw new Error("Server did not confirm that the task stopped.");
+  },
 };
 
 /* ---------------- git ---------------- */

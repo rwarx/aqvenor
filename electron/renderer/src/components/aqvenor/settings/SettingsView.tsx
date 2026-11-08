@@ -32,9 +32,8 @@ import {
   SERVER_LOCKED_SETTINGS,
   isServerMode,
   loadServerSettings,
-  reindexCanvas,
+  openWorkspaceByPath,
   saveServerSettings,
-  syncWorkspaceFiles,
 } from "@/lib/aqvenor/sync";
 import { SKILLS } from "@/lib/aqvenor/data";
 import type { Locale, ThemeMode } from "@/lib/aqvenor/types";
@@ -48,6 +47,7 @@ import {
   Overline,
 } from "@/components/aqvenor/ui";
 import { McpSettings } from "./McpSettings";
+import { UpdatesSettings } from "./UpdatesSettings";
 import { ProviderStudioLauncher } from "../chat/ProviderStudio";
 import pkg from "../../../../../package.json";
 
@@ -102,6 +102,7 @@ type CategoryId =
   | "shortcuts"
   | "data"
   | "diagnostics"
+  | "updates"
   | "about";
 
 const CATEGORIES: { id: CategoryId; label: string; keywords: string }[] = [
@@ -119,6 +120,7 @@ const CATEGORIES: { id: CategoryId; label: string; keywords: string }[] = [
   { id: "shortcuts", label: "settings.shortcuts", keywords: "settings.nav.shortcuts.kw" },
   { id: "data", label: "settings.nav.data", keywords: "settings.nav.data.kw" },
   { id: "diagnostics", label: "settings.nav.diagnostics", keywords: "settings.nav.diagnostics.kw" },
+  { id: "updates", label: "update.title", keywords: "update.keywords" },
   { id: "about", label: "settings.about", keywords: "settings.nav.about.kw" },
 ];
 
@@ -578,12 +580,11 @@ export default function SettingsView() {
       const dir = await window.aqvenor!.pickFolder();
       if (!dir) return;
       try {
-        const res = await workspaceApi.open(dir);
-        setWsRoot(res.root);
-        setWsName(res.root.split(/[/\\]/).filter(Boolean).pop() ?? res.root);
-        await syncWorkspaceFiles().catch(() => undefined);
-        await reindexCanvas().catch(() => undefined);
-        pushToast(t("settings.workspace.opened", res.root) ?? res.root);
+        const root = await openWorkspaceByPath(dir);
+        if (!root) return;
+        setWsRoot(root);
+        setWsName(root.split(/[/\\]/).filter(Boolean).pop() ?? root);
+        pushToast(t("settings.workspace.opened", root) ?? root);
       } catch (err) {
         pushToast(t("settings.workspace.failed") ?? "Cannot open that folder", err instanceof Error ? err.message : undefined, "destructive");
       }
@@ -1631,6 +1632,12 @@ export default function SettingsView() {
                   ))}
                 </AqCard>
               </div>
+            </Section>
+          )}
+
+          {visible("updates") && (
+            <Section id="settings-updates" highlight={flash === "updates"} overline={t("update.title")}>
+              <UpdatesSettings />
             </Section>
           )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { localGraphStatus, type GraphSyncStatus } from "./graph-coordinator";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   AgentMode,
@@ -300,6 +301,8 @@ interface AqvenorState {
    *  (kind picker, search, connect/reconnect drag) — the global chain
    *  must not treat that Escape as "stop generation" */
   canvasOverlayActive: boolean;
+  /** A restart is saving work; delayed sends must not begin a new run. Never persisted. */
+  updateClosing: boolean;
   /** unsent input per chat session (text + staged file tray) */
   drafts: Record<string, SessionDraft>;
   /** sidecar reachability: null = not probed yet, false = runs can't start.
@@ -347,6 +350,7 @@ interface AqvenorState {
   contextFiles: ContextFile[];
   files: DemoFile[];
   canvas: CanvasState;
+  graphSync: GraphSyncStatus;
   canvasUndo: { nodes: CanvasNode[]; edges: CanvasEdge[] }[];
   canvasRedo: { nodes: CanvasNode[]; edges: CanvasEdge[] }[];
   codeTabs: string[];
@@ -362,6 +366,7 @@ interface AqvenorState {
    *  transient (not persisted) — kept in sync by syncWorkspaceFiles and the
    *  shared openWorkspaceDialog() so every surface reads one source of truth. */
   workspaceRoot: string | null;
+  workspaceSwitching: boolean;
 
   /* ui actions */
   setSurface: (s: Surface, opts?: { noHistory?: boolean }) => void;
@@ -782,6 +787,7 @@ export const useAqvenor = create<AqvenorState>()(
       providerStudioOpen: false,
       providerStudioTab: "manage",
       canvasOverlayActive: false,
+      updateClosing: false,
       drafts: {},
       focusedChatSessionId: null,
       backendReachable: null,
@@ -818,6 +824,7 @@ export const useAqvenor = create<AqvenorState>()(
       contextFiles: [],
       files: DEMO_FILES.map((f) => ({ ...f })),
       canvas: initialCanvas,
+      graphSync: localGraphStatus,
       canvasUndo: [],
       canvasRedo: [],
       codeTabs: [],
@@ -828,6 +835,7 @@ export const useAqvenor = create<AqvenorState>()(
       runner: { status: "idle" },
       indexing: false,
       workspaceRoot: null,
+      workspaceSwitching: false,
 
       /* ---------- ui ---------- */
       setSurface: (s, opts) => {

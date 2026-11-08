@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -36,10 +37,11 @@ namespace AIClient.Infrastructure.Graph;
 /// returned) rather than as an error, because a corrupt graph is recoverable by
 /// re-indexing the workspace and a crash loop at startup is not. The same applies to a
 /// file that is implausibly large: more nodes than this application would ever write is
-/// treated as not ours, and left alone.
+/// treated as not ours. Before a later save replaces it, the original bytes are
+/// preserved in a unique sibling recovery file.
 /// </para>
 /// </remarks>
-public sealed class JsonGraphStore : IGraphStore
+public sealed class JsonGraphStore : IGraphStore, IGraphStoreDiagnostics
 {
     /// <summary>Directory under the data directory that holds one graph file per key.</summary>
     private const string DirectoryName = "graphs";
@@ -78,6 +80,8 @@ public sealed class JsonGraphStore : IGraphStore
 
     private readonly IAppPaths _paths;
     private readonly ILogger<JsonGraphStore> _logger;
+    private readonly ConcurrentDictionary<string, byte> _unreadableFiles = new(StringComparer.OrdinalIgnoreCase);
+    public string? LastLoadError { get; private set; }
 
     public JsonGraphStore(IAppPaths paths, ILogger<JsonGraphStore> logger)
     {
@@ -106,12 +110,27 @@ public sealed class JsonGraphStore : IGraphStore
         var target = Path.Combine(directory, FileNameFor(key));
 
         Directory.CreateDirectory(directory);
+        await PreserveUnreadableGraphAsync(target, cancellationToken).ConfigureAwait(false);
 
         var json = JsonSerializer.Serialize(ToDto(snapshot), JsonOptions);
         var temporary = target + ".tmp";
 
         await File.WriteAllTextAsync(temporary, json, cancellationToken).ConfigureAwait(false);
         File.Move(temporary, target, overwrite: true);
+    }
+
+    private async Task PreserveUnreadableGraphAsync(string target, CancellationToken cancellationToken)
+    {
+        if (!_unreadableFiles.ContainsKey(target)) { return; }
+        if (!File.Exists(target))
+        {
+            _unreadableFiles.TryRemove(target, out _);
+            return;
+        }
+
+        var backupPath = await GraphRecoveryFiles.CreateAsync(target, _logger, cancellationToken).ConfigureAwait(false);
+        _unreadableFiles.TryRemove(target, out _);
+        _logger.LogWarning("Preserved unreadable graph '{File}' as '{Backup}' before saving.", target, backupPath);
     }
 
     /// <summary>
@@ -126,11 +145,13 @@ public sealed class JsonGraphStore : IGraphStore
     public async Task<GraphSnapshot?> LoadAsync(string key, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        LastLoadError = null;
 
         var target = Path.Combine(Path.Combine(_paths.DataDirectory, DirectoryName), FileNameFor(key));
 
         if (!File.Exists(target))
         {
+            _unreadableFiles.TryRemove(target, out _);
             return null;
         }
 
@@ -139,10 +160,19 @@ public sealed class JsonGraphStore : IGraphStore
             var json = await File.ReadAllTextAsync(target, cancellationToken).ConfigureAwait(false);
             var dto = JsonSerializer.Deserialize<SnapshotDto>(json, JsonOptions);
 
-            return dto is null ? null : FromDto(dto);
+            var snapshot = dto is null ? null : FromDto(dto);
+            if (snapshot is null)
+            {
+                LastLoadError = "The saved graph document has invalid or excessive content.";
+                _unreadableFiles[target] = 0;
+            }
+            else { _unreadableFiles.TryRemove(target, out _); }
+            return snapshot;
         }
-        catch (Exception ex) when (ex is JsonException or IOException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
+            LastLoadError = "The saved graph could not be read: " + ex.Message;
+            _unreadableFiles[target] = 0;
             _logger.LogWarning(ex, "Graph file '{File}' could not be read and will be treated as absent.", target);
             return null;
         }
@@ -225,6 +255,8 @@ public sealed class JsonGraphStore : IGraphStore
     /// <returns>The snapshot, or null when the file was implausibly large and should be treated as not ours.</returns>
     private GraphSnapshot? FromDto(SnapshotDto dto)
     {
+        if (dto.Nodes is null || dto.Edges is null) { return null; }
+        if (dto.Nodes.Any(node => node is null) || dto.Edges.Any(edge => edge is null)) { return null; }
         if (dto.Nodes.Count > MaxNodes)
         {
             _logger.LogWarning(

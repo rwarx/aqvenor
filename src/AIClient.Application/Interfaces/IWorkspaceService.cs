@@ -108,6 +108,7 @@ public interface IWorkspaceService
     /// contents rather than half of the new ones. An existing file's line endings and byte-order
     /// mark are preserved: a one-line change that silently rewrites every line ending produces a
     /// diff nobody can review.
+    /// An empty expectedHash requires a new file; a nonempty hash requires the previously read document.
     /// </remarks>
     Task<WorkspaceResult<WorkspaceWrite>> WriteAsync(
         WorkspacePath path,

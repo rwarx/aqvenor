@@ -263,10 +263,13 @@ export default function CanvasView() {
   const panY = useAqvenor((s) => s.canvas.panY);
   const showGrid = useAqvenor((s) => s.canvas.showGrid);
   const tool = useAqvenor((s) => s.canvas.tool);
+  const graphReady = useAqvenor((s) => s.graphSync.ready);
+  const workspaceRoot = useAqvenor((s) => s.workspaceRoot);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const fittedRef = useRef(false);
+  const pendingFitRef = useRef<{ root: string | null } | null>(null);
   const [gesture, setGesture] = useState<Gesture>("none");
   const [marquee, setMarquee] = useState<Rect | null>(null);
   /* live connect-drag preview (screen space) */
@@ -407,7 +410,6 @@ export default function CanvasView() {
     if (canvas.nodes.length === 0) return;
     pushUndoSnapshot();
     setCanvas({ nodes: computeAutoLayout(canvas.nodes) });
-    void import("@/lib/aqvenor/sync").then((m) => m.pushCanvasMoves());
     fitView();
   };
 
@@ -430,7 +432,6 @@ export default function CanvasView() {
         selectedEdgeId: null,
         selectedEdgeIds: [],
       });
-      void import("@/lib/aqvenor/sync").then((m) => m.pushCanvasDeletion([], removedEdges));
       return;
     }
     if (canvas.selectedIds.length === 0) return;
@@ -443,7 +444,6 @@ export default function CanvasView() {
       selectedIds: [],
       primaryId: null,
     });
-    void import("@/lib/aqvenor/sync").then((m) => m.pushCanvasDeletion([...removed], removedEdges));
   };
 
   /* ---------- gestures ---------- */
@@ -1508,60 +1508,69 @@ export default function CanvasView() {
     return () => ro.disconnect();
   }, []);
 
-  /* fit the initial graph once, after first measurement */
+  /* Local graphs get an initial fit. Server snapshots already include the viewport. */
   useEffect(() => {
-    if (size.w < 40 || size.h < 40 || fittedRef.current) return;
+    if (!graphReady || size.w < 40 || size.h < 40 || fittedRef.current) return;
     fittedRef.current = true;
-    if (!canvasViewTouched) {
+    if (!isServerMode() && !canvasViewTouched) {
       const { canvas, setViewport } = useAqvenor.getState();
       const vp = computeFit(canvas.nodes, size.w, size.h);
       setViewport(vp.zoom, vp.panX, vp.panY);
     }
     containerRef.current?.focus({ preventScroll: true });
-  }, [size]);
+  }, [size, graphReady]);
 
-  /* Re-fit when the graph goes from empty to populated — i.e. right after a
-     workspace is opened/reindexed. Server nodes carry their own coordinates,
-     which can land well outside the current viewport; without this the canvas
-     stays blank even though the nodes loaded. Fires for every open entry point
-     (canvas button, command palette, settings) since it keys off the store. */
+  /* A local empty graph gets fitted when populated. Server graphs request fits explicitly. */
   const prevNodeCountRef = useRef(nodes.length);
   useEffect(() => {
-    if (size.w < 40 || size.h < 40) return;
     const prev = prevNodeCountRef.current;
     prevNodeCountRef.current = nodes.length;
+    if (!graphReady || isServerMode() || size.w < 40 || size.h < 40) return;
     if (prev === 0 && nodes.length > 0) {
       const { setViewport } = useAqvenor.getState();
       const vp = computeFit(nodes, size.w, size.h);
       setViewport(vp.zoom, vp.panX, vp.panY);
     }
-  }, [nodes, size]);
+  }, [nodes, size, graphReady]);
 
-  /* Open Workspace / reindex asks the canvas to fit the freshly-loaded graph.
-     Covers the workspace-switch case too (node set changes N→M without ever
-     hitting 0), which the empty→populated guard above would miss. Reads the
-     store directly so it doesn't depend on React having re-rendered yet. */
+  /* Reindex can request a fit while the project is still loading. Apply that request
+     once the graph is ready, and discard it if a different project has opened. */
   useEffect(() => {
-    const onFit = () => {
+    const applyPendingFit = () => {
+      const request = pendingFitRef.current;
+      if (!request) return;
+      const state = useAqvenor.getState();
+      if (request.root !== state.workspaceRoot) {
+        pendingFitRef.current = null;
+        return;
+      }
+      if (!state.graphSync.ready) return;
       const el = containerRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (r.width < 40 || r.height < 40) return;
-      const { canvas, setViewport } = useAqvenor.getState();
+      const { canvas, setViewport } = state;
+      pendingFitRef.current = null;
       if (canvas.nodes.length === 0) return;
       const vp = computeFit(canvas.nodes, r.width, r.height);
       markInteracted();
       setViewport(vp.zoom, vp.panX, vp.panY);
     };
+    const onFit = () => {
+      pendingFitRef.current = { root: useAqvenor.getState().workspaceRoot };
+      applyPendingFit();
+    };
+    applyPendingFit();
     window.addEventListener(CANVAS_FIT_EVENT, onFit);
     return () => window.removeEventListener(CANVAS_FIT_EVENT, onFit);
-  }, []);
+  }, [graphReady, workspaceRoot, size]);
 
   /* wheel: zoom-to-cursor (plain + ctrl/pinch), shift → horizontal pan */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if (!useAqvenor.getState().graphSync.ready) return;
       /* let the note editors scroll their own text */
       if ((e.target as HTMLElement).closest?.("[data-note-editor]")) return;
       if ((e.target as HTMLElement).closest?.("[data-edge-note-editor]")) return;
@@ -1583,6 +1592,7 @@ export default function CanvasView() {
   /* graph outline asks the canvas to center on a node */
   useEffect(() => {
     const onFocusNode = (ev: Event) => {
+      if (!useAqvenor.getState().graphSync.ready) return;
       const detail = (ev as CustomEvent<{ id: string }>).detail;
       if (!detail?.id) return;
       const { canvas, setViewport } = useAqvenor.getState();
@@ -1629,25 +1639,25 @@ export default function CanvasView() {
 
   /* focus + autosize the note editor when it opens */
   useEffect(() => {
-    if (!noteEditId) return;
+    if (!graphReady || !noteEditId) return;
     const ta = noteTaRef.current;
     if (!ta) return;
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.style.height = "auto";
     ta.style.height = `${Math.min(Math.max(ta.scrollHeight, 58), 220)}px`;
-  }, [noteEditId]);
+  }, [noteEditId, graphReady]);
 
   /* focus + autosize the edge label editor when it opens */
   useEffect(() => {
-    if (!edgeNoteEditId) return;
+    if (!graphReady || !edgeNoteEditId) return;
     const ta = edgeNoteTaRef.current;
     if (!ta) return;
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.style.height = "auto";
     ta.style.height = `${Math.min(Math.max(ta.scrollHeight, 44), 160)}px`;
-  }, [edgeNoteEditId]);
+  }, [edgeNoteEditId, graphReady]);
 
   /* Escape cancels an active gesture even without canvas focus */
   useEffect(() => {
@@ -1673,17 +1683,17 @@ export default function CanvasView() {
 
   /* focus the search input when the overlay opens */
   useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
-  }, [searchOpen]);
+    if (graphReady && searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen, graphReady]);
 
   /* live-jump to the first match while the query is typed */
   useEffect(() => {
-    if (searchQuery === null || q === "") return;
+    if (!graphReady || searchQuery === null || q === "") return;
     const el = containerRef.current;
     if (!el) return;
     const matches = buildMatches(nodes, visibleEdges, q);
     if (matches.length > 0) centerOnMatch(matches[0], el);
-  }, [q, searchQuery, nodes, visibleEdges]);
+  }, [q, searchQuery, nodes, visibleEdges, graphReady]);
 
   /* tell the global Escape chain the canvas owns the key while any local
    *  overlay or gesture is open (picker / search / connect / reconnect) */
@@ -1753,6 +1763,8 @@ export default function CanvasView() {
   return (
     <div
       ref={containerRef}
+      inert={!graphReady}
+      aria-busy={!graphReady}
       tabIndex={0}
       role="application"
       /* one summary instead of one tree node per card (AQV-001) */

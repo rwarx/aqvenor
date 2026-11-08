@@ -610,28 +610,35 @@ Releases are cut from `main` and driven by a tag. There is no automated versioni
 because a release is a decision and the tag is that decision made explicit.
 
 **One version, stated in three places** - `Directory.Build.props` (`<Version>`),
-`electron/package.json` (`version`), and the `v*` tag. The release workflow compares all
+`electron/package.json` (`version`, also reflected in the lockfile), and the `v*` tag. The release workflow compares all
 three and refuses to build if they disagree; a release that reports the wrong version is
 worse than no release.
 
 ```bash
-# 1. On main, with a green build
-git tag -a v0.1.0-alpha -m "First public alpha"
-git push origin v0.1.0-alpha
-
-# 2. Update CHANGELOG.md, moving [Unreleased] content under the new heading
-# 3. Watch the Release workflow; it publishes a prerelease with the installer attached
+# 1. Commit version updates, CHANGELOG.md and docs/releases/v0.3.2-alpha.md first.
+# 2. Complete tests, installer smoke and Electron acceptance on an exact commit.
+# 3. Tag that tested SHA, then push the tag (replace TESTED_SHA below).
+git tag -a v0.3.2-alpha TESTED_SHA -m "Aqvenor v0.3.2-alpha"
+git push origin v0.3.2-alpha
 ```
 
 The workflow publishes the sidecar, builds the renderer, runs `electron-builder`, and
-attaches the installer to a GitHub **prerelease** - every release so far is an alpha, and
+attaches the installer, blockmap, update manifests, checksums and source identity
+to a GitHub **prerelease** - every release so far is an alpha, and
 the `prerelease` flag is what tells GitHub to show the banner rather than presenting the
 build as stable.
 
-The release notes repeat the three things a reader must not miss: it is an alpha, the
-agent can write files and run programs, and there is no telemetry. If you cut a release
-that changes any of those, the notes template in
-[release.yml](.github/workflows/release.yml) needs rewriting.
+The release notes in `docs/releases/<tag>.md` describe the final behavior and
+validation for that version. They must state that it is an alpha, that the agent
+can write files and run programs, and that there is no telemetry. Update checks
+and downloads contact GitHub; document changes to that behavior in
+[PRIVACY.md](PRIVACY.md).
+
+The workflow refuses existing releases and verifies the remote tag still points
+to the tested build SHA before publishing its draft. Published assets and tags
+must not be replaced with another build of the same version. See
+[AUTO-UPDATES.md](docs/AUTO-UPDATES.md) for channels, asset validation and update
+installation behavior.
 
 For a local build of the installer without pushing a tag:
 

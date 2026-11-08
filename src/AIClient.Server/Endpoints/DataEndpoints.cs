@@ -175,12 +175,16 @@ public static class DataEndpoints
             Results.Ok(new { isOpen = w.IsOpen, root = w.Root }));
         g.MapPost("/workspace/open", async (OpenWorkspaceRequest req, IWorkspaceService w, GraphPersistence persist, CancellationToken ct) =>
         {
+            var saved = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            if (!saved.PrivateSaved) { return Results.Conflict(new { error = saved.Error, persistence = saved }); }
             var result = await w.OpenAsync(req.Directory, ct).ConfigureAwait(false);
             if (result.Success) { await persist.WaitForReadyAsync(ct).ConfigureAwait(false); }
             return result.Success ? Results.Ok(new { root = result.Value }) : Results.BadRequest(new { error = result.Error });
         });
         g.MapPost("/workspace/close", async (IWorkspaceService w, GraphPersistence persist, CancellationToken ct) =>
         {
+            var saved = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            if (!saved.PrivateSaved) { return Results.Conflict(new { error = saved.Error, persistence = saved }); }
             try { await w.CloseAsync(ct).ConfigureAwait(false); }
             catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
@@ -325,10 +329,31 @@ public static class DataEndpoints
         });
 
         // ----- graph -----
-        g.MapGet("/graph", async (IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        g.MapGet("/graph", async (string? expectedRoot, IWorkspaceService workspace, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
+            var pinned = workspace.AcquireLease(expectedRoot ?? workspace.Root);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
-            return Results.Ok(MapSnapshot(graph.Current));
+            return Results.Ok(MapSnapshot(graph.Current, persist, graph));
+        });
+        g.MapPost("/graph/save", async (string? expectedRoot, IWorkspaceService workspace, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
+        {
+            var pinned = workspace.AcquireLease(expectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            var status = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            return Results.Ok(new { saved = status.State == "saved", persistence = status, snapshot = MapSnapshot(graph.Current, persist, graph) });
+        });
+        g.MapPost("/graph/viewport", async (GraphViewportRequest req, IWorkspaceService workspace, GraphPersistence persist, CancellationToken ct) =>
+        {
+            var pinned = workspace.AcquireLease(req.ExpectedRoot);
+            if (!pinned.Success) { return Results.Conflict(new { error = pinned.Error }); }
+            using var lease = pinned.Value!;
+            var viewport = new GraphViewport(req.Zoom, req.PanX, req.PanY);
+            if (!viewport.IsValid) { return Results.BadRequest(new { error = "The graph viewport is invalid.", saved = false }); }
+            var status = await persist.SetViewportAsync(viewport, ct).ConfigureAwait(false);
+            return Results.Ok(new { saved = status.State == "saved", persistence = status, workspaceRoot = persist.WorkspaceRoot, viewport = persist.Viewport });
         });
         g.MapGet("/graph/timeline", (IGraphService graph) =>
             Results.Ok(graph.Timeline.Select(t => new
@@ -350,8 +375,8 @@ public static class DataEndpoints
             using var lease = pinned.Value!;
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await graph.UndoAsync(ct).ConfigureAwait(false);
-            await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
-            return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected });
+            var status = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected, saved = result.Rejected.Count == 0 && status.State == "saved", persistence = status, snapshot = MapSnapshot(graph.Current, persist, graph) });
         });
         g.MapPost("/graph/redo", async (string? expectedRoot, IWorkspaceService workspace, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
@@ -360,8 +385,8 @@ public static class DataEndpoints
             using var lease = pinned.Value!;
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await graph.RedoAsync(ct).ConfigureAwait(false);
-            await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
-            return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected });
+            var status = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            return Results.Ok(new { applied = result.Applied.Count, rejected = result.Rejected, saved = result.Rejected.Count == 0 && status.State == "saved", persistence = status, snapshot = MapSnapshot(graph.Current, persist, graph) });
         });
         g.MapPost("/graph/reindex", async (string? expectedRoot, IWorkspaceService workspace, WorkspaceGraphIndexer indexer, IGraphService graph, GraphPersistence persist, CancellationToken ct) =>
         {
@@ -370,8 +395,8 @@ public static class DataEndpoints
             using var lease = pinned.Value!;
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var result = await indexer.RebuildAsync(ct).ConfigureAwait(false);
-            await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
-            return Results.Ok(new { rejected = result.Rejected, snapshot = MapSnapshot(graph.Current) });
+            var status = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            return Results.Ok(new { rejected = result.Rejected, saved = result.Rejected.Count == 0 && status.State == "saved", persistence = status, snapshot = MapSnapshot(graph.Current, persist, graph) });
         });
         g.MapPost("/graph/apply", async (GraphApplyRequest req, IWorkspaceService workspace, IGraphService graph, GraphWriteRegistry writes, GraphPersistence persist, CancellationToken ct) =>
         {
@@ -380,12 +405,14 @@ public static class DataEndpoints
             using var lease = pinned.Value!;
             await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var changes = new List<GraphChange>();
+            if (req.Changes is null) { return Results.BadRequest(new { error = "Changes are required.", saved = false }); }
             foreach (var c in req.Changes)
             {
-                if (BuildChange(c) is { } change)
+                if (c is not null && ValidKinds(c) && BuildChange(c) is { } change)
                 {
                     changes.Add(change);
                 }
+                else { return Results.BadRequest(new { error = "An invalid graph change was refused.", saved = false, rejected = new[] { "An invalid graph change was refused." }, snapshot = MapSnapshot(graph.Current, persist, graph) }); }
             }
 
             var set = new GraphChangeSet
@@ -395,13 +422,21 @@ public static class DataEndpoints
                 Origin = GraphChangeOrigin.User,
                 Changes = changes,
             };
-            var result = await writes.ApplyAsync(req.RequestId, JsonSerializer.Serialize(req), set, graph, ct).ConfigureAwait(false);
-            await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
+            GraphMutationResult result;
+            try { result = await writes.ApplyAsync(req.RequestId, JsonSerializer.Serialize(req), set, graph, ct).ConfigureAwait(false); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message, saved = false }); }
+            if (result.Applied.Count == 0 && result.Rejected.Count > 0)
+            {
+                return Results.BadRequest(new { error = result.Rejected[0], applied = 0, rejected = result.Rejected, saved = false, persistence = persist.Status, snapshot = MapSnapshot(graph.Current, persist, graph) });
+            }
+            var status = await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             return Results.Ok(new
             {
                 applied = result.Applied.Count,
                 rejected = result.Rejected,
-                snapshot = MapSnapshot(result.Snapshot),
+                saved = result.Rejected.Count == 0 && status.State == "saved",
+                persistence = status,
+                snapshot = MapSnapshot(graph.Current, persist, graph),
             });
         });
 
@@ -537,6 +572,7 @@ public static class DataEndpoints
             if (!pinned.Success) { return Results.Conflict(new { error = "This checkpoint belongs to another workspace." }); }
             using var lease = pinned.Value!;
 
+            await persist.WaitForReadyAsync(ct).ConfigureAwait(false);
             var restored = 0;
             foreach (var (path, content) in record.Files)
             {
@@ -560,11 +596,11 @@ public static class DataEndpoints
             if (record.GraphKey is { } key)
             {
                 var snapshot = await graph.LoadAsync(key, ct).ConfigureAwait(false);
-                graphRestored = snapshot.Nodes.Count > 0 || snapshot.Edges.Count > 0;
+                graphRestored = true;
                 await persist.SaveCurrentAsync(ct).ConfigureAwait(false);
             }
 
-            return Results.Ok(new { restoredFiles = restored, graphRestored });
+            return Results.Ok(new { restoredFiles = restored, graphRestored, persistence = persist.Status });
         });
         g.MapDelete("/checkpoints/{id:guid}", async (Guid id, JsonCheckpointStore store, CancellationToken ct) =>
         {
@@ -587,21 +623,29 @@ public static class DataEndpoints
 
     private sealed record GraphNodeIn(
         string Id, string Kind, string Title, string? Subtitle, string? Detail,
-        string? Path, double X, double Y, double? Width, double? Height);
+        string? Path, double X, double Y, double? Width, double? Height, string? Status = null);
     private sealed record GraphEdgeIn(string Id, string SourceId, string TargetId, string Kind, string? Label);
     private sealed record GraphChangeIn(
         string Kind, string? NodeId, GraphNodeIn? Node, string? Title, string? Subtitle,
         string? Detail, string? NodeKind, double? X, double? Y, string? EdgeId,
-        GraphEdgeIn? Edge, string? EdgeKind, string? Label, string? Status);
+        GraphEdgeIn? Edge, string? EdgeKind, string? Label, string? Status, double? Width = null, double? Height = null, string? Path = null);
     private sealed record GraphApplyRequest(string? Title, string? Description, IReadOnlyList<GraphChangeIn> Changes, string? ExpectedRoot, Guid? RequestId);
+    private sealed record GraphViewportRequest(string? ExpectedRoot, double Zoom, double PanX, double PanY);
 
     private sealed record CheckpointCreateRequest(
         Guid ConversationId, string Label, Guid? MessageId,
         IReadOnlyList<string>? Files, bool IncludeGraph, string? ExpectedRoot);
 
-    private static object MapSnapshot(GraphSnapshot s) => new
+    private static object MapSnapshot(GraphSnapshot s, GraphPersistence? persist = null, IGraphService? graph = null) => new
     {
         version = s.Version,
+        workspaceRoot = persist?.WorkspaceRoot,
+        persistence = persist?.Status,
+        viewport = persist?.Viewport,
+        revision = persist?.Revision,
+        canUndo = graph?.CanUndo,
+        canRedo = graph?.CanRedo,
+        hasSavedGraph = persist?.HasSavedGraph,
         nodes = s.Nodes.Select(n => new
         {
             id = n.Id,
@@ -614,6 +658,7 @@ public static class DataEndpoints
             y = n.Y,
             width = n.Width,
             height = n.Height,
+            metric = n.Metric,
             status = n.Status.ToString(),
         }),
         edges = s.Edges.Select(e => new
@@ -628,7 +673,7 @@ public static class DataEndpoints
 
     private static GraphChange? BuildChange(GraphChangeIn c)
     {
-        return c.Kind.ToLowerInvariant() switch
+        return c.Kind?.ToLowerInvariant() switch
         {
             "add-node" when c.Node is { } n => new AddNode(new GraphNode
             {
@@ -640,12 +685,14 @@ public static class DataEndpoints
                 Path = n.Path,
                 X = n.X,
                 Y = n.Y,
-                Width = n.Width is > 0 ? n.Width.Value : 200,
-                Height = n.Height is > 0 ? n.Height.Value : 64,
+                Width = n.Width ?? 200,
+                Height = n.Height ?? 64,
+                Status = ParseKind<GraphNodeState>(n.Status ?? "None", GraphNodeState.None),
             }),
             "update-node" when c.NodeId is { } id => new UpdateNode(
                 id, c.Title, c.Subtitle, c.Detail,
-                c.NodeKind is { } k ? ParseKind<GraphNodeKind?>(k, null) : null),
+                c.NodeKind is { } k ? ParseKind<GraphNodeKind?>(k, null) : null,
+                c.Width, c.Height, c.Path),
             "move-node" when c.NodeId is { } id && c.X is { } x && c.Y is { } y
                 => new MoveNode(id, x, y),
             "set-node-status" when c.NodeId is { } id
@@ -672,7 +719,7 @@ public static class DataEndpoints
     {
         try
         {
-            if (Enum.TryParse(typeof(T), raw, ignoreCase: true, out var value) && value is T typed)
+            if (Enum.TryParse(Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T), raw, ignoreCase: true, out var value) && value is T typed)
             {
                 return typed;
             }
@@ -684,6 +731,17 @@ public static class DataEndpoints
 
         return fallback;
     }
+
+    private static bool ValidKinds(GraphChangeIn c) =>
+        (c.Node is null || ValidEnum<GraphNodeKind>(c.Node.Kind) && (c.Node.Status is null || ValidEnum<GraphNodeState>(c.Node.Status)))
+        && (c.Edge is null || ValidEnum<GraphEdgeKind>(c.Edge.Kind))
+        && (c.NodeKind is null || ValidEnum<GraphNodeKind>(c.NodeKind))
+        && (c.EdgeKind is null || ValidEnum<GraphEdgeKind>(c.EdgeKind))
+        && (c.Status is null || ValidEnum<GraphNodeState>(c.Status));
+
+    private static bool ValidEnum<T>(string? raw) where T : struct, Enum =>
+        !string.IsNullOrWhiteSpace(raw) && Enum.TryParse<T>(raw, true, out var value) && Enum.IsDefined(value)
+        && !int.TryParse(raw, out _);
 
     private static readonly Dictionary<string, Func<AppSettings, object>> Sections = new(StringComparer.OrdinalIgnoreCase)
     {

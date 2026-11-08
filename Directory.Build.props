@@ -16,15 +16,14 @@
 
     <!--
       One version, and it must agree with electron/package.json and with the tag on the release.
-      The prerelease suffix is what GitHub shows as a banner, and it is honest: this build ships a
-      sidecar whose newest surfaces (external file tools, the HTTP fetcher, the spatial graph) have
-      no test coverage yet. See CHANGELOG.md for what is and is not ready.
+      The prerelease suffix identifies the alpha release channel used by the Electron updater.
+      See CHANGELOG.md for the scope of each release.
     -->
-    <Version>0.3.1-alpha</Version>
-    <VersionPrefix>0.3.1</VersionPrefix>
-    <AssemblyVersion>0.3.1.0</AssemblyVersion>
-    <FileVersion>0.3.1.0</FileVersion>
-    <InformationalVersion>0.3.1-alpha</InformationalVersion>
+    <Version>0.3.2-alpha</Version>
+    <VersionPrefix>0.3.2</VersionPrefix>
+    <AssemblyVersion>0.3.2.0</AssemblyVersion>
+    <FileVersion>0.3.2.0</FileVersion>
+    <InformationalVersion>0.3.2-alpha</InformationalVersion>
   </PropertyGroup>
 
 </Project>

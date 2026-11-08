@@ -1,8 +1,15 @@
 /// <reference types="vite/client" />
 
 interface AqvenorBridge {
-  onPrepareClose: (cb: (request: string) => void) => () => void;
+  onPrepareClose: (cb: (request: string, forUpdate?: boolean) => void) => () => void;
   finishClose: (request: string, saved: boolean) => Promise<void>;
+  /** GitHub Releases updates; installation first flushes pending project writes. */
+  updates?: {
+    getState: () => Promise<import("./lib/aqvenor/updates").UpdateState>;
+    check: () => Promise<import("./lib/aqvenor/updates").UpdateState>;
+    install: () => Promise<import("./lib/aqvenor/updates").UpdateState>;
+    onChanged: (cb: (state: import("./lib/aqvenor/updates").UpdateState) => void) => () => void;
+  };
   mcpConfigure: (servers: import("./lib/aqvenor/types").McpServerConfig[]) => Promise<void>;
   getBackendUrl: () => Promise<string>;
   /**

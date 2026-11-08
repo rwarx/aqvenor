@@ -136,6 +136,8 @@ jobs:
         run: npm run build:renderer
       - name: Test renderer and shell boundaries
         run: npm test
+      - name: Test release asset validation
+        run: node --test ../scripts/collect-release-assets.test.cjs
 
       - name: Upload renderer build
         uses: actions/upload-artifact@v4

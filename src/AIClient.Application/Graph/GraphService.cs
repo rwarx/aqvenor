@@ -250,6 +250,16 @@ public sealed class GraphService : IGraphService
         var snapshot = await _store.LoadAsync(key, cancellationToken).ConfigureAwait(false)
             ?? GraphSnapshot.Empty;
 
+        return RestoreCore(snapshot);
+    }
+
+    public Task<GraphSnapshot> RestoreAsync(GraphSnapshot snapshot, CancellationToken cancellationToken = default) =>
+        SerializeAsync(() => Task.FromResult(RestoreCore(snapshot)), cancellationToken);
+
+    private GraphSnapshot RestoreCore(GraphSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
         _model.Restore(snapshot);
         _undo.Clear();
         _redo.Clear();

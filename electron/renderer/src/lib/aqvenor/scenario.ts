@@ -1046,6 +1046,7 @@ export function isDemoRequest(text: string): boolean {
 
 export function sendMessage(text: string, opts?: { sessionId?: string }) {
   const store = S();
+  if (store.updateClosing || store.workspaceSwitching) return;
   const trimmed = text.trim();
   if (!trimmed) return;
   // Pinned panels address their own chat (following upgrade aliases);
@@ -1125,6 +1126,7 @@ function approvalWaitersResolve(id: string, r: { decision: ApprovalDecision; rea
 
 export function regenerate(sessionId?: string) {
   const store = S();
+  if (store.updateClosing || store.workspaceSwitching) return;
   const session = sessionId ? store.resolveSession(sessionId) : store.currentSession();
   if (!session) return;
   const sid = session.id;

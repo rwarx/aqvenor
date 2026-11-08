@@ -22,10 +22,8 @@ import {
   runs,
   settings,
   workspace,
-  type GraphChangeInput,
   type ServerConversationDetail,
   type ServerConversationSummary,
-  type ServerGraphSnapshot,
   type ServerMessage,
   type ServerModel,
   type ServerProject,
@@ -34,19 +32,15 @@ import { isPlaceholderTitle, newId, sessionModeOf, useAqvenor } from "./store";
 import { serverCreateTitle } from "./session-titles";
 import { loadEditorDocument, mergeListedFiles, readCompleteDocument } from "./editor-documents";
 import { FileWriteQueue } from "./file-write-queue";
-import { MutationQueue } from "./mutation-queue";
+import { GraphCoordinator, type CanvasDocument } from "./graph-coordinator";
+import { hasAgentWorkInFlight, retryAgentCancellations } from "./agent-live";
 import { looksLikeImageGenModel } from "./data";
 import { tp, translate } from "./i18n";
 import type {
-  CanvasEdge,
-  CanvasNode,
-  CanvasNodeStatus,
   Checkpoint,
   DemoFile,
-  EdgeKind,
   Message,
   ModelInfo,
-  NodeKind,
   Project,
   Provider,
   ProviderState,
@@ -456,8 +450,8 @@ async function hydrateBackendState(): Promise<HydrateResult> {
   installServerActions();
   installCanvasOverrides(prev);
   void loadProjects().catch(() => undefined);
-  void syncWorkspaceFiles().catch(() => undefined);
-  void syncCanvas().catch(() => undefined);
+  installGraphSync();
+  void syncWorkspaceFiles().then(() => syncCanvas()).catch(() => undefined);
   return { ok: true, sessions: sessions.length, providers: S().providers.length };
 }
 
@@ -808,28 +802,30 @@ function installServerActions() {
     },
     restoreCheckpoint: (id: string) => {
       void (async () => {
-        assertWorkspaceIdle();
-        await flushPendingWrites();
-        if (isServerId(id)) {
-          try {
-            const res = await checkpoints.restore(id);
-            S().pushToast(
-              translate(S().ui.locale, "checkpoint.restored.title"),
-              tp(S().ui.locale, "checkpoint.restored.count", res.restoredFiles),
-            );
-            await syncWorkspaceFiles();
-            await syncCanvas();
-            return;
-          } catch (error) {
-            S().pushToast(
-              translate(S().ui.locale, "checkpoint.restoreFailed.title"),
-              error instanceof Error ? error.message : translate(S().ui.locale, "checkpoint.restoreFailed.desc"),
-              "destructive",
-            );
-            return;
+        await beginWorkspaceChange();
+        try {
+          await flushPendingWrites();
+          if (isServerId(id)) {
+            try {
+              const res = await checkpoints.restore(id);
+              S().pushToast(
+                translate(S().ui.locale, "checkpoint.restored.title"),
+                tp(S().ui.locale, "checkpoint.restored.count", res.restoredFiles),
+              );
+              await syncWorkspaceFiles();
+              await syncCanvas();
+              return;
+            } catch (error) {
+              S().pushToast(
+                translate(S().ui.locale, "checkpoint.restoreFailed.title"),
+                error instanceof Error ? error.message : translate(S().ui.locale, "checkpoint.restoreFailed.desc"),
+                "destructive",
+              );
+              return;
+            }
           }
-        }
-        S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), "Create a new checkpoint before restoring.", "destructive");
+          S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), "Create a new checkpoint before restoring.", "destructive");
+        } finally { endWorkspaceChange(); }
       })().catch((error) => S().pushToast(translate(S().ui.locale, "checkpoint.restoreFailed.title"), error instanceof Error ? error.message : String(error), "destructive"));
     },
   });
@@ -1032,12 +1028,9 @@ export async function openWorkspaceDialog(): Promise<string | null> {
  *  post-open sync. Returns the opened root, or null when there is no sidecar. */
 export async function openWorkspaceByPath(dir: string): Promise<string | null> {
   if (!serverMode || !dir) return null;
-  if (workspaceChanging) throw new Error("A project is already being opened.");
-  assertWorkspaceIdle();
-  workspaceChanging = true;
+  await beginWorkspaceChange();
   try {
     await flushPendingWrites();
-    await graphWrites.flush();
     if (Object.values(S().saveStatus).some((status) => status === "error")) {
       throw new Error("Save the pending changes before switching projects.");
     }
@@ -1046,18 +1039,31 @@ export async function openWorkspaceByPath(dir: string): Promise<string | null> {
       useAqvenor.setState({ workspaceRoot: res.root, files: [], codeTabs: [], activeCodeTab: null, saveStatus: {} });
     }
     await syncWorkspaceFiles();
-    await reindexCanvas();
+    await syncCanvas();
+    if (S().graphSync.hasSavedGraph === false) await reindexCanvas();
     return res.root;
-  } finally { workspaceChanging = false; }
+  } finally { endWorkspaceChange(); }
 }
 
 let workspaceChanging = false;
-const graphWrites = new MutationQueue<{ id: string; title: string; changes: GraphChangeInput[]; root: string | null }>(async (command) => {
-  const result = await graph.apply(command.title, command.changes, command.root, undefined, command.id);
-  if (result.rejected.length) S().pushToast("Canvas changes rejected", result.rejected.join("\n"), "destructive");
-});
+async function beginWorkspaceChange(): Promise<void> {
+  if (workspaceChanging || S().updateClosing) throw new Error("A project transition or update is already in progress.");
+  workspaceChanging = true;
+  useAqvenor.setState({ workspaceSwitching: true, graphSync: { ...S().graphSync, ready: false } });
+  try {
+    if (!await retryAgentCancellations()) throw new Error(translate(S().ui.locale, "update.cancellationFailed"));
+    assertWorkspaceIdle();
+  } catch (error) {
+    endWorkspaceChange();
+    throw error;
+  }
+}
+function endWorkspaceChange(): void {
+  workspaceChanging = false;
+  useAqvenor.setState({ workspaceSwitching: false, graphSync: { ...S().graphSync, ready: graphCoordinator.isReady } });
+}
 function assertWorkspaceIdle(): void {
-  if (Object.values(S().runningSessions).some((run) => run.status === "running" || run.status === "awaiting-approval")) {
+  if (hasAgentWorkInFlight() || Object.values(S().runningSessions).some((run) => run.status === "running" || run.status === "awaiting-approval")) {
     throw new Error("Finish or stop the current run before switching or restoring a project.");
   }
 }
@@ -1089,150 +1095,73 @@ export async function refreshOpenTabs(): Promise<void> {
 
 /* ---------------- canvas ⇄ graph ---------------- */
 
-const NODE_KINDS: NodeKind[] = [
-  "file", "folder", "module", "service", "interface", "data", "view", "test",
-  "plan", "task", "agent", "model", "external", "note",
-];
+let graphSyncInstalled = false;
+let showingGraph = false;
+const canvasDocument = (): CanvasDocument => {
+  const { nodes, edges, zoom, panX, panY } = S().canvas;
+  return { nodes, edges, viewport: { zoom, panX, panY } };
+};
+const graphCoordinator = new GraphCoordinator(graph, (doc, reset) => {
+  showingGraph = true;
+  try {
+    useAqvenor.setState((st) => {
+      const ids = new Set(doc.nodes.map((n) => n.id));
+      const edgeIds = new Set(doc.edges.map((e) => e.id));
+      return {
+        canvas: { ...st.canvas, nodes: doc.nodes, edges: doc.edges, ...doc.viewport,
+          selectedIds: reset ? [] : st.canvas.selectedIds.filter((id) => ids.has(id)),
+          primaryId: reset || !ids.has(st.canvas.primaryId ?? "") ? null : st.canvas.primaryId,
+          selectedEdgeId: reset || !edgeIds.has(st.canvas.selectedEdgeId ?? "") ? null : st.canvas.selectedEdgeId,
+          selectedEdgeIds: reset ? [] : st.canvas.selectedEdgeIds.filter((id) => edgeIds.has(id)),
+        },
+        ...(reset ? { canvasUndo: [], canvasRedo: [] } : {}),
+      };
+    });
+  } finally { showingGraph = false; }
+}, (graphSync) => useAqvenor.setState({ graphSync: { ...graphSync, ready: !workspaceChanging && graphSync.ready } }), (reasons) => {
+  S().pushToast(translate(S().ui.locale, "graphSync.rejected"), reasons.join("\n"), "destructive");
+});
 
-function toNodeKind(raw: string): NodeKind {
-  const lower = raw.toLowerCase();
-  return (NODE_KINDS as string[]).includes(lower) ? (lower as NodeKind) : "note";
-}
-
-const EDGE_KINDS: EdgeKind[] = ["contains", "depends", "calls", "implements", "relates", "plans"];
-
-function toEdgeKind(raw: string): EdgeKind {
-  const lower = raw.toLowerCase();
-  return (EDGE_KINDS as string[]).includes(lower) ? (lower as EdgeKind) : "relates";
-}
-
-const NODE_STATUSES: CanvasNodeStatus[] = ["pending", "running", "done", "failed"];
-
-// The sidecar sends GraphNodeState.ToString() — "None"/"Pending"/… ; "none" (or absent)
-// is an ordinary node and maps to no badge, so the card draws nothing for it.
-function toNodeStatus(raw: string | null | undefined): CanvasNodeStatus | undefined {
-  if (!raw) return undefined;
-  const lower = raw.toLowerCase();
-  return (NODE_STATUSES as string[]).includes(lower) ? (lower as CanvasNodeStatus) : undefined;
+function installGraphSync(): void {
+  if (graphSyncInstalled) return;
+  graphSyncInstalled = true;
+  graphCoordinator.reset(S().workspaceRoot);
+  useAqvenor.subscribe((st, prev) => {
+    if (!serverMode || showingGraph) return;
+    if (st.workspaceRoot !== prev.workspaceRoot) {
+      graphCoordinator.reset(st.workspaceRoot);
+      return;
+    }
+    const a = st.canvas, b = prev.canvas;
+    if (a.nodes !== b.nodes || a.edges !== b.edges || a.zoom !== b.zoom || a.panX !== b.panX || a.panY !== b.panY) {
+      if (workspaceChanging) {
+        showingGraph = true;
+        try { useAqvenor.setState({ canvas: prev.canvas }); }
+        finally { showingGraph = false; }
+        return;
+      }
+      graphCoordinator.edit(canvasDocument());
+    }
+  });
 }
 
 export async function syncCanvas(): Promise<void> {
-  if (!serverMode) return;
-  const root = S().workspaceRoot;
-  const snap = await graph.snapshot().catch(() => null);
-  if (!snap || S().workspaceRoot !== root) return;
-  applyGraphSnapshot(snap);
+  if (serverMode) await graphCoordinator.refresh();
 }
-
-/**
- * Re-pull the graph after the agent drew a plan (submit_plan) and frame it.
- * The sidecar's ServerCanvasPlanSink mutates the shared graph and persists it
- * before the tool-finished event fires, so GET /graph already carries the plan
- * by the time this runs — no new wire event is needed. The fit is a no-op unless
- * the canvas is mounted, so calling it from any surface is safe.
- */
+export async function retryGraphSave(): Promise<void> {
+  if (serverMode) await graphCoordinator.retry();
+}
 export async function refreshCanvasAfterPlan(): Promise<void> {
-  if (!serverMode) return;
   await syncCanvas();
   requestCanvasFit();
 }
-
-/**
- * Re-index the graph after an agent run so the canvas reflects files the agent
- * created, moved or deleted. Only runs when a workspace is open (code mode) —
- * chat/cowork have no workspace graph to rebuild. Deliberately does NOT refit
- * the viewport: the user may be looking at the canvas while the run finishes,
- * and the server preserves node positions by id, so the layout stays put and
- * only the structure changes.
- */
 export async function refreshCanvasAfterRun(): Promise<void> {
-  if (!serverMode || !S().workspaceRoot) return;
-  const root = S().workspaceRoot;
-  const res = await graph.reindex(root).catch(() => null);
-  if (S().workspaceRoot !== root) return;
-  if (res) applyGraphSnapshot(res.snapshot);
-  else await syncCanvas();
+  if (serverMode && S().workspaceRoot) await graphCoordinator.refresh((root) => graph.reindex(root));
 }
-
-/**
- * Rebuild the graph by walking the open workspace folder, then show it.
- * The server does not auto-index on open, so `graph.snapshot()` is empty for a
- * freshly opened project — this is what actually fills the canvas.
- */
 export async function reindexCanvas(): Promise<void> {
   if (!serverMode) return;
-  const root = S().workspaceRoot;
-  const res = await graph.reindex(root);
-  if (S().workspaceRoot !== root) return;
-  if (res) {
-    applyGraphSnapshot(res.snapshot);
-    requestCanvasFit();
-    return;
-  }
-  // reindex unavailable (older sidecar) — fall back to whatever snapshot exists
-  await syncCanvas();
+  await graphCoordinator.refresh((root) => graph.reindex(root));
   requestCanvasFit();
-}
-
-function applyGraphSnapshot(snap: ServerGraphSnapshot): void {
-  const nodes: CanvasNode[] = snap.nodes.map((n) => ({
-    id: n.id,
-    kind: toNodeKind(n.kind),
-    title: n.title,
-    meta: n.subtitle ?? n.path ?? undefined,
-    x: n.x,
-    y: n.y,
-    w: n.width,
-    h: n.height,
-    path: n.path ?? undefined,
-    note: n.detail ?? undefined,
-    status: toNodeStatus(n.status),
-  }));
-  const edges: CanvasEdge[] = snap.edges.map((e) => ({
-    id: e.id,
-    from: e.sourceId,
-    to: e.targetId,
-    kind: toEdgeKind(e.kind),
-    note: e.label ?? undefined,
-  }));
-  useAqvenor.setState((st) => ({
-    canvas: {
-      ...st.canvas,
-      nodes,
-      edges,
-      selectedIds: [],
-      primaryId: null,
-      selectedEdgeId: null,
-      selectedEdgeIds: [],
-    },
-  }));
-}
-
-export function pushGraphChanges(title: string, changes: GraphChangeInput[]): void {
-  if (!serverMode || changes.length === 0) return;
-  const root = S().workspaceRoot;
-  graphWrites.enqueue({ id: crypto.randomUUID(), title, changes, root });
-  void graphWrites.flush().catch((error) => S().pushToast("Canvas save failed", error instanceof Error ? error.message : String(error), "destructive"));
-}
-
-/** Push a canvas deletion (nodes + incident edges) as one server change set. */
-export function pushCanvasDeletion(nodeIds: string[], edgeIds: string[]): void {
-  if (!serverMode) return;
-  const changes: GraphChangeInput[] = [
-    ...edgeIds.map((id): GraphChangeInput => ({ kind: "remove-edge", edgeId: id })),
-    ...nodeIds.map((nodeId): GraphChangeInput => ({ kind: "remove-node", nodeId })),
-  ];
-  pushGraphChanges("Delete selection", changes);
-}
-
-/** Push current node positions (auto-layout) as move changes. */
-export function pushCanvasMoves(): void {
-  if (!serverMode) return;
-  const { nodes } = S().canvas;
-  pushGraphChanges(
-    "Arrange canvas",
-    nodes.map((n): GraphChangeInput => ({ kind: "move-node", nodeId: n.id, x: n.x, y: n.y })),
-  );
 }
 
 /**
@@ -1258,8 +1187,10 @@ const fileWrites = new FileWriteQueue(
 );
 
 export async function flushPendingWrites(): Promise<void> {
-  await fileWrites.flushAll();
-  await graphWrites.flush();
+  do {
+    await fileWrites.flushAll();
+    if (serverMode) await graphCoordinator.flush();
+  } while (fileWrites.paths().length > 0);
 }
 export const pendingWritePaths = (): string[] => fileWrites.paths();
 export async function discardFileEdits(path: string): Promise<void> {
@@ -1275,6 +1206,7 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       void loadEditorDocument(path);
     },
     setFileContent: (path: string, content: string) => {
+      if (workspaceChanging) return;
       if (serverMode && S().files.find((f) => f.path === path)?.loadState !== "loaded") return;
       // In memory immediately: the editor must never wait on a request to show a character.
       prev.setFileContent(path, content);
@@ -1289,106 +1221,15 @@ function installCanvasOverrides(prev: ReturnType<typeof useAqvenor.getState>) {
       S().markSave(path, "unsaved");
       fileWrites.enqueue({ path, content, root: S().workspaceRoot, revision: S().files.find((f) => f.path === path)?.revision ?? 0 });
     },
-    addNodes: (nodes) => {
-      prev.addNodes(nodes);
-      if (!serverMode) return;
-      pushGraphChanges(
-        "Add nodes",
-        nodes.map((n): GraphChangeInput => ({
-          kind: "add-node",
-          node: {
-            id: n.id,
-            kind: n.kind,
-            title: n.title,
-            subtitle: n.meta ?? undefined,
-            detail: n.note ?? undefined,
-            path: n.path ?? undefined,
-            x: n.x,
-            y: n.y,
-            width: n.w,
-            height: n.h,
-          },
-        })),
-      );
-    },
-    addEdges: (edges) => {
-      prev.addEdges(edges);
-      if (!serverMode) return;
-      pushGraphChanges(
-        "Add connections",
-        edges.map((e): GraphChangeInput => ({
-          kind: "add-edge",
-          edge: { id: e.id, sourceId: e.from, targetId: e.to, kind: e.kind, label: e.note ?? undefined },
-        })),
-      );
-    },
-    moveNode: (id: string, x: number, y: number, commit?: boolean) => {
-      prev.moveNode(id, x, y, commit);
-      if (!serverMode || !commit) return;
-      pushGraphChanges("Move node", [{ kind: "move-node", nodeId: id, x, y }]);
-    },
-    setNodeNote: (id: string, note: string | undefined) => {
-      prev.setNodeNote(id, note);
-      if (!serverMode) return;
-      pushGraphChanges("Edit note", [{ kind: "update-node", nodeId: id, detail: note ?? null } as GraphChangeInput]);
-    },
-    setEdgeNote: (id: string, note: string | undefined) => {
-      prev.setEdgeNote(id, note);
-      if (!serverMode) return;
-      pushGraphChanges("Edit connection label", [{ kind: "update-edge", edgeId: id, label: note ?? null } as GraphChangeInput]);
-    },
-    updateEdgeKind: (id: string, kind, opts) => {
-      prev.updateEdgeKind(id, kind, opts);
-      if (!serverMode) return;
-      pushGraphChanges("Change connection kind", [{ kind: "update-edge", edgeId: id, edgeKind: kind }]);
-    },
-    updateEdgeEndpoints: (id: string, from: string, to: string) => {
-      const before = S().canvas.edges.find((e) => e.id === id);
-      prev.updateEdgeEndpoints(id, from, to);
-      if (!serverMode) return;
-      pushGraphChanges("Reconnect edge", [
-        { kind: "remove-edge", edgeId: id },
-        {
-          kind: "add-edge",
-          edge: {
-            id,
-            sourceId: from,
-            targetId: to,
-            kind: before?.kind ?? "relates",
-            label: before?.note ?? undefined,
-          },
-        },
-      ]);
-    },
     undoCanvas: () => {
-      if (!serverMode) {
-        prev.undoCanvas();
-        return;
-      }
-      void (async () => {
-        try {
-          await graphWrites.flush();
-          await graph.undo(S().workspaceRoot);
-        } catch {
-          /* nothing to undo — stay quiet */
-        }
-        await syncCanvas().catch(() => undefined);
-      })();
+      if (!serverMode) { prev.undoCanvas(); return; }
+      void graphCoordinator.refresh((root) => graph.undo(root)).catch((error) =>
+        S().pushToast(translate(S().ui.locale, "graphSync.failed"), String(error), "destructive"));
     },
     redoCanvas: () => {
-      if (!serverMode) {
-        prev.redoCanvas();
-        return;
-      }
-      void (async () => {
-        try {
-          await graphWrites.flush();
-          await graph.redo(S().workspaceRoot);
-        } catch {
-          /* nothing to redo — stay quiet */
-        }
-        await syncCanvas().catch(() => undefined);
-      })();
+      if (!serverMode) { prev.redoCanvas(); return; }
+      void graphCoordinator.refresh((root) => graph.redo(root)).catch((error) =>
+        S().pushToast(translate(S().ui.locale, "graphSync.failed"), String(error), "destructive"));
     },
   });
 }

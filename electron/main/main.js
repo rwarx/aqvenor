@@ -12,6 +12,7 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const fs = require("node:fs");
 const { isRendererUrl, assertRendererSender } = require("./renderer-security");
+const { createUpdater, registerUpdaterIpc } = require("./updater");
 const RENDERER_ENTRY = path.join(__dirname, "..", "dist", "renderer", "index.html");
 
 const DEV_URL = process.env.AQVENOR_RENDERER_URL || "http://127.0.0.1:5173";
@@ -47,6 +48,39 @@ let backendUrl = "";
 let closeAllowed = false;
 /** @type {string | null} */
 let closeRequest = null;
+let closeForUpdate = false;
+let updateSaveApproved = false;
+const updates = createUpdater({
+  app,
+  notify: (state) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("aqvenor:updateChanged", state);
+  },
+  requestClose: () => prepareClose(true),
+  onInstallFailure: () => {
+    closeAllowed = false;
+    updateSaveApproved = false;
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setEnabled(true);
+  },
+  confirmQuit: async () => {
+    if (!mainWindow || mainWindow.isDestroyed() || !updateSaveApproved) return false;
+    closeAllowed = true;
+    return true;
+  },
+});
+
+function prepareClose(forUpdate = false) {
+  if (!mainWindow || mainWindow.isDestroyed() || closeRequest) return false;
+  if (forUpdate) {
+    updateSaveApproved = false;
+    // NSIS's --updated installer can terminate the old app itself. Freeze input
+    // before flushing so no dirty buffer can appear between save and launch.
+    mainWindow.setEnabled(false);
+  }
+  closeRequest = crypto.randomUUID();
+  closeForUpdate = forUpdate;
+  mainWindow.webContents.send("aqvenor:prepareClose", closeRequest, forUpdate);
+  return true;
+}
 /**
  * Resolved once the sidecar has started, failed, or timed out.
  *
@@ -245,6 +279,8 @@ function hardenSession() {
 function createWindow() {
   closeAllowed = false;
   closeRequest = null;
+  closeForUpdate = false;
+  updateSaveApproved = false;
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 900,
@@ -312,11 +348,13 @@ function createWindow() {
   mainWindow.on("close", (event) => {
     if (closeAllowed) return;
     event.preventDefault();
-    if (closeRequest) return;
-    closeRequest = crypto.randomUUID();
-    mainWindow?.webContents.send("aqvenor:prepareClose", closeRequest);
+    if (updates.getState().status === "installing") return;
+    prepareClose();
   });
   mainWindow.webContents.on("render-process-gone", () => {
+    updates.cancelInstall();
+    closeForUpdate = false;
+    updateSaveApproved = false;
     closeAllowed = true;
     mainWindow?.close();
   });
@@ -378,6 +416,7 @@ function registerIpc() {
     return listener(event, ...args);
   });
   const { registerMcpIpc } = require("./mcp");
+  registerUpdaterIpc({ handle }, updates);
   // Built-in MCP servers (memory / thinking / computer) + the remote-server
   // fetch proxy. Lives in the main process so the renderer's CSP never has to
   // allow arbitrary origins for external MCP endpoints.
@@ -504,10 +543,24 @@ function registerIpc() {
   handle("aqvenor:winClose", () => {
     focusedWin()?.close();
   });
-  handle("aqvenor:finishClose", (_event, request, saved) => {
+  handle("aqvenor:finishClose", async (_event, request, saved) => {
     if (!closeRequest || request !== closeRequest) return;
     closeRequest = null;
-    if (saved !== true) return;
+    const install = closeForUpdate;
+    closeForUpdate = false;
+    if (saved !== true) {
+      if (install) {
+        updateSaveApproved = false;
+        mainWindow?.setEnabled(true);
+        updates.cancelInstall();
+      }
+      return;
+    }
+    if (install) {
+      updateSaveApproved = true;
+      if (!await updates.installAfterClose()) closeAllowed = false;
+      return;
+    }
     closeAllowed = true;
     mainWindow?.close();
   });
@@ -544,6 +597,7 @@ if (!app.requestSingleInstanceLock()) {
     startSidecar();
     hardenSession();
     createWindow();
+    updates.start();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -557,6 +611,7 @@ if (!app.requestSingleInstanceLock()) {
   /* Not before-quit: before-quit fires while windows may still be alive, and killing the sidecar then
      leaves a renderer mid-request. waiting-to-quit fires once, after everything has settled. */
   app.on("will-quit", () => {
+    updates.dispose();
     stopSidecar();
   });
 }

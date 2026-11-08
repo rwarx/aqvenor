@@ -89,19 +89,22 @@ public sealed class RunRegistry
 
     public void Finish(Guid runId)
     {
+        RunEntry? entry;
         lock (_lock)
         {
-            if (_runs.Remove(runId, out var entry))
-            {
-                entry.Dispose();
-            }
+            _runs.Remove(runId, out entry);
         }
+
+        entry?.Finish();
     }
 }
 
 /// <summary>Mutable state of one streaming run.</summary>
 public sealed class RunEntry : IDisposable
 {
+    private readonly object _lifecycleLock = new();
+    private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool _disposed;
     private TaskCompletionSource<AgentApprovalDecision>? _approvalWaiter;
     private PendingApproval? _pending;
 
@@ -114,6 +117,9 @@ public sealed class RunEntry : IDisposable
     public Guid? ConversationId { get; internal set; }
 
     public CancellationTokenSource Cancellation { get; } = new();
+
+    /// <summary>Completes after the run has left its streaming handler and finished cleanup.</summary>
+    public Task Completion => _completion.Task;
 
     /// <summary>The approval currently awaiting an answer, if any.</summary>
     public PendingApproval? PendingApproval
@@ -173,9 +179,29 @@ public sealed class RunEntry : IDisposable
         }
     }
 
-    public void Cancel() => Cancellation.Cancel();
+    public void Cancel()
+    {
+        lock (_lifecycleLock)
+        {
+            if (!_disposed) { Cancellation.Cancel(); }
+        }
+    }
 
-    public void Dispose() => Cancellation.Dispose();
+    internal void Finish()
+    {
+        Dispose();
+        _completion.TrySetResult();
+    }
+
+    public void Dispose()
+    {
+        lock (_lifecycleLock)
+        {
+            if (_disposed) { return; }
+            _disposed = true;
+            Cancellation.Dispose();
+        }
+    }
 }
 
 /// <summary>One question the agent put to the user.</summary>

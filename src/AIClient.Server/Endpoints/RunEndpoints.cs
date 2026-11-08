@@ -30,7 +30,7 @@ public static class RunEndpoints
         g.MapPost("/ai/chat", QuickAskAsync);
         g.MapGet("/runs/{runId:guid}/approval", GetApproval);
         g.MapPost("/runs/{runId:guid}/approval", AnswerApprovalAsync);
-        g.MapPost("/runs/{runId:guid}/cancel", CancelRun);
+        g.MapPost("/runs/{runId:guid}/cancel", CancelRunAsync);
     }
 
     private sealed record AttachmentIn(string FileName, string? MimeType, string? TextContent);
@@ -415,14 +415,30 @@ public static class RunEndpoints
         return ok ? Results.Ok(new { answered = true }) : Results.Conflict(new { error = "No such approval is pending." });
     }
 
-    private static IResult CancelRun(Guid runId, RunRegistry runs)
+    private static async Task<IResult> CancelRunAsync(Guid runId, RunRegistry runs, CancellationToken cancellationToken)
     {
         if (runs.TryGet(runId, out var entry) && entry is not null)
         {
             entry.Cancel();
+            try
+            {
+                // Cancellation is a signal. A tool may still be unwinding a write or disposing a
+                // process, so closing the sidecar is safe only once the streaming handler exits.
+                await entry.Completion.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                return Results.Conflict(new
+                {
+                    cancelled = false,
+                    completed = false,
+                    stopping = true,
+                    error = "The run is still stopping. Retry cancellation before closing or installing an update.",
+                });
+            }
         }
 
-        return Results.Ok(new { cancelled = true });
+        return Results.Ok(new { cancelled = true, completed = true });
     }
 
     private static async Task QuickAskAsync(

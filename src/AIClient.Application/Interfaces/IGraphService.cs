@@ -94,6 +94,9 @@ public interface IGraphService
     /// before the load is a different document rather than an earlier state of this one.
     /// </remarks>
     Task<GraphSnapshot> LoadAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>Installs a complete document without requiring a successful disk write, resetting history.</summary>
+    Task<GraphSnapshot> RestoreAsync(GraphSnapshot snapshot, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

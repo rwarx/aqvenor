@@ -13,8 +13,18 @@ Versions are also published on the
 
 ## [Unreleased]
 
+## [0.3.2-alpha] — 2026-11-08
+
+### Added
+
+- Installed Electron builds check GitHub Releases and download updates. The user chooses when to restart; installation waits for pending file, graph and viewport saves.
+- Graph save status and retry appear in the status bar, including a separate diagnostic when the graph is saved locally but its project export fails.
+
 ### Fixed
 
+- Unreadable private graph and viewport files are preserved in verified sibling `.corrupt-*.json` copies before a recovery save replaces them. A failed backup keeps the original file intact.
+- All renderer graph edits share one server-backed queue, including batched dragging, alignment, deletion, notes and connections. Canonical responses preserve edits made during requests; undo, redo and refresh use the same queue.
+- The backend owns `.aqvenor/canvas.json`. Legacy portable graphs import only when no private graph exists; saved empty graphs remain empty. Workspace changes reset selection and history, and portable export detects external modifications.
 - Workspace recipes use the open folder and the correct Code or Cowork mode; busy chats, drafts, attachments and chats from another project block the launch with an explanation.
 - Large-file diffs use a bounded search instead of an unbounded quadratic table; selecting changes preserves complete contents, including very large insertions and deletions.
 - Electron reports a lost backend connection on every surface. Connection checks verify the launch token, ignore stale health responses after an exit, and allow startup hydration to retry without reloading open edits.
@@ -33,6 +43,7 @@ Versions are also published on the
 
 ### Build and documentation
 
+- Release assets include exact installer names, blockmaps, `alpha.yml`, `latest.yml`, SHA-256 checksums and source identity. Draft assets are verified before publication, and existing releases cannot be overwritten.
 - Stable .NET 10 SDK selection; renderer tests in CI and release. Release builds resolve and verify the tag's exact commit and include checksums and source identity.
 - Windows installers include the .NET runtime. A fresh-profile HTTP smoke checks authentication, full files, checkpoints, conflicts and project isolation.
 - Updated privacy storage map, development commands and desktop host capabilities. Existing message sequences are normalized before the unique-index migration.

@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Applies to Aqvenor `0.1.0-alpha` and every later build.**
-**Effective date: 4 November 2026.**
+**Effective date: 8 November 2026.**
 
 Aqvenor is free and open-source software. It runs on your own computer. It
 has no account system, no sign-up, and — this is the part that matters most —
@@ -26,7 +26,7 @@ that is only worth something if it is specific.
 | Is there an account? | No. No registration, no login, no user identifier. |
 | Is there telemetry or analytics? | **No.** See [§4](#4-what-is-never-collected). |
 | Is there a server run by this project? | **No.** Your conversation data never touches one. |
-| What leaves your machine? | Model requests, enabled network tools, Git remote operations and MCP requests you authorize. See §5. |
+| What leaves your machine? | Model requests, enabled network tools, Git remote operations, MCP requests you authorize, and GitHub update checks/downloads. See §5. |
 | Where is your data stored? | In your own user profile directory. See [§3](#3-where-data-lives). |
 | How do I delete everything? | Remove core data, Electron user data and each project's `.aqvenor` folder. See [§8](#8-deleting-your-data). |
 | How do I get my data out? | Export from the app, or copy it. See [§7](#7-exporting-your-data). |
@@ -95,6 +95,12 @@ Electron's `app.getPath("userData")` directory (usually `%APPDATA%\Aqvenor` or
 authorized). Project `.aqvenor/canvas.json` and `.aqvenor/mcp.json` are portable
 JSON files; they may be included in your repository if you commit them.
 
+The Windows Electron updater also caches installers and blockmaps under
+`%LOCALAPPDATA%\aqvenor-updater`. Its library creates a random staging identifier
+in `.updaterId` inside Electron's user-data directory. This identifier stays
+local; Aqvenor overrides the library's staging header to avoid transmitting an
+identifier unique to your installation. See §5.5.
+
 Three consequences worth stating plainly:
 
 1. **Your conversations are not encrypted at rest.** They are an ordinary SQLite
@@ -117,12 +123,12 @@ This is the section that distinguishes local-first software from software with a
 business model, so it is worth being exact:
 
 - **No telemetry, no analytics, no crash reporting, no usage metrics.** There is
-  no code in this repository that opens a connection to any address owned by the
-  project. If you want to verify this rather than trust it: search the tree for
-  the domains it talks to (§5), and read `Program.cs` in the sidecar, which is
-  where every outbound address in the product is named.
-- **No account, no identifier, no persistent user ID.** There is nothing to
-  associate one install with another.
+  no project-run reporting endpoint. Model, tool and update traffic is listed in
+  §5. To verify the implementation, read the sidecar's `Program.cs` and
+  `electron/main/updater.js`, and search the tree for the domains it contacts.
+- **No account or transmitted persistent user ID.** The updater's local staging
+  identifier is not sent to GitHub. The project does not associate installs with
+  users or with each other.
 - **No advertising, no profiling, no cross-site tracking.** Aqvenor does not use
   analytics cookies; Electron maintains ordinary local Chromium storage.
 - **No data sold or shared for anyone else's benefit.** The project receives no
@@ -199,11 +205,25 @@ delete saved facts. Memory is shared across chats and projects.
 
 ### 5.5 Update checks
 
-There are none. The application does not phone home to discover that a newer
-version exists. Releases are announced on the GitHub releases page, which you
-can visit or not.
+Starting with `0.3.2-alpha`, the packaged Windows Electron application checks the
+public `rwarx/aqvenor` GitHub release feed after startup and during long sessions.
+A newer installer downloads automatically; you choose when to restart and
+install it. Settings also provides a manual check and retry. Development builds
+and the WPF host do not make these requests.
 
-### 5.5 Complete list of network destinations
+Requests go to `github.com` and GitHub's release-asset delivery hosts, such as
+`release-assets.githubusercontent.com`. GitHub receives normal HTTP connection
+metadata, including the source IP address. Requests carry no project paths,
+files, conversations, provider keys, GitHub user token or installation-specific
+staging identifier. The updater stores a staging UUID locally, but Aqvenor
+overrides its outgoing `x-user-staging-id` header with a value common to all
+installs. Update metadata and downloads are not sent to a project-run service.
+
+See [the update documentation](docs/AUTO-UPDATES.md) and
+[GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement)
+for details.
+
+### 5.6 Complete list of network destinations
 
 For verification, these are the only hosts this codebase contacts:
 
@@ -211,11 +231,15 @@ For verification, these are the only hosts this codebase contacts:
 | --- | --- | --- |
 | `openrouter.ai` | model catalogue, chat completions | you press Send, or refresh models |
 | `integrate.api.nvidia.com` | model catalogue, chat completions | as above |
-| `github.com` | sends `HTTP-Referer: https://github.com/rwarx/aqvenor` on OpenRouter requests | you press Send (this is OpenRouter's convention for app attribution) |
+| `github.com` and GitHub release-asset delivery hosts | public release feed, update metadata and installer/blockmap downloads | packaged Windows Electron app checks automatically or you check manually |
 | `127.0.0.1:45631` | the local sidecar, spoken to by the app itself | always, on your own machine |
 
 Plus any host **you** explicitly configure as a provider, and any host the agent
 fetches when you enable and approve network access.
+
+OpenRouter requests also carry `HTTP-Referer: https://github.com/rwarx/aqvenor`
+for application attribution. That header is sent to OpenRouter; it does not
+itself contact GitHub.
 
 ---
 
@@ -274,7 +298,8 @@ request. Deleting is a file operation you control:
 2. **Everything** — quit the application, then delete `%APPDATA%\AIClient`. This
    removes the database, the encrypted keys, the logs and the attachments folder.
    Also remove Electron's user-data directory described in §3, including
-   `mcp-memory.json`, `mcp-trust.json` and Chromium storage. Remove `.aqvenor`
+   `mcp-memory.json`, `mcp-trust.json`, `.updaterId` and Chromium storage. Delete
+   `%LOCALAPPDATA%\aqvenor-updater` to remove cached installers and blockmaps. Remove `.aqvenor`
    from each project if you also want to delete portable canvas and MCP state.
    Committed copies and backups require separate deletion in their own storage.
    The application recreates an empty database on next launch; you will need to

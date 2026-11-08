@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { FolderOpen, Keyboard, Link2, Redo2, Sparkles, Undo2 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { useModel } from "@/lib/aqvenor/useModel";
 import { AqToolButton } from "@/components/aqvenor/ui";
+import { retryGraphSave } from "@/lib/aqvenor/sync";
 
 export function StatusBar() {
   const t = useT();
@@ -31,8 +33,11 @@ const selectedEdgeKind = useAqvenor((s) => {
   const setSurface = useAqvenor((s) => s.setSurface);
   const undoCanvas = useAqvenor((s) => s.undoCanvas);
   const redoCanvas = useAqvenor((s) => s.redoCanvas);
-  const canUndo = useAqvenor((s) => s.canvasUndo.length > 0);
-  const canRedo = useAqvenor((s) => s.canvasRedo.length > 0);
+  const graphSync = useAqvenor((s) => s.graphSync);
+  const switching = useAqvenor((s) => s.workspaceSwitching);
+  const [retrying, setRetrying] = useState(false);
+  const canUndo = useAqvenor((s) => s.graphSync.state === "local" ? s.canvasUndo.length > 0 : s.graphSync.ready && s.graphSync.canUndo);
+  const canRedo = useAqvenor((s) => s.graphSync.state === "local" ? s.canvasRedo.length > 0 : s.graphSync.ready && s.graphSync.canRedo);
   const setCheatsheetOpen = useAqvenor((s) => s.setCheatsheetOpen);
 
   /* real open-workspace name from the shared store.workspaceRoot (item 5 single
@@ -53,6 +58,18 @@ const selectedEdgeKind = useAqvenor((s) => {
         <FolderOpen size={11} className="shrink-0 text-fg-3" />
         <span className="truncate">{projectName}</span>
       </span>
+
+      {graphSync.state !== "local" && (
+        <span className="flex min-w-0 items-center gap-1.5 text-[11px]" title={graphSync.error ?? graphSync.portableError} role="status" aria-busy={retrying || switching}>
+          <span className={`truncate ${graphSync.state === "error" ? "text-warning" : "text-fg-3"}`}>
+            {t(switching ? "graphSync.loading" : graphSync.portableError && !graphSync.error ? "graphSync.portableError" : graphSync.state === "error" && !graphSync.ready ? "graphSync.loadError" : `graphSync.${graphSync.state}`)}
+          </span>
+          {graphSync.state === "error" && <button type="button" disabled={retrying || switching} className="aq-focus-ring shrink-0 rounded-sm px-2 py-1 text-accent hover:bg-surface-hover disabled:opacity-50" onClick={() => {
+            setRetrying(true);
+            void retryGraphSave().catch(() => {}).finally(() => setRetrying(false));
+          }}>{t("graphSync.retry")}</button>}
+        </span>
+      )}
 
       {/* Idle is silence: the corner says nothing until there is work to report. */}
       {generating && (
