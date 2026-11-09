@@ -95,7 +95,9 @@ public static class AgentPrompt
         string? workspaceRoot,
         bool canRunCommands = false,
         AgentMode mode = AgentMode.Build,
-        bool canUseExternalFiles = false)
+        bool canUseExternalFiles = false,
+        bool canDelegateTasks = false,
+        bool canUseShell = false)
     {
         var parts = new List<string>(5);
 
@@ -107,6 +109,10 @@ public static class AgentPrompt
         if (mode.IsPlanning())
         {
             parts.Add(workspaceRoot is null ? PlanningAlone : PlanningWorkspace(workspaceRoot));
+            if (canDelegateTasks && workspaceRoot is not null)
+            {
+                parts.Add(Delegation);
+            }
             parts.Add(Planning);
 
             if (mode == AgentMode.PlanCanvas)
@@ -127,6 +133,15 @@ public static class AgentPrompt
         if (canRunCommands && workspaceRoot is not null)
         {
             parts.Add(Commands);
+            if (canUseShell)
+            {
+                parts.Add(ShellCommands);
+            }
+        }
+
+        if (canDelegateTasks && workspaceRoot is not null)
+        {
+            parts.Add(Delegation);
         }
 
         if (canUseExternalFiles)
@@ -139,6 +154,23 @@ public static class AgentPrompt
 
         return string.Join("\n\n", parts);
     }
+
+    private const string Delegation = """
+        delegate_task starts a real subagent with its own conversation, the same model, project and
+        mode, and the same approval rules. Give it a complete, bounded task and relevant context;
+        it does not see this transcript. You can delegate up to three tasks, and each child gets up to
+        twelve steps. Children cannot delegate further. Read and verify their results before relying
+        on them. Delegation does not bypass a denied file change or command.
+        """;
+
+    private const string ShellCommands = """
+        The user has also enabled run_shell for explicit Windows CMD or PowerShell scripts. Use
+        run_command for a program with an argument list; use run_shell for built-ins, pipes or scripts.
+        Give the complete script in 'script' and set 'shell' to 'cmd' or 'powershell'. Every script
+        needs approval and runs with a timeout. The working directory is the project; a shell is
+        a system program, so this is not a security sandbox. Keep scripts confined to the requested
+        work, explain their purpose, and respect a denial instead of trying another execution path.
+        """;
 
     /// <summary>
     /// Added only when running programs is switched on, and it is about restraint rather than capability.

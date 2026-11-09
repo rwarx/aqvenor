@@ -6,21 +6,25 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Check,
+  ChevronDown,
   Copy,
   FolderOpen,
   Github,
   Lock,
+  Loader2,
   Monitor,
   Moon,
   RotateCcw,
   Search,
   Sun,
   Terminal,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_ZOOM_PRESETS, applyAppZoom, useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
 import { fmtDec } from "@/lib/aqvenor/format";
+import { loadSettingsWithUiPreferences, setUiPreferences } from "@/lib/aqvenor/ui-preferences";
 import {
   meta as metaApi,
   settings as settingsApi,
@@ -35,7 +39,6 @@ import {
   openWorkspaceByPath,
   saveServerSettings,
 } from "@/lib/aqvenor/sync";
-import { SKILLS } from "@/lib/aqvenor/data";
 import type { Locale, ThemeMode } from "@/lib/aqvenor/types";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -54,8 +57,8 @@ import pkg from "../../../../../package.json";
 /* ============================================================
    SETTINGS — categorized, searchable, honest.
    Every control reads and writes the same backend section; controls the
-   server refuses (the containment switches) are shown locked with live
-   values instead of editable toggles that would lie.
+   server refuses stay locked; desktop-owned command permissions use the
+   privileged host bridge and reflect its confirmed result.
    ============================================================ */
 
 const APP_VERSION: string =
@@ -124,6 +127,34 @@ const CATEGORIES: { id: CategoryId; label: string; keywords: string }[] = [
   { id: "about", label: "settings.about", keywords: "settings.nav.about.kw" },
 ];
 
+type SettingsGroup = "general" | "models" | "agent" | "workspace" | "integrations" | "updates" | "advanced";
+const GROUPS: { id: SettingsGroup; label: string; hint: string; sections: CategoryId[] }[] = [
+  { id: "general", label: "settings.nav.general", hint: "settings.group.general.hint", sections: ["general", "appearance", "interface", "language", "shortcuts"] },
+  { id: "models", label: "settings.nav.models", hint: "settings.models.hint", sections: ["models"] },
+  { id: "agent", label: "settings.agent", hint: "settings.group.agent.hint", sections: ["agent", "context"] },
+  { id: "workspace", label: "settings.workspace", hint: "settings.group.workspace.hint", sections: ["workspace"] },
+  { id: "integrations", label: "settings.group.integrations", hint: "settings.mcp.hint", sections: ["mcp"] },
+  { id: "updates", label: "update.title", hint: "settings.group.updates.hint", sections: ["updates", "about"] },
+  { id: "advanced", label: "settings.group.advanced", hint: "settings.group.advanced.hint", sections: ["permissions", "tools", "data", "diagnostics"] },
+];
+
+const SEARCH_LABELS: Partial<Record<CategoryId, string[]>> = {
+  general: ["settings.confirmDelete", "settings.autoTitles"],
+  appearance: ["settings.theme", "settings.sidebarWidth", "theme.dark", "theme.light", "theme.system"],
+  interface: ["settings.enterSend", "settings.autoscroll", "settings.appScale"],
+  language: ["language"],
+  models: ["providerStudio.apiKey", "settings.sampling", "settings.temperature", "settings.topP", "settings.maxTokens"],
+  agent: ["settings.agent.allowSubagents", "settings.maxSteps", "settings.timeLimit", "settings.maxIdentical", "settings.budgets", "settings.maxFile", "settings.maxReadChars", "settings.maxList", "settings.maxSearch", "settings.commands.timeout", "settings.commands.maxOutput", "settings.network.timeout", "settings.network.maxResponse"],
+  permissions: ["settings.commands.allow", "settings.commands.allowShell", "settings.network.allow", "settings.external.allow", "settings.commands.allowed", "settings.policy"],
+  tools: ["settings.toolsRegistry"],
+  mcp: ["mcp.connected", "mcp.builtins", "mcp.add", "mcp.builtin.memory.name", "mcp.builtin.thinking.name", "mcp.builtin.computer.name"],
+  context: ["settings.systemPrompt", "settings.autoCompact", "settings.compactAt", "settings.keepRecent", "settings.historyCap", "settings.attachments", "settings.maxAttachmentKB", "settings.maxAttachmentChars"],
+  workspace: ["settings.workspace.openFolder", "settings.indexNodes", "settings.contextShare"],
+  shortcuts: SHORTCUTS.map((shortcut) => shortcut.action),
+  data: ["settings.dataPaths", "settings.path.data", "settings.path.db", "settings.path.logs", "settings.path.attachments", "settings.logLevel", "settings.logRetention"],
+  diagnostics: ["settings.sidecarVersion", "settings.snapshot", "settings.reset"],
+};
+
 /* Sections whose controls need the sidecar; offline they show a note. */
 const SERVER_SECTIONS: CategoryId[] = [
   "models",
@@ -159,45 +190,56 @@ const clampInt = (n: number, lo: number, hi: number) =>
 
 /* ---------- small layout helpers ---------- */
 
+function Disclosure({ title, children, forceOpen = false }: { title: string; children: ReactNode; forceOpen?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <details
+      open={expanded || forceOpen}
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+      className="group rounded-md border border-line-faint bg-surface-1"
+    >
+      <summary className="aq-focus-ring flex cursor-pointer list-none items-center justify-between gap-3 rounded-md px-4 py-3 text-[13px] font-medium text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1 [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown size={14} className="shrink-0 group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="space-y-3 border-t border-line-faint p-4">{children}</div>
+    </details>
+  );
+}
+
 function Section({
   id,
   overline,
   hint,
-  highlight,
+  collapsed,
+  forceOpen,
   children,
 }: {
   id: string;
   overline: string;
   hint?: string;
-  /* white-neon flash on the heading right after a nav jump lands here */
-  highlight?: boolean;
+  collapsed?: boolean;
+  forceOpen?: boolean;
   children: ReactNode;
 }) {
-  return (
+  const content = (
     <section id={id} className="scroll-mt-2 space-y-3">
       <div>
-        <Overline
-          className={
-            highlight
-              ? "text-accent transition-all duration-500 [text-shadow:0_0_14px_var(--aq-accent-glow),0_0_3px_var(--aq-accent)]"
-              : "transition-all duration-500"
-          }
-        >
-          {overline}
-        </Overline>
+        {!collapsed && <Overline>{overline}</Overline>}
         {hint ? <p className="mt-1.5 text-[12px] leading-snug text-fg-3">{hint}</p> : null}
       </div>
       {children}
     </section>
   );
+  return collapsed ? <Disclosure title={overline} forceOpen={forceOpen}>{content}</Disclosure> : content;
 }
 
 function Row({ label, hint, children }: { label: ReactNode; hint?: string; children?: ReactNode }) {
   return (
-    <div className="py-2.5 first:pt-0 last:pb-0">
+    <div className="@container/setting-row py-2.5 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <span className="min-w-0 text-[13px] font-medium text-fg-1">{label}</span>
-        {children}
+        <span className="min-w-0 text-[13px] font-medium text-fg-1 [overflow-wrap:anywhere]">{label}</span>
+        {children && <div className="min-w-0 max-w-full [&>div]:min-w-0 [&>div]:max-w-full">{children}</div>}
       </div>
       {hint ? <p className="mt-1 text-[11.5px] leading-snug text-fg-3">{hint}</p> : null}
     </div>
@@ -228,7 +270,7 @@ function LockedRow({ label, checked, hint }: { label: string; checked: boolean; 
   return (
     <div className="py-2.5 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-fg-1">
+        <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-fg-1 [overflow-wrap:anywhere]">
           {label}
           <span title={t("settings.locked.note")} className="text-fg-3" aria-hidden>
             <Lock size={12} />
@@ -263,13 +305,13 @@ function ThemeCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "aq-focus-ring flex-1 rounded-md border p-3 text-left transition-colors duration-100",
+        "aq-focus-ring min-w-0 rounded-md border p-3 text-left transition-colors duration-100",
         selected
           ? "border-accent bg-accent-soft"
           : "border-line-faint bg-surface-1 hover:border-line hover:bg-surface-hover",
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 [&>svg]:shrink-0">
         {mode === "light" ? (
           <Sun size={14} strokeWidth={1.75} className="text-fg-2" aria-hidden />
         ) : mode === "dark" ? (
@@ -277,7 +319,7 @@ function ThemeCard({
         ) : (
           <Monitor size={14} strokeWidth={1.75} className="text-fg-2" aria-hidden />
         )}
-        <span className="text-[13px] font-medium text-fg-1">{label}</span>
+        <span className="min-w-0 text-[13px] font-medium text-fg-1 [overflow-wrap:anywhere]">{label}</span>
         {selected ? (
           <Check size={12} strokeWidth={2.25} className="ml-auto text-accent" aria-hidden />
         ) : null}
@@ -302,29 +344,22 @@ export default function SettingsView() {
 
   /* search + nav */
   const [search, setSearch] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<SettingsGroup>(() => GROUPS.find((group) => group.id === ui.settingsCategory)?.id ?? "general");
+  const contentRef = useRef<HTMLDivElement>(null);
   const query = search.trim().toLowerCase();
+  const currentGroup = GROUPS.find((group) => group.id === selectedGroup)!;
   const visible = (id: CategoryId) => {
-    if (!query) return true;
+    if (!query) return currentGroup.sections.includes(id);
     const c = CATEGORIES.find((x) => x.id === id);
-    if (!c) return true;
-    return `${t(c.label)} ${t(c.keywords)}`.toLowerCase().includes(query);
+    if (!c) return false;
+    const group = GROUPS.find((item) => item.sections.includes(id));
+    return [c.label, c.keywords, ...(group ? [group.label] : []), ...(SEARCH_LABELS[id] ?? [])].map((key) => t(key)).join(" ").toLowerCase().includes(query);
   };
   const matchCount = CATEGORIES.filter((c) => visible(c.id)).length;
-  /* white-neon flash on the jumped-to heading; cleared shortly after so the
-     glow reads as "you landed here" rather than a permanent state */
-  const [flash, setFlash] = useState<CategoryId | null>(null);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-    },
-    [],
-  );
-  const scrollTo = (id: CategoryId) => {
-    document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setFlash(id);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlash(null), 1600);
+  const selectGroup = (id: SettingsGroup) => {
+    setSelectedGroup(id);
+    setSearch("");
+    if (contentRef.current) contentRef.current.scrollTop = 0;
   };
 
   /* local state — chat/model values persist server-side, ui prefs locally */
@@ -357,9 +392,15 @@ export default function SettingsView() {
   /* data: log controls */
   const [logLevel, setLogLevel] = useState("Information");
   const [logDays, setLogDays] = useState("7");
-  /* command execution gate — DISPLAY ONLY in this surface: the sidecar
-     refuses these names over HTTP, so the desktop host owns them. */
+  /* Command gates are changed through the host, never an ordinary HTTP patch. */
   const [allowCommands, setAllowCommands] = useState(false);
+  const [allowShellCommands, setAllowShellCommands] = useState(false);
+  const [allowSubagents, setAllowSubagents] = useState(true);
+  const [permissionsBusy, setPermissionsBusy] = useState(false);
+  const permissionsPending = useRef(false);
+  const permissionsRevision = useRef(0);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const [allowedCommands, setAllowedCommands] = useState("");
   const [commandTimeout, setCommandTimeout] = useState("120");
   const [maxCmdOutput, setMaxCmdOutput] = useState("20000");
@@ -390,11 +431,12 @@ export default function SettingsView() {
   /* Apply a fetched settings tree to every local field (mount + post-reset). */
   const applySettings = (s: {
     general: Record<string, unknown>;
+    appearance?: Record<string, unknown>;
     chat: Record<string, unknown>;
     agent: Record<string, unknown>;
     storage: Record<string, unknown>;
     canvas: Record<string, unknown>;
-  }) => {
+  }, skipCommandPermissions = false) => {
     if (typeof s.chat["systemPrompt"] === "string") setSystemPrompt(s.chat["systemPrompt"] as string);
     if (typeof s.chat["temperature"] === "number") {
       setTemperature(s.chat["temperature"] as number);
@@ -425,7 +467,11 @@ export default function SettingsView() {
     if (typeof s.agent["maxSearchResults"] === "number") setMaxSearchResults(String(s.agent["maxSearchResults"]));
     if (typeof s.agent["maxReadCharacters"] === "number") setMaxReadChars(String(s.agent["maxReadCharacters"]));
     if (typeof s.agent["maxIdenticalCalls"] === "number") setMaxIdentical(String(s.agent["maxIdenticalCalls"]));
-    if (typeof s.agent["allowCommands"] === "boolean") setAllowCommands(s.agent["allowCommands"] as boolean);
+    if (!skipCommandPermissions) {
+      if (typeof s.agent["allowCommands"] === "boolean") setAllowCommands(s.agent["allowCommands"] as boolean);
+      if (typeof s.agent["allowShellCommands"] === "boolean") setAllowShellCommands(s.agent["allowShellCommands"] as boolean);
+    }
+    if (typeof s.agent["allowSubagents"] === "boolean") setAllowSubagents(s.agent["allowSubagents"] as boolean);
     if (Array.isArray(s.agent["allowedCommands"])) {
       setAllowedCommands((s.agent["allowedCommands"] as unknown[]).filter((x) => typeof x === "string").join(", "));
     }
@@ -448,8 +494,6 @@ export default function SettingsView() {
     if (typeof s.canvas["maxIndexedNodes"] === "number") setIndexNodes(String(s.canvas["maxIndexedNodes"]));
     if (typeof s.canvas["maxContextShare"] === "number")
       setContextSharePct(String(Math.round((s.canvas["maxContextShare"] as number) * 100)));
-    if (typeof s.general["autoGenerateTitles"] === "boolean")
-      setUi({ autoTitles: s.general["autoGenerateTitles"] as boolean });
   };
 
   /* server-backed settings (no-op offline) */
@@ -457,9 +501,10 @@ export default function SettingsView() {
     if (!isServerMode()) return;
     let cancelled = false;
     void (async () => {
-      const s = await loadServerSettings();
+      const initialPermissionsRevision = permissionsRevision.current;
+      const s = await loadSettingsWithUiPreferences();
       if (!s || cancelled) return;
-      applySettings(s);
+      applySettings(s, initialPermissionsRevision !== permissionsRevision.current);
       try {
         const st = await workspaceApi.status();
         if (!cancelled && st.isOpen && st.root) {
@@ -509,6 +554,8 @@ export default function SettingsView() {
         if (!ok) pushToast(t("settings.saveFailed") ?? "Save failed", undefined, "destructive");
         else if (refused.length > 0)
           pushToast(t("settings.locked.refused"), refused.join(", "), "destructive");
+        else if (section === "agent" && "allowSubagents" in body)
+          void toolsApi.list().then((tools) => { if (alive.current) setToolsList(tools); }).catch(() => undefined);
       });
     }
   };
@@ -537,6 +584,29 @@ export default function SettingsView() {
     saveTimer.current = setTimeout(flushSaves, 800);
   };
 
+  const permissionsAvailable = isServerMode() && typeof window.aqvenor?.agentPermissions === "function";
+  const requestPermissions = async (patch: { allowCommands?: boolean; allowShellCommands?: boolean }) => {
+    const change = window.aqvenor?.agentPermissions;
+    if (!permissionsAvailable || !change || permissionsPending.current) return;
+    permissionsPending.current = true;
+    setPermissionsBusy(true);
+    try {
+      const actual = await change(patch, ui.locale);
+      if (!alive.current || actual.cancelled) return;
+      if (typeof actual.allowCommands !== "boolean" && typeof actual.allowShellCommands !== "boolean") throw new Error("Command permission response was incomplete.");
+      permissionsRevision.current += 1;
+      if (typeof actual.allowCommands === "boolean") setAllowCommands(actual.allowCommands);
+      if (typeof actual.allowShellCommands === "boolean") setAllowShellCommands(actual.allowShellCommands);
+      try { const tools = await toolsApi.list(); if (alive.current) setToolsList(tools); }
+      catch { /* The accepted permission remains valid if the registry refresh fails. */ }
+    } catch {
+      if (alive.current) pushToast(t("settings.saveFailed"), undefined, "destructive");
+    } finally {
+      permissionsPending.current = false;
+      if (alive.current) setPermissionsBusy(false);
+    }
+  };
+
   const resetSection = (name: string) => {
     if (resetArmed !== name) {
       setResetArmed(name);
@@ -546,8 +616,10 @@ export default function SettingsView() {
     if (!isServerMode()) return;
     void (async () => {
       try {
-        await settingsApi.reset(name);
-        const s = await loadServerSettings();
+        const s = await loadSettingsWithUiPreferences(async () => {
+          await settingsApi.reset(name);
+          return loadServerSettings();
+        });
         if (s) applySettings(s);
         pushToast(t("settings.reset.done"));
       } catch {
@@ -566,8 +638,13 @@ export default function SettingsView() {
       }
       // Settings rows never hold secrets (keys live in DPAPI files), so the
       // snapshot is safe to paste into an issue or a doc.
-      await navigator.clipboard?.writeText(JSON.stringify(s, null, 2)).catch(() => undefined);
-      pushToast(t("settings.snapshot.copied"));
+      try {
+        if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+        await navigator.clipboard.writeText(JSON.stringify(s, null, 2));
+        pushToast(t("settings.snapshot.copied"));
+      } catch {
+        pushToast(t("settings.snapshot.copyFailed"), undefined, "destructive");
+      }
     })();
   };
 
@@ -590,17 +667,6 @@ export default function SettingsView() {
       }
     })();
   };
-  /* skill toggles are store-backed (persisted) and gate the agent's per-run
-     skill auto-selection — shared with Workflows via ui.skillsEnabled. In
-     server mode the backend has no skills pipeline yet, so they steer local
-     runs only. */
-  const skills = ui.skillsEnabled;
-  const setSkill = (id: string, on: boolean) =>
-    setUi({ skillsEnabled: { ...skills, [id]: on } });
-
-  /* live design tokens were read here for the old token showcase; the showcase
-     is gone (reference material, not settings), so there is nothing to read. */
-
   /* WPF-parity allowlist validation shown under the textarea */
   const cmdTokens = tokenizeCommands(allowedCommands);
   const cmdDropped = droppedCommandTokens(cmdTokens);
@@ -615,11 +681,12 @@ export default function SettingsView() {
   const offline = !isServerMode();
 
   return (
-    <div className="flex h-full w-full min-h-0 gap-6 overflow-hidden">
+    <div className="@container/settings h-full w-full min-h-0 min-w-0 overflow-hidden">
+    <div className="flex h-full w-full min-h-0 min-w-0 flex-col @3xl/settings:flex-row @3xl/settings:gap-6">
       {/* category nav */}
       <nav
         aria-label={t("settings.title")}
-        className="hidden w-52 shrink-0 flex-col gap-px overflow-y-auto py-6 pl-6 md:flex"
+        className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-line-faint p-4 @3xl/settings:w-52 @3xl/settings:overflow-y-auto @3xl/settings:border-b-0 @3xl/settings:py-6 @3xl/settings:pl-6 @3xl/settings:pr-0"
       >
         <div className="relative mb-3">
           <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-3" />
@@ -628,82 +695,82 @@ export default function SettingsView() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("settings.search.placeholder")}
             aria-label={t("settings.search.placeholder")}
-            className="aq-focus-ring h-8 w-full rounded-sm border border-line bg-sunken pl-8 pr-2 text-[12px] text-fg-1 outline-none placeholder:text-fg-3"
+            className="aq-focus-ring h-8 w-full min-w-0 rounded-sm border border-line bg-sunken pl-8 pr-8 text-[12px] text-fg-1 outline-none placeholder:text-fg-3"
           />
+          {search && (
+            <button type="button" onClick={() => setSearch("")} aria-label={t("settings.search.clear")} className="aq-focus-ring absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-sm text-fg-3 hover:bg-surface-hover hover:text-fg-1">
+              <X size={12} aria-hidden />
+              <span className="sr-only">{t("settings.search.clear")}</span>
+            </button>
+          )}
         </div>
-        {CATEGORIES.filter((c) => visible(c.id)).map((c) => (
+        <div className="flex flex-wrap gap-1 @3xl/settings:flex-col @3xl/settings:gap-px">
+        {GROUPS.filter((group) => !query || group.sections.some(visible)).map((group) => (
           <button
-            key={c.id}
+            key={group.id}
             type="button"
-            onClick={() => scrollTo(c.id)}
-            className="aq-focus-ring rounded-sm px-2.5 py-1.5 text-left text-[12.5px] font-medium text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1"
+            data-settings-category={group.id}
+            aria-current={!query && selectedGroup === group.id ? "page" : undefined}
+            onClick={() => selectGroup(group.id)}
+            className={cn("aq-focus-ring rounded-sm px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors", !query && selectedGroup === group.id ? "bg-accent-soft text-accent" : "text-fg-2 hover:bg-surface-hover hover:text-fg-1")}
           >
-            {t(c.label)}
+            {t(group.label)}
           </button>
         ))}
+        </div>
         {matchCount === 0 && (
           <p className="px-2.5 py-2 text-[12px] text-fg-3">{t("settings.search.empty")}</p>
         )}
       </nav>
 
       {/* content */}
-      <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[760px] space-y-8 px-6 py-6">
-          {/* search (small screens) */}
-          <div className="relative md:hidden">
-            <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-3" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("settings.search.placeholder")}
-              aria-label={t("settings.search.placeholder")}
-              className="aq-focus-ring h-8 w-full rounded-sm border border-line bg-sunken pl-8 pr-2 text-[12px] text-fg-1 outline-none placeholder:text-fg-3"
-            />
+      <div ref={contentRef} className="@container/settings-content min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[760px] space-y-8 px-4 py-6 @lg/settings-content:px-6">
+          <div>
+            <h1 className="text-[24px] font-semibold tracking-tight text-fg-1">{query ? t("settings.search.results") : t(currentGroup.label)}</h1>
+            {!query && <p className="mt-1.5 text-[12px] leading-relaxed text-fg-3">{t(currentGroup.hint)}</p>}
           </div>
           {matchCount === 0 && (
             <p className="py-8 text-center text-[13px] text-fg-3">{t("settings.search.empty")}</p>
           )}
 
           {visible("general") && (
-            <Section id="settings-general" highlight={flash === "general"} overline={t("settings.nav.general")}>
+            <Section id="settings-general" overline={t("settings.nav.general")}>
               <AqCard className="px-4 py-3">
                 <ToggleRow
                   label={t("settings.confirmDelete")}
                   checked={ui.confirmDelete}
-                  onChange={(v) => setUi({ confirmDelete: v })}
+                  onChange={(v) => { void setUiPreferences({ confirmDelete: v }); }}
                 />
                 <Divider />
                 <ToggleRow
                   label={t("settings.autoTitles")}
                   checked={ui.autoTitles}
-                  onChange={(v) => {
-                    setUi({ autoTitles: v });
-                    saveSoon("general", { autoGenerateTitles: v });
-                  }}
+                  onChange={(v) => { void setUiPreferences({ autoTitles: v }); }}
                 />
               </AqCard>
             </Section>
           )}
 
           {visible("appearance") && (
-            <Section id="settings-appearance" highlight={flash === "appearance"} overline={t("settings.appearance")} hint={t("settings.theme.hint")}>
-              <AqCard className="p-4">
+            <Section id="settings-appearance" overline={t("settings.appearance")} hint={t("settings.theme.hint")}>
+              <AqCard className="@container/theme p-4">
                 <div className="text-[13px] font-medium text-fg-1">{t("settings.theme")}</div>
-                <div className="mt-2.5 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-2.5 grid grid-cols-1 gap-3 @min-[30rem]/theme:grid-cols-3">
                   <ThemeCard
                     mode="dark"
                     selected={ui.theme === "dark"}
-                    onSelect={() => setUi({ theme: "dark" })}
+                    onSelect={() => { void setUiPreferences({ theme: "dark" }); }}
                   />
                   <ThemeCard
                     mode="light"
                     selected={ui.theme === "light"}
-                    onSelect={() => setUi({ theme: "light" })}
+                    onSelect={() => { void setUiPreferences({ theme: "light" }); }}
                   />
                   <ThemeCard
                     mode="system"
                     selected={ui.theme === "system"}
-                    onSelect={() => setUi({ theme: "system" })}
+                    onSelect={() => { void setUiPreferences({ theme: "system" }); }}
                   />
                 </div>
 
@@ -712,7 +779,7 @@ export default function SettingsView() {
                 <Row label={t("settings.sidebarWidth")}>
                   <div className="flex items-center gap-3">
                     <Slider
-                      className="w-36 sm:w-44"
+                      className="min-w-0 w-36 @min-[30rem]/setting-row:w-44"
                       min={200}
                       max={420}
                       step={2}
@@ -730,24 +797,18 @@ export default function SettingsView() {
           )}
 
           {visible("interface") && (
-            <Section id="settings-interface" highlight={flash === "interface"} overline={t("settings.interface")}>
+            <Section id="settings-interface" overline={t("settings.interface")}>
               <AqCard className="px-4 py-3">
                 <ToggleRow
                   label={t("settings.enterSend")}
                   checked={ui.enterSend}
-                  onChange={(v) => setUi({ enterSend: v })}
-                />
-                <Divider />
-                <ToggleRow
-                  label={t("settings.renderMarkdown")}
-                  checked={ui.renderMarkdown}
-                  onChange={(v) => setUi({ renderMarkdown: v })}
+                  onChange={(v) => { void setUiPreferences({ enterSend: v }); }}
                 />
                 <Divider />
                 <ToggleRow
                   label={t("settings.autoscroll")}
                   checked={ui.autoscroll}
-                  onChange={(v) => setUi({ autoscroll: v })}
+                  onChange={(v) => { void setUiPreferences({ autoscroll: v }); }}
                 />
                 <Divider />
                 <Row label={t("settings.appScale")}>
@@ -781,15 +842,15 @@ export default function SettingsView() {
           )}
 
           {visible("language") && (
-            <Section id="settings-language" highlight={flash === "language"} overline={t("settings.nav.language")}>
+            <Section id="settings-language" overline={t("settings.nav.language")}>
               <AqCard className="p-4">
                 <Row label={t("language")}>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {(Object.keys(LOCALE_LABELS) as Locale[]).map((loc) => (
                       <button
                         key={loc}
                         type="button"
-                        onClick={() => setUi({ locale: loc })}
+                        onClick={() => { void setUiPreferences({ locale: loc }); }}
                         aria-pressed={ui.locale === loc}
                         className={cn(
                           "aq-focus-ring h-7 rounded-sm border px-3 text-[12px] font-medium transition-colors duration-100",
@@ -808,10 +869,12 @@ export default function SettingsView() {
           )}
 
           {visible("models") && (
-            <Section id="settings-models" highlight={flash === "models"} overline={t("settings.nav.models")} hint={t("settings.models.hint")}>
-              <ProviderStudioLauncher />
-              <AqCard className="p-4">
-                <div className="text-[13px] font-medium text-fg-1">{t("settings.sampling")}</div>
+            <Section id="settings-models" overline={t("settings.nav.models")} hint={t("settings.models.hint")}>
+              <div className="[&>div>div:last-child]:max-w-full [&>div>div:last-child]:flex-wrap">
+                <ProviderStudioLauncher />
+              </div>
+              <Disclosure title={t("settings.sampling")} forceOpen={!!query}>
+              <AqCard className="px-4 py-3">
                 <Row label={t("settings.temperature")}>
                   <div className="flex items-center gap-3">
                     <Switch
@@ -824,7 +887,7 @@ export default function SettingsView() {
                       title={t("settings.sampling.off")}
                     />
                     <Slider
-                      className="w-36 sm:w-44"
+                      className="min-w-0 w-36 @min-[30rem]/setting-row:w-44"
                       min={0}
                       max={2}
                       step={0.1}
@@ -854,7 +917,7 @@ export default function SettingsView() {
                       title={t("settings.sampling.off")}
                     />
                     <Slider
-                      className="w-36 sm:w-44"
+                      className="min-w-0 w-36 @min-[30rem]/setting-row:w-44"
                       min={0}
                       max={1}
                       step={0.05}
@@ -901,16 +964,21 @@ export default function SettingsView() {
                   </div>
                 </Row>
               </AqCard>
+              </Disclosure>
             </Section>
           )}
 
           {visible("agent") && (
-            <Section id="settings-agent" highlight={flash === "agent"} overline={t("settings.agent")}>
+            <Section id="settings-agent" overline={t("settings.agent")}>
               <AqCard className="px-4 py-3">
+                <Row label={t("settings.agent.allowSubagents")} hint={t("settings.agent.subagentsHint")}>
+                  <Switch checked={allowSubagents} disabled={!isServerMode()} aria-label={t("settings.agent.allowSubagents")} onCheckedChange={(value) => { setAllowSubagents(value); saveSoon("agent", { allowSubagents: value }); }} />
+                </Row>
+                <Divider />
                 <Row label={t("settings.maxSteps")}>
                   <div className="flex items-center gap-3">
                     <Slider
-                      className="w-36 sm:w-44"
+                      className="min-w-0 w-36 @min-[30rem]/setting-row:w-44"
                       min={1}
                       max={100}
                       step={1}
@@ -968,11 +1036,8 @@ export default function SettingsView() {
                 </Row>
               </AqCard>
 
-              <div className="space-y-3">
-                <div>
-                  <Overline>{t("settings.budgets")}</Overline>
-                  <p className="mt-1.5 text-[12px] leading-snug text-fg-3">{t("settings.budgets.hint")}</p>
-                </div>
+              <Disclosure title={t("settings.budgets")} forceOpen={!!query}>
+                <p className="text-[12px] leading-snug text-fg-3">{t("settings.budgets.hint")}</p>
                 <AqCard className="px-4 py-3">
                   <Row label={t("settings.maxFile")}>
                     <div className="flex items-center gap-2">
@@ -1132,18 +1197,23 @@ export default function SettingsView() {
                     </div>
                   </Row>
                 </AqCard>
-              </div>
+              </Disclosure>
             </Section>
           )}
 
           {visible("permissions") && (
-            <Section id="settings-permissions" highlight={flash === "permissions"} overline={t("settings.nav.permissions")} hint={t("settings.permissions.hint")}>
+            <Section id="settings-permissions" collapsed forceOpen={!!query} overline={t("settings.nav.permissions")} hint={t("settings.permissions.hint")}>
               <AqCard className="px-4 py-3">
-                <LockedRow
-                  label={t("settings.commands.allow")}
-                  checked={allowCommands}
-                  hint={t("settings.commands.allowWarn")}
-                />
+                <Row label={t("settings.commands.allow")} hint={permissionsAvailable ? t("settings.commands.allowWarn") : t("settings.capabilitiesUnavailable")}>
+                  <span className="inline-flex items-center gap-2">
+                    {permissionsBusy && <Loader2 size={12} className="animate-spin text-fg-2" aria-hidden />}
+                    <Switch checked={allowCommands} disabled={!permissionsAvailable || permissionsBusy} aria-busy={permissionsBusy} aria-label={t("settings.commands.allow")} onCheckedChange={(value) => void requestPermissions({ allowCommands: value })} />
+                  </span>
+                </Row>
+                <Divider />
+                <Row label={t("settings.commands.allowShell")} hint={t("settings.commands.allowShellHint")}>
+                  <Switch checked={allowShellCommands} disabled={!permissionsAvailable || permissionsBusy || !allowCommands} aria-busy={permissionsBusy} aria-label={t("settings.commands.allowShell")} onCheckedChange={(value) => void requestPermissions({ allowShellCommands: value })} />
+                </Row>
                 <Divider />
                 <LockedRow
                   label={t("settings.network.allow")}
@@ -1198,13 +1268,13 @@ export default function SettingsView() {
 
               <p className="flex items-start gap-2 text-[12px] leading-snug text-fg-3">
                 <Lock size={12} className="mt-0.5 shrink-0" aria-hidden />
-                <span>{t("settings.locked.note")} {t("settings.locked.wpf")}</span>
+                <span>{t("settings.locked.note")}</span>
               </p>
             </Section>
           )}
 
           {visible("tools") && (
-            <Section id="settings-tools" highlight={flash === "tools"} overline={t("settings.nav.tools")}>
+            <Section id="settings-tools" collapsed forceOpen={!!query} overline={t("settings.toolsRegistry")}>
               <AqCard className="px-4 py-3">
                 <div className="text-[13px] font-medium text-fg-1">{t("settings.toolsRegistry")}</div>
                 {offline ? (
@@ -1231,49 +1301,22 @@ export default function SettingsView() {
                 )}
               </AqCard>
 
-              <div className="space-y-3">
-                <div>
-                  <Overline>{t("settings.skills")}</Overline>
-                  <p className="mt-1.5 text-[12px] leading-snug text-fg-3">{t("settings.skills.hint")}</p>
-                  {!offline && (
-                    <p className="mt-1.5 text-[12px] leading-snug text-fg-3">{t("settings.skills.serverNote")}</p>
-                  )}
-                </div>
-                <AqCard className="px-4 py-3">
-                  {SKILLS.map((skill, i) => (
-                    <Fragment key={skill.id}>
-                      {i > 0 && <Divider />}
-                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2.5 first:pt-0 last:pb-0">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="shrink-0 rounded-xs border border-line bg-sunken px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-fg-2">
-                            {skill.name}
-                          </span>
-                          <span className="min-w-0 truncate text-[12px] text-fg-2">
-                            {skill.description}
-                          </span>
-                        </div>
-                        <Switch
-                          checked={skills?.[skill.id] ?? skill.enabled}
-                          onCheckedChange={(v) => setSkill(skill.id, v)}
-                          aria-label={skill.name}
-                        />
-                      </div>
-                    </Fragment>
-                  ))}
-                </AqCard>
-              </div>
             </Section>
           )}
 
           {visible("mcp") && (
-            <Section id="settings-mcp" highlight={flash === "mcp"} overline={t("settings.nav.mcp")}>
+            <Section id="settings-mcp" overline={t("settings.nav.mcp")}>
               <p className="text-[12px] leading-snug text-fg-3">{t("settings.mcp.hint")}</p>
-              <McpSettings />
+              <div className="@container/integrations">
+                <div className="[&_.grid]:grid-cols-1 @xl/integrations:[&_.grid]:grid-cols-3 [&_input]:min-w-0 [&_input]:max-w-full">
+                  <McpSettings />
+                </div>
+              </div>
             </Section>
           )}
 
           {visible("context") && (
-            <Section id="settings-context" highlight={flash === "context"} overline={t("settings.nav.context")}>
+            <Section id="settings-context" overline={t("settings.nav.context")}>
               <AqCard className="p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span className="text-[13px] font-medium text-fg-1">{t("settings.systemPrompt")}</span>
@@ -1410,7 +1453,7 @@ export default function SettingsView() {
           )}
 
           {visible("workspace") && (
-            <Section id="settings-workspace" highlight={flash === "workspace"} overline={t("settings.workspace")}>
+            <Section id="settings-workspace" overline={t("settings.workspace")}>
               <AqCard className="px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2.5 first:pt-0 last:pb-0">
                   <div className="flex min-w-0 items-center gap-2.5">
@@ -1458,7 +1501,7 @@ export default function SettingsView() {
                 <Row label={t("settings.contextShare")} hint={t("settings.contextShare.hint")}>
                   <div className="flex items-center gap-3">
                     <Slider
-                      className="w-36 sm:w-44"
+                      className="min-w-0 w-36 @min-[30rem]/setting-row:w-44"
                       min={5}
                       max={100}
                       step={5}
@@ -1480,7 +1523,7 @@ export default function SettingsView() {
           )}
 
           {visible("shortcuts") && (
-            <Section id="settings-shortcuts" highlight={flash === "shortcuts"} overline={t("settings.shortcuts")} hint={t("settings.shortcuts.hint")}>
+            <Section id="settings-shortcuts" collapsed forceOpen={!!query} overline={t("settings.shortcuts")} hint={t("settings.shortcuts.hint")}>
               <AqCard className="px-4 py-3">
                 {SHORTCUTS.map((sc, i) => (
                   <Fragment key={sc.action}>
@@ -1500,14 +1543,8 @@ export default function SettingsView() {
           )}
 
           {visible("data") && (
-            <Section id="settings-data" highlight={flash === "data"} overline={t("settings.nav.data")}>
+            <Section id="settings-data" collapsed forceOpen={!!query} overline={t("settings.nav.data")}>
               <AqCard className="p-4">
-                <p className="text-[12px] leading-relaxed text-fg-2">{t("settings.about.line")}</p>
-                <p className="mt-1.5 text-[12px] leading-relaxed text-fg-3">{t("settings.durability")}</p>
-                <p className="mt-1.5 text-[12px] leading-relaxed text-fg-3">{t("settings.bundlesHint")}</p>
-
-                <Divider className="my-4" />
-
                 <div className="text-[13px] font-medium text-fg-1">{t("settings.dataPaths")}</div>
                 {offline || !metaInfo ? (
                   <p className="mt-1.5 text-[12px] leading-snug text-fg-3">{t("settings.unavailable")}</p>
@@ -1575,12 +1612,8 @@ export default function SettingsView() {
           )}
 
           {visible("diagnostics") && (
-            <Section id="settings-diagnostics" highlight={flash === "diagnostics"} overline={t("settings.nav.diagnostics")}>
+            <Section id="settings-diagnostics" collapsed forceOpen={!!query} overline={t("settings.nav.diagnostics")}>
               <AqCard className="px-4 py-3">
-                <Row label={t("settings.appVersion")}>
-                  <span className="font-mono text-[12px] text-fg-2">v{APP_VERSION}</span>
-                </Row>
-                <Divider />
                 <Row label={t("settings.sidecarVersion")}>
                   <span className="font-mono text-[12px] text-fg-2">
                     {sidecarVersion ? `v${sidecarVersion}` : offline ? t("settings.unavailable") : "…"}
@@ -1623,6 +1656,7 @@ export default function SettingsView() {
                           onClick={() => resetSection(name)}
                           disabled={offline}
                           aria-label={`${t("settings.resetOne")} — ${label}`}
+                          className="text-error hover:bg-error-soft hover:text-error"
                         >
                           <RotateCcw size={13} aria-hidden />
                           {resetArmed === name ? t("settings.reset.confirm") : t("settings.resetOne")}
@@ -1636,13 +1670,13 @@ export default function SettingsView() {
           )}
 
           {visible("updates") && (
-            <Section id="settings-updates" highlight={flash === "updates"} overline={t("update.title")}>
+            <Section id="settings-updates" overline={t("update.title")}>
               <UpdatesSettings />
             </Section>
           )}
 
           {visible("about") && (
-            <Section id="settings-about" highlight={flash === "about"} overline={t("settings.about")}>
+            <Section id="settings-about" overline={t("settings.about")}>
               <AqCard className="p-4">
                 <div className="flex items-center gap-3">
                   <span
@@ -1687,6 +1721,7 @@ export default function SettingsView() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

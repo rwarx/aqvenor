@@ -1,6 +1,9 @@
 /* English — canonical dictionary (key convention mirrors S.<Area>.<Thing>) */
 
+import { workflowCopy } from "./workflows";
+
 export const en: Record<string, string> = {
+  ...workflowCopy("en"),
   "graphSync.loading": "Loading graph…",
   "graphSync.loadError": "Graph could not be loaded",
   "graphSync.saved": "Graph saved",
@@ -487,6 +490,7 @@ export const en: Record<string, string> = {
   /* ---- opencode-style Provider Studio (item 12) ---- */
   "providerStudio.title": "Providers",
   "providerStudio.subtitle": "Connect model providers and manage API keys",
+  "providerStudio.configuredSummary": "Saved API keys: {0}. Manage keys and test connections.",
   "providerStudio.tab.manage": "Manage",
   "providerStudio.tab.connect": "Connect",
   "providerStudio.custom": "Custom",
@@ -1112,9 +1116,18 @@ export const en: Record<string, string> = {
 
   /* settings navigation + search */
   "settings.nav.general": "General",
+  "settings.group.general.hint": "Appearance, language and everyday chat preferences.",
+  "settings.group.agent.hint": "Run limits, instructions and conversation context.",
+  "settings.group.workspace.hint": "The current project and its graph index.",
+  "settings.group.integrations": "Integrations",
+  "settings.group.updates.hint": "Installed version and updates from GitHub Releases.",
+  "settings.group.advanced": "Advanced",
+  "settings.group.advanced.hint": "Access limits, local data and troubleshooting. Open only what you need.",
+  "settings.search.clear": "Clear search",
+  "settings.search.results": "Search results",
   "settings.nav.general.kw": "confirm delete titles chat session restore",
   "settings.nav.appearance.kw": "theme dark light system sidebar width",
-  "settings.nav.interface.kw": "enter markdown scroll zoom scale",
+  "settings.nav.interface.kw": "enter scroll zoom scale",
   "settings.nav.language": "Language",
   "settings.nav.language.kw": "locale russian german english translate",
   "settings.nav.models": "Models & Providers",
@@ -1122,8 +1135,8 @@ export const en: Record<string, string> = {
   "settings.nav.agent.kw": "steps time limit budget workspace folder command timeout",
   "settings.nav.permissions": "Permissions",
   "settings.nav.permissions.kw": "security allow commands network external files approval allowlist",
-  "settings.nav.tools": "Tools & Skills",
-  "settings.nav.tools.kw": "registry risk skills",
+  "settings.nav.tools": "Tool registry",
+  "settings.nav.tools.kw": "registry risk tools",
   "settings.nav.context": "Context",
   "settings.nav.context.kw": "system prompt attachments compaction history summary",
   "settings.nav.workspace.kw": "folder directory index canvas graph",
@@ -1163,8 +1176,8 @@ export const en: Record<string, string> = {
   "settings.maxSearch.unit": "results",
 
   /* permissions */
-  "settings.permissions.hint": "What the agent may reach. The four switches below are owned by the desktop host.",
-  "settings.locked.note": "Locked — the server ignores changes from this surface.",
+  "settings.permissions.hint": "Enable programs and shells with confirmation. Network access, external files and the program allowlist are read-only here.",
+  "settings.locked.note": "Managed by the application host; this shows the current value.",
   "settings.locked.wpf": "Change it in the desktop (WPF) Settings window.",
   "settings.locked.listNote": "Read-only here — the desktop host owns the list.",
   "settings.locked.refused": "The server refused part of the save — locked settings stay as they are.",
@@ -1219,6 +1232,7 @@ export const en: Record<string, string> = {
   "settings.snapshot.hint": "Every section as stored — no secrets inside, safe to paste.",
   "settings.snapshot.copy": "Copy snapshot",
   "settings.snapshot.copied": "Snapshot copied — no secrets inside.",
+  "settings.snapshot.copyFailed": "Could not copy the snapshot. Check clipboard access and try again.",
   "settings.reset": "Reset to defaults",
   "settings.reset.hint": "One section back to its shipped values. History, keys and files are untouched.",
   "settings.resetOne": "Reset",

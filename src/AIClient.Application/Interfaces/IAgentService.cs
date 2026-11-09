@@ -64,6 +64,10 @@ public sealed record AgentRunRequest
     /// that is what every caller meant before there were modes.
     /// </remarks>
     public AgentMode Mode { get; init; } = AgentMode.Build;
+
+    /// <summary>Set by the owning loop for its child; never accepted from the HTTP run request.</summary>
+    internal bool IsSubagent { get; init; }
+    internal string? SystemPromptOverride { get; init; }
 }
 
 /// <summary>Why a run stopped, when it stopped without failing.</summary>
@@ -94,6 +98,10 @@ public enum AgentStopReason
     /// which reads correctly and continues correctly - it is simply less tidy.
     /// </remarks>
     TimeLimit,
+
+    /// <summary>The provider stopped because its output-token limit was reached.</summary>
+    /// <remarks>Partial text is kept, but tool calls from the truncated turn are not executed.</remarks>
+    OutputLimit,
 }
 
 /// <summary>What became of one tool call.</summary>
@@ -201,6 +209,18 @@ public abstract record AgentEvent
         MessageDto Message,
         string? Summary,
         string? Detail) : AgentEvent;
+
+    public sealed record SubagentStarted(
+        Guid ParentMessageId, string ToolCallId, Guid ChildConversationId, string Title,
+        string Status, int Steps) : AgentEvent;
+
+    public sealed record SubagentProgress(
+        Guid ParentMessageId, string ToolCallId, Guid ChildConversationId, string Title,
+        string Status, int Steps, string Phase, string? ToolName) : AgentEvent;
+
+    public sealed record SubagentCompleted(
+        Guid ParentMessageId, string ToolCallId, Guid ChildConversationId, string Title,
+        string Status, int Steps) : AgentEvent;
 
     /// <summary>
     /// One step is over and its assistant row is committed.

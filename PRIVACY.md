@@ -152,6 +152,12 @@ Enabled inline AI and ghost text can request completions as you edit:
 - a system prompt, and sampling settings (model, temperature, token limits);
 - your provider API key, in the `Authorization` header.
 
+Delegated tasks make additional model calls using the parent's configured
+provider and model. Their task text, gathered context and tool results are sent
+to that provider; child conversations and results are stored in the same local
+SQLite database as other chats. Program and shell output can become context in
+subsequent model steps.
+
 The provider is chosen by you in Settings. This build ships two, both speaking
 the OpenAI-compatible protocol:
 
@@ -179,6 +185,15 @@ turn them on**, and both put every call in front of an approval prompt:
   text is then sent to the provider as part of the next step.
 - **External files** — lets the agent read and write files outside the folder you
   opened. Off by default. Requires approval per call.
+
+Program execution and CMD/PowerShell execution have separate permissions, both
+off by default. Electron changes them through native confirmation in
+Settings → Advanced → Permissions; running programs must be enabled before
+CMD/PowerShell can be enabled. Every shell call then shows its full script
+for approval. Scripts run with your Windows account's rights and can themselves
+access files or network resources; their initial project directory is not an OS
+sandbox. Credential-looking environment variables are removed before launch.
+Review scripts and their output before sending sensitive results to a provider.
 
 ### 5.3 Git
 

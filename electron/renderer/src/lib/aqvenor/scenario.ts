@@ -12,6 +12,7 @@ import type {
 import { engineModeFor, sessionModeOf, useAqvenor, waitForApproval, newId } from "./store";
 import { abortLiveChat, runLiveChat, runLiveSummary } from "./live";
 import { isAgentRunActive, runAgentConversation, stopAgentRun } from "./agent-live";
+import { refuseDelegatedSend } from "./delegation";
 import { isServerId, isServerMode } from "./sync";
 import { conversations } from "./backend";
 import { translate } from "./i18n";
@@ -1052,6 +1053,7 @@ export function sendMessage(text: string, opts?: { sessionId?: string }) {
   // Pinned panels address their own chat (following upgrade aliases);
   // everything else targets the current one.
   const sid = (opts?.sessionId && store.resolveSession(opts.sessionId)?.id) || store.currentSessionId;
+  if (refuseDelegatedSend(store, sid)) return;
   if (isServerMode()) {
     // Real backend, always — even for "run demo": scripted theater must never
     // impersonate the agent where a backend exists. Offline preview below is
@@ -1130,6 +1132,7 @@ export function regenerate(sessionId?: string) {
   const session = sessionId ? store.resolveSession(sessionId) : store.currentSession();
   if (!session) return;
   const sid = session.id;
+  if (refuseDelegatedSend(store, sid)) return;
   if (isAgentRunActive(sid)) return;
   if (isServerMode() && isServerId(sid)) {
     const kept = [...session.messages];

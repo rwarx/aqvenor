@@ -43,8 +43,11 @@ import type { Project, Session, Surface } from "@/lib/aqvenor/types";
 import { MODE_SURFACES } from "@/lib/aqvenor/modes";
 import { AqGhostButton, AqToolButton, Overline } from "@/components/aqvenor/ui";
 import { DOCK_SURFACE_MIME } from "./DockWorkspace";
+import pkg from "../../../../../package.json";
+import { setUiPreferences } from "@/lib/aqvenor/ui-preferences";
 import { getNodeDragIds, hasNodeDrag, setSessionDrag } from "@/lib/aqvenor/dnd";
 import { attachCanvasNodeToDraft } from "@/lib/aqvenor/attachNode";
+import { delegatedOwnerOf, refuseDelegatedSend } from "@/lib/aqvenor/delegation";
 
 /* Pin a chat beside the active panel (the dock owns the split, like
    NavItem's __aqDockSplit): focus when already pinned, else a new group
@@ -237,6 +240,7 @@ function SessionRow({
   const renameSession = useAqvenor((s) => s.renameSession);
   const setSessionPinned = useAqvenor((s) => s.setSessionPinned);
   const deleteSession = useAqvenor((s) => s.deleteSession);
+  const delegatedOwned = useAqvenor((s) => !!delegatedOwnerOf(s, session.id));
   const forkSession = useAqvenor((s) => s.forkSession);
   const confirmDelete = useAqvenor((s) => s.ui.confirmDelete);
   const unread = useAqvenor((s) => s.unread[session.id] ?? 0);
@@ -419,7 +423,10 @@ function SessionRow({
           {/* two-step delete: with confirmDelete on, the first click arms */}
           <button
             type="button"
+            disabled={delegatedOwned}
+            title={delegatedOwned ? t("agents.delegated.hint") : undefined}
             onClick={() => {
+              if (refuseDelegatedSend(useAqvenor.getState(), session.id)) return;
               if (confirmDelete && !confirmingDelete) {
                 setConfirmingDelete(true);
                 return;
@@ -428,7 +435,7 @@ function SessionRow({
               setConfirmingDelete(false);
               deleteSession(session.id);
             }}
-            className={`flex h-7 w-full items-center gap-2 rounded-xs px-2 text-[12px] transition-colors hover:bg-surface-hover ${
+            className={`flex h-7 w-full items-center gap-2 rounded-xs px-2 text-[12px] transition-colors hover:bg-surface-hover disabled:opacity-40 ${
               confirmingDelete ? "bg-error-soft font-medium text-error" : "text-error"
             }`}
           >
@@ -1059,14 +1066,14 @@ export function Sidebar() {
           <Settings size={14} />
         </AqToolButton>
         <AqToolButton
-          onClick={() => setUi({ theme: ui.theme === "dark" ? "light" : "dark" })}
+          onClick={() => void setUiPreferences({ theme: ui.theme === "dark" ? "light" : "dark" })}
           aria-label={t(`theme.${ui.theme === "dark" ? "light" : "dark"}`)}
           title={t(`theme.${ui.theme === "dark" ? "light" : "dark"}`)}
         >
           {ui.theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </AqToolButton>
         {!collapsed && (
-          <span className="ml-auto pr-1 font-mono text-[10px] text-fg-3/70">v0.9</span>
+          <span className="ml-auto pr-1 font-mono text-[10px] text-fg-3/70">v{pkg.version}</span>
         )}
       </div>
     </div>

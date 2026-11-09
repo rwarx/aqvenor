@@ -94,14 +94,14 @@ CORS, read the response. So:
   route. `/api/health` is the only anonymous route, and it is annotated.
 - **CORS is restricted** to loopback origins, the `null` origin that a `file://`
   renderer reports, and requests with no `Origin` at all.
-- **Settings that reduce containment cannot be written over HTTP.** The command
-  allowlist, the command/network/external-file switches and the workspace root are
-  refused by name on the settings route — otherwise a caller with the token could
-  turn off the guard rails and then answer its own approval prompts. The refusal is
-  explicit: the PUT response carries a `refused` list, and the Electron settings
-  surface renders those switches locked (disabled, live values) instead of editable
-  toggles — an editable toggle that the server silently ignores would be worse than
-  none. Change them in the WPF host's Settings window, which is the only writer.
+- **Ordinary settings requests cannot grant privileged access.** The program and
+  shell switches, command allowlist, network/external-file switches and workspace
+  root are refused by name on the settings route. The PUT response carries a
+  `refused` list. Electron changes program and shell permissions through a
+  sender-validated IPC handler, native confirmation and `/api/host/agent-permissions`.
+  That endpoint requires the ordinary bearer and a separate private host token,
+  which is never exposed to the renderer. Other privileged switches remain locked
+  in Electron; the WPF host can edit its supported settings directly.
 - **`/api/ai/complete` is clamped**: prompt length, system length, temperature and
   output tokens are bounded, so even a caller legitimately inside the app cannot
   spend unbounded credit through it.
@@ -154,10 +154,23 @@ The agent is the part with teeth, so this is the part worth reading twice.
   edit files in this folder", which does not change between two edits. It does not
   make sense for a path outside the folder, where a single remembered answer would
   otherwise buy the whole disk.
-- **No shell.** Programs are started directly with an argument list. `&&`, `|`,
-  `>` and `$HOME` are text the program receives, not syntax anything interprets.
-  The program must be on an allowlist a person edits, which is off by default.
-- **A child process cannot read the environment.** Variables this application owns,
+- **Direct programs and explicit shell scripts use separate permissions.**
+  `run_command` starts an allowlisted program with an argument list; shell
+  operators are ordinary arguments there. `run_shell` explicitly starts system
+  CMD or Windows PowerShell and interprets the approved script. Both permissions
+  are off by default; shell execution requires both to be enabled. Every shell
+  call requires approval showing its full script,
+  even when other writes have been approved for the run. Output is capped and
+  timeout or cancellation terminates the process tree. The starting directory
+  resolves inside the project, but scripts run with the Windows user's rights:
+  shell execution is not an OS sandbox, and scripts can access files or network
+  resources beyond the file-tool guards.
+- **Delegation inherits its parent's access policy.** Children use the captured
+  provider/model, workspace and mode and request their own write/execute approvals.
+  Each run permits at most three children and twelve steps per child, without
+  recursive delegation. Reserved child conversations reject independent runs and
+  message mutations until parent cleanup releases them. Stop cascades to children.
+- **Credential-looking environment variables are removed.** Variables this application owns,
   and anything whose name looks like a credential, are stripped before a program is
   started — because a build script that prints its environment is a log.
 - **Fetch is guarded against SSRF.** `AllowAutoRedirect` is off and each redirect

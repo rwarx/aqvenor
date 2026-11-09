@@ -100,6 +100,40 @@ public sealed class ErrorMappingTests
         Assert.Contains("No auth credentials found", error.UserMessage, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("'")]
+    [InlineData("\"")]
+    public void Provider_account_and_deployment_identifiers_are_redacted_from_the_message_and_details(string quote)
+    {
+        const string functionId = "11111111-2222-3333-4444-555555555555";
+        const string accountId = "synthetic-account-12345";
+        var detail = $"Function {quote}{functionId}{quote} Not found for account {quote}{accountId}{quote}. Refresh the catalogue.";
+        var body = System.Text.Json.JsonSerializer.Serialize(new { error = new { message = detail } });
+
+        var error = ProviderErrorMapper.FromHttpStatus(HttpStatusCode.NotFound, body, "NVIDIA", "nvidia");
+
+        Assert.Equal(AIErrorKind.NotFound, error.Kind);
+        Assert.DoesNotContain(functionId, error.UserMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(accountId, error.UserMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(functionId, error.TechnicalDetails ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(accountId, error.TechnicalDetails ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Refresh the catalogue.", error.UserMessage, StringComparison.Ordinal);
+        Assert.Contains("HTTP 404", error.TechnicalDetails!, StringComparison.Ordinal);
+        Assert.Contains("Refresh the catalogue.", error.TechnicalDetails!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Redaction_keeps_an_ordinary_function_name_and_useful_parameter_details()
+    {
+        const string detail = "Function 'search' rejected parameter 'query': expected a string.";
+        var body = System.Text.Json.JsonSerializer.Serialize(new { detail });
+
+        var error = ProviderErrorMapper.FromHttpStatus(HttpStatusCode.BadRequest, body, Provider, ProviderId);
+
+        Assert.EndsWith(detail, error.UserMessage, StringComparison.Ordinal);
+        Assert.Contains(body, error.TechnicalDetails!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Technical_details_carry_the_status_and_the_body_separately_from_the_message()
     {

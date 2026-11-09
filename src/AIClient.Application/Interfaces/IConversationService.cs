@@ -51,6 +51,9 @@ public interface IConversationService
     /// </summary>
     Task UpdateMessageAsync(MessageUpdate update, CancellationToken cancellationToken = default);
 
+    /// <summary>Finds a message's conversation without loading its transcript. Null for an unknown message.</summary>
+    Task<Guid?> GetMessageConversationIdAsync(Guid messageId, CancellationToken cancellationToken = default);
+
     Task DeleteMessageAsync(Guid messageId, CancellationToken cancellationToken = default);
 
     /// <summary>

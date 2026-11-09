@@ -134,10 +134,11 @@ L'agente esegue un ciclo di strumenti, e la sua portata è la cosa da capire pri
 
 | | |
 | --- | --- |
-| **Opera in** | Una cartella che designi, e si rifiuta di leggere o scrivere fuori da essa |
-| **Rifiutati anche, dentro quella cartella** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — per nome, sempre |
+| **Opera in** | Gli strumenti per i file sono limitati per impostazione predefinita alla cartella scelta. Per la shell viene verificata la directory di lavoro; non è una sandbox del sistema operativo e i comandi possono accedere fuori dalla cartella |
+| **Rifiutati dagli strumenti per i file** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — per nome, sempre |
 | **Chiede prima di** | Ogni scrittura, ogni file esterno, ogni richiesta di rete, ogni programma |
-| **Mai** | Eseguire una shell. `&&`, `\|`, `>` e `$HOME` sono testo che il programma riceve |
+| **Comandi diretti** | `run_command` passa gli argomenti direttamente al programma. `&&`, `\|`, `>` e `$HOME` sono testo letterale |
+| **Shell** | `run_shell` separato per CMD/PowerShell, spento per impostazione predefinita. Prima autorizza i programmi, poi attiva il permesso aggiuntivo per la shell tramite una finestra nativa; approvazione a *ogni* chiamata |
 | **Programmi** | Spenti per impostazione predefinita. Poi una allowlist che solo una persona modifica. Poi approvazione a *ogni* chiamata |
 | **Annulla** | Il tuo controllo di versione. Le modifiche vengono mostrate prima di essere fatte, non annullate dopo |
 

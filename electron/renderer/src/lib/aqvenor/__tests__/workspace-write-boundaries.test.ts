@@ -169,6 +169,9 @@ describe("workspace persistence boundaries", () => {
     container = document.createElement("div"); document.body.appendChild(container);
     mounted = createRoot(container);
     await act(async () => mounted!.render(createElement(SettingsView)));
+    const workspaceCategory = container.querySelector<HTMLButtonElement>('nav button[data-settings-category="workspace"]');
+    expect(workspaceCategory).not.toBeNull();
+    await act(async () => workspaceCategory!.click());
     await act(async () => f.useAqvenor.getState().moveNode(initialNode.id, 30, 40));
     const openFolder = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Open folder"));
     expect(openFolder).toBeDefined();

@@ -133,6 +133,18 @@ public sealed class AgentToolArguments
             ? property.GetString()
             : null;
 
+    /// <summary>Reads an optional string while rejecting a present value of the wrong type.</summary>
+    public bool TryGetOptionalString(string name, out string? value, out string? error)
+    {
+        if (!TryGetProperty(name, out var property) || property.ValueKind == JsonValueKind.Null)
+        {
+            value = null;
+            error = null;
+            return true;
+        }
+        return TryGetString(name, out value, out error, allowEmpty: true);
+    }
+
     /// <summary>Reads an optional boolean, falling back when it was not sent.</summary>
     public bool GetBoolean(string name, bool fallback = false)
     {

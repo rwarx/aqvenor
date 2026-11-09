@@ -24,7 +24,7 @@ appsettings.Local.json
 **/Logs/
 
 # ---- Build output ----
-/.tools/
+.tools/
 [Bb]in/
 [Oo]bj/
 [Dd]ebug/

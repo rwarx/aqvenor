@@ -73,6 +73,12 @@ public static class EventMapping
                 outputTokens = output,
                 calledTools,
             }),
+        AgentEvent.SubagentStarted(var parentId, var callId, var childId, var title, var status, var steps)
+            => Event("subagent-started", new { parentMessageId = parentId, toolCallId = callId, childConversationId = childId, title, status, steps }),
+        AgentEvent.SubagentProgress(var parentId, var callId, var childId, var title, var status, var steps, var phase, var tool)
+            => Event("subagent-progress", new { parentMessageId = parentId, toolCallId = callId, childConversationId = childId, title, status, steps, phase, toolName = tool }),
+        AgentEvent.SubagentCompleted(var parentId, var callId, var childId, var title, var status, var steps)
+            => Event("subagent-completed", new { parentMessageId = parentId, toolCallId = callId, childConversationId = childId, title, status, steps }),
         AgentEvent.Completed(var id, var steps, var reason, var ms)
             => Event("run-completed", new
             {

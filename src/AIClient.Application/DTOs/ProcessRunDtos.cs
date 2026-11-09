@@ -6,10 +6,14 @@ namespace AIClient.Application.DTOs;
 /// <remarks>
 /// <para>
 /// The program and its arguments are separate on purpose, and the arguments are a list rather than a
-/// line. A command line has to be parsed by somebody, and the somebody is a shell: the moment
+/// line. The ordinary program tool always uses this list. A command line has to be parsed by a shell: the moment
 /// <c>git commit -m "fix; rm -rf /"</c> becomes one string, the quoting rules of whatever interprets
 /// it decide what actually happens. A list is handed to the operating system as a list, so a semicolon
 /// is a semicolon and an argument that looks like a second command is one argument.
+/// </para>
+/// <para>
+/// The explicit shell tool uses <see cref="WindowsCommandLine"/> for CMD after its separate permission
+/// and approval gates. That field intentionally contains shell syntax, rather than argv arguments.
 /// </para>
 /// <para>
 /// <see cref="WorkingDirectory"/> is absolute and is expected to have been checked already. This is a
@@ -19,11 +23,24 @@ namespace AIClient.Application.DTOs;
 /// </remarks>
 public sealed record ProcessRunRequest
 {
-    /// <summary>The program. A bare name is looked up on PATH; a path is not accepted.</summary>
+    /// <summary>The program. A bare name uses PATH; an absolute path may be supplied by a trusted tool.</summary>
     public required string FileName { get; init; }
 
     /// <summary>The arguments, each passed through verbatim.</summary>
     public IReadOnlyList<string> Arguments { get; init; } = [];
+
+    /// <summary>
+    /// A Windows command-line suffix for an explicitly approved shell script. Mutually exclusive
+    /// with <see cref="Arguments"/>. CMD requires its own quote rules instead of argv escaping;
+    /// ordinary program tools must continue to use the structured argument list.
+    /// </summary>
+    public string? WindowsCommandLine { get; init; }
+
+    /// <summary>
+    /// Gives CMD a hidden Windows console so its UTF-8 code-page setting also applies to redirected
+    /// built-in output. The console stays hidden; ordinary programs do not create one.
+    /// </summary>
+    public bool CreateHiddenConsole { get; init; }
 
     /// <summary>Absolute path the program starts in.</summary>
     public required string WorkingDirectory { get; init; }

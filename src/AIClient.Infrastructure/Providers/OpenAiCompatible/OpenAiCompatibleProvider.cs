@@ -362,8 +362,8 @@ public abstract class OpenAiCompatibleProvider : IAIProvider
                     kind,
                     string.IsNullOrWhiteSpace(error.Message)
                         ? $"{DisplayName} reported an error while generating."
-                        : error.Message,
-                    $"type={error.Type}");
+                        : ProviderErrorMapper.SanitizeProviderText(error.Message)!,
+                    ProviderErrorMapper.SanitizeProviderText($"type={error.Type}"));
                 yield break;
             }
 

@@ -1,207 +1,168 @@
 "use client";
 
-import {
-  CircleCheck,
-  FileText,
-  FlaskConical,
-  GitCompare,
-  ListChecks,
-  Play,
-  ShieldAlert,
-  Terminal,
-  Wrench,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, FileText, FlaskConical, GitCompare, Globe, Loader2, Play, Settings2, Terminal, Users, Wrench } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
 import { useT } from "@/lib/aqvenor/useT";
-import { WORKFLOW_RECIPES, recipeBlockReason, recipeControls, runWorkflowRecipe, type WorkflowRecipe } from "@/lib/aqvenor/recipes";
-import { SKILLS } from "@/lib/aqvenor/data";
-import { AqCard, AqPrimaryButton, Overline, StatusDot } from "@/components/aqvenor/ui";
-import { Switch } from "@/components/ui/switch";
+import { tools as toolsApi } from "@/lib/aqvenor/backend";
+import { isServerMode } from "@/lib/aqvenor/sync";
+import { WORKFLOW_RECIPES, recipeBlockReason, recipeControls, recipeTarget, runWorkflowRecipe, type WorkflowRecipe } from "@/lib/aqvenor/recipes";
+import { AqGhostButton, AqPrimaryButton } from "@/components/aqvenor/ui";
+import { ModelPicker } from "../chat/ModelPicker";
+import { cn } from "@/lib/utils";
 
-/* ============================================================
-   WORKFLOWS — automation hub: runnable recipes, the skills
-   library, and how agent runs work. One click sets the agent
-   mode, sends the recipe prompt and follows the run in Chat.
-   ============================================================ */
-
-const RECIPE_ICONS: Record<WorkflowRecipe["id"], React.ElementType> = {
-  "fix-test": FlaskConical,
-  "draft-readme": FileText,
-  "refactor-service": Wrench,
-  "review-changes": GitCompare,
+const ICONS: Record<WorkflowRecipe["id"], React.ElementType> = {
+  "fix-test": FlaskConical, "draft-readme": FileText, "refactor-service": Wrench,
+  "review-changes": GitCompare, landing: Globe, "delegate-review": Users, "shell-check": Terminal,
 };
 
-const RUN_STEPS: { icon: React.ElementType; titleKey: string; captionKey: string }[] = [
-  { icon: ListChecks, titleKey: "workflows.runs.s1.title", captionKey: "workflows.runs.s1.caption" },
-  { icon: Terminal, titleKey: "workflows.runs.s2.title", captionKey: "workflows.runs.s2.caption" },
-  { icon: ShieldAlert, titleKey: "workflows.runs.s3.title", captionKey: "workflows.runs.s3.caption" },
-  { icon: CircleCheck, titleKey: "workflows.runs.s4.title", captionKey: "workflows.runs.s4.caption" },
-];
-
-function RecipeCard({ recipe }: { recipe: WorkflowRecipe }) {
-  const t = useT();
-  const blocked = useAqvenor((state) => recipeBlockReason(recipe, state));
-  const Icon = RECIPE_ICONS[recipe.id];
-  const { workMode, workMethod } = recipeControls(recipe);
-  const blockedDescription = blocked ? t(`workflows.${blocked}.description`) : undefined;
-  return (
-    <AqCard as="article" className="flex flex-col p-4 transition-colors duration-100 hover:border-line">
-      <header className="flex items-start gap-2.5">
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-line bg-surface-hover text-fg-2"
-          aria-hidden
-        >
-          <Icon size={15} />
-        </span>
-        <div className="min-w-0">
-          <h3 className="text-[13.5px] font-semibold leading-tight text-fg-1">{t(recipe.nameKey)}</h3>
-          <p className="mt-1 text-[12px] leading-[1.45] text-fg-2">{t(recipe.descKey)}</p>
-        </div>
-      </header>
-
-      <div className="mt-3 flex flex-wrap gap-1">
-        {recipe.stepKeys.map((key, i) => (
-          <span
-            key={key}
-            className="inline-flex items-baseline gap-1 rounded-full border border-line-faint bg-sunken px-2 py-0.5"
-          >
-            <span className="font-mono text-[10px] leading-none text-fg-3">{i + 1}</span>
-            <span className="text-[11px] leading-[1.2] text-fg-2">{t(key)}</span>
-          </span>
-        ))}
-      </div>
-
-      {blocked && (
-        <p id={`recipe-${recipe.id}-blocked`} className="mt-3 text-[11px] leading-[1.45] text-fg-3">
-          {blockedDescription}
-        </p>
-      )}
-      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line-faint pt-3">
-        <span className="font-mono text-[10.5px] text-fg-3">
-          {t("workflows.modeBadge", `${t(`work.mode.${workMode}`)} · ${t(`work.method.${workMethod}`)}`)}
-        </span>
-        <AqPrimaryButton
-          onClick={() => runWorkflowRecipe(recipe)}
-          disabled={blocked !== null}
-          title={blockedDescription}
-          aria-describedby={blocked ? `recipe-${recipe.id}-blocked` : undefined}
-        >
-          <Play size={12} />
-          {t("workflows.run")}
-        </AqPrimaryButton>
-      </footer>
-    </AqCard>
-  );
-}
-
-function SkillsLibrary() {
-  const t = useT();
-  /* skill toggles are store-backed (persisted) so the choice actually gates
-     the agent's per-run skill auto-selection — see scenario.selectSkillsForRun.
-     Shared with the Settings → Agent skills list via ui.skillsEnabled. */
-  const skillsEnabled = useAqvenor((s) => s.ui.skillsEnabled);
-  const setUi = useAqvenor((s) => s.setUi);
-  const setSkill = (id: string, on: boolean) =>
-    setUi({ skillsEnabled: { ...skillsEnabled, [id]: on } });
-  return (
-    <section aria-label={t("workflows.skills.overline")} className="animate-rise">
-      <div className="mb-2.5 flex items-center gap-2.5">
-        <Overline>{t("workflows.skills.overline")}</Overline>
-        <span className="rounded-full border border-line bg-sunken px-1.5 py-px font-mono text-[10px] leading-none text-fg-3">
-          {SKILLS.length}
-        </span>
-      </div>
-      <p className="mb-2.5 text-[11.5px] text-fg-3">{t("workflows.skills.hint")}</p>
-      <AqCard>
-        <ul className="divide-y divide-line-faint">
-          {SKILLS.map((skill) => (
-            <li key={skill.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5">
-              <span className="shrink-0 rounded-sm border border-line-faint bg-sunken px-1.5 py-0.5 font-mono text-[11px] leading-none text-fg-1">
-                {skill.name}
-              </span>
-              <span className="min-w-0 flex-1 text-[12px] leading-[1.45] text-fg-2">{skill.description}</span>
-              <Switch
-                checked={skillsEnabled?.[skill.id] ?? skill.enabled}
-                onCheckedChange={(v) => setSkill(skill.id, v)}
-                aria-label={skill.name}
-              />
-            </li>
-          ))}
-        </ul>
-      </AqCard>
-    </section>
-  );
-}
-
-function RunsStrip() {
-  const t = useT();
-  return (
-    <section aria-label={t("workflows.runs.title")} className="animate-rise">
-      <Overline>{t("workflows.runs.title")}</Overline>
-      <div className="mt-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-4">
-        {RUN_STEPS.map((step, i) => {
-          const Icon = step.icon;
-          return (
-            <AqCard key={step.titleKey} className="p-3">
-              <div className="flex items-center justify-between">
-                <Icon size={16} className="text-fg-3" aria-hidden />
-                <span className="font-mono text-[10px] leading-none text-fg-3">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              </div>
-              <p className="mt-2 text-[11px] leading-[1.45] text-fg-2">
-                <span className="font-medium text-fg-1">{t(step.titleKey)}</span>
-                <span aria-hidden> — </span>
-                {t(step.captionKey)}
-              </p>
-            </AqCard>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
+const CAPABILITIES = ["delegate_task", "run_command", "run_shell"] as const;
 
 export default function WorkflowsView() {
   const t = useT();
-  const runner = useAqvenor((s) => s.runner);
+  const state = useAqvenor();
+  const [toolNames, setToolNames] = useState<string[] | null>(null);
+  const [toolError, setToolError] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const modelTrigger = useRef<HTMLButtonElement>(null);
+  const pickerDialog = useRef<HTMLDivElement>(null);
+  const offline = !isServerMode() || state.backendReachable === false;
+  const selected = WORKFLOW_RECIPES.find((item) => item.id === state.ui.selectedWorkflow) ?? WORKFLOW_RECIPES[0];
+  const { workMode, workMethod } = recipeControls(selected);
+  const target = recipeTarget(selected, state);
+  const modelId = target?.modelId ?? state.ui.selectedModelId;
+  const model = state.providers.flatMap((provider) => provider.models).find((item) => item.id === modelId);
+  const defaultBrief = t(selected.promptKey, state.workspaceRoot ?? "");
+  const editedBrief = state.ui.workflowBriefs?.[selected.id];
+  const brief = editedBrief ?? defaultBrief;
+  const options = { brief, availableTools: toolNames ?? [] };
+  const blocked = recipeBlockReason(selected, state, options);
+  const running = target ? state.sessionRunnerOf(target.id) : { status: "idle" as const };
+  const busy = running.status === "running" || running.status === "awaiting-approval";
+  const recent = state.sessions.filter((session) => session.messages.some((message) => message.live) && session.events.some((event) => event.kind === "request"))
+    .sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4);
 
-  const busy = runner.status === "running" || runner.status === "awaiting-approval";
+  useEffect(() => {
+    let cancelled = false;
+    setToolNames(null);
+    setToolError(false);
+    if (!isServerMode() || state.backendReachable === false) { setToolNames([]); return; }
+    void toolsApi.list().then((tools) => {
+      if (!cancelled) setToolNames(tools.map((tool) => tool.name));
+    }).catch(() => { if (!cancelled) setToolError(true); });
+    return () => { cancelled = true; };
+  }, [state.backendReachable]);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const trigger = modelTrigger.current;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const dialog = pickerDialog.current;
+      if (!dialog) return;
+      const controls = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')];
+      const first = controls[0]; const last = controls.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
+  }, [pickerOpen]);
+
+  function configureTools() {
+    state.setUi({ settingsCategory: "advanced" });
+    state.setSurface("settings");
+  }
 
   return (
-    <div className="h-full w-full overflow-y-auto">
-      <div className="mx-auto w-full max-w-[940px] space-y-6 px-4 py-4 sm:px-6 sm:py-5">
-        <header>
-          <Overline>{t("workflows.overline")}</Overline>
-          <h1 className="mt-1 text-[18px] font-semibold leading-tight text-fg-1">{t("workflows.title")}</h1>
-          <p className="mt-1 max-w-2xl text-[12.5px] leading-[1.5] text-fg-2">{t("workflows.subtitle")}</p>
+    <div className="@container/workflows h-full min-w-0 overflow-y-auto">
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 @lg/workflows:px-6">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-[30px] font-semibold leading-tight tracking-tight text-fg-1">{t("workflows.title")}</h1>
+            <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-fg-2">{t("workflows.builder.subtitle")}</p>
+          </div>
+          <AqGhostButton onClick={configureTools}><Settings2 size={14} aria-hidden />{t("workflows.builder.configure")}</AqGhostButton>
         </header>
 
-        {/* Section A — workflow recipes */}
-        <section aria-label={t("workflows.recipes.overline")} className="animate-rise">
-          <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
-            <Overline>{t("workflows.recipes.overline")}</Overline>
-            {busy && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning-soft px-2 py-0.5 font-mono text-[10.5px] text-warning">
-                <StatusDot color="warning" pulse size={6} />
-                {t("workflows.busy.title")}
-              </span>
-            )}
-          </div>
-          <p className="mb-2.5 text-[11.5px] text-fg-3">{t("workflows.recipes.hint")}</p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {WORKFLOW_RECIPES.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
+        <div className="grid min-w-0 gap-5 @3xl/workflows:grid-cols-[220px_minmax(0,1fr)]">
+          <nav aria-label={t("workflows.builder.choose")} className="min-w-0">
+            <h2 className="mb-2 text-[12px] font-medium text-fg-3">{t("workflows.builder.choose")}</h2>
+            <div className="grid min-w-0 gap-1 @lg/workflows:grid-cols-2 @3xl/workflows:grid-cols-1">
+              {WORKFLOW_RECIPES.map((recipe) => {
+                const Icon = ICONS[recipe.id];
+                return <button key={recipe.id} type="button" data-workflow-id={recipe.id}
+                  aria-pressed={selected.id === recipe.id}
+                  onClick={() => { state.setUi({ selectedWorkflow: recipe.id }); setPickerOpen(false); }}
+                  className={cn("aq-focus-ring flex min-w-0 items-start gap-2 rounded-md border px-3 py-3 text-left text-[12px] leading-snug transition-colors hover:bg-surface-hover active:bg-sunken", selected.id === recipe.id ? "border-accent-border bg-accent-soft text-fg-1" : "border-transparent text-fg-2")}>
+                  <Icon size={15} className="mt-px shrink-0" aria-hidden /><span className="min-w-0 break-words">{t(recipe.nameKey)}</span>
+                </button>;
+              })}
+            </div>
+          </nav>
+
+          <section className="min-w-0 rounded-lg border border-line-faint bg-surface-2 p-4 @lg/workflows:p-5" aria-label={t(selected.nameKey)}>
+            <h2 className="text-[18px] font-semibold text-fg-1">{t(selected.nameKey)}</h2>
+            <p className="mt-2 text-[12px] leading-relaxed text-fg-2">{t(selected.descKey)}</p>
+            <ol className="my-4 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-fg-3">
+              {selected.stepKeys.map((key, i) => <li key={key} className="flex items-center gap-1.5"><span className="text-fg-2">{i + 1}.</span>{t(key)}</li>)}
+            </ol>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="workflow-brief" className="text-[12px] font-medium text-fg-1">{t("workflows.builder.brief")}</label>
+              {editedBrief !== undefined && <AqGhostButton onClick={() => {
+                const next = { ...state.ui.workflowBriefs }; delete next[selected.id]; state.setUi({ workflowBriefs: next });
+              }}>{t("workflows.builder.reset")}</AqGhostButton>}
+            </div>
+            <textarea id="workflow-brief" aria-label={t("workflows.builder.brief")} aria-invalid={!brief.trim()}
+              value={brief} rows={7} onInput={(event) => state.setUi({ workflowBriefs: { ...state.ui.workflowBriefs, [selected.id]: event.currentTarget.value } })}
+              onChange={() => undefined}
+              className="aq-focus-ring mt-2 block w-full min-w-0 resize-y rounded-md border border-line bg-sunken p-3 text-[12px] leading-relaxed text-fg-1 placeholder:text-fg-3" />
+            <dl className="mt-4 grid min-w-0 gap-3 text-[11px] @lg/workflows:grid-cols-2">
+              <div className="min-w-0"><dt className="text-fg-3">{t("workflows.builder.workspace")}</dt><dd className="mt-1 break-all text-fg-2">{state.workspaceRoot || t("workflows.workspace.title")}</dd></div>
+              <div className="min-w-0"><dt className="text-fg-3">{t("workflows.builder.model")}</dt><dd className="mt-1"><button ref={modelTrigger} type="button" title={model?.name ?? modelId} className="aq-focus-ring block max-w-full truncate rounded-sm text-left text-fg-1 underline decoration-line underline-offset-4 hover:text-accent" onClick={() => setPickerOpen(true)}>{model?.name ?? modelId ?? t("picker.filterPlaceholder")}</button></dd></div>
+              <div><dt className="text-fg-3">{t("workflows.builder.method")}</dt><dd className="mt-1 text-fg-2">{t(`work.mode.${workMode}`)} / {t(`work.method.${workMethod}`)}</dd></div>
+              <div><dt className="text-fg-3">{t("workflows.builder.result")}</dt><dd className="mt-1 text-fg-2">{t("workflows.builder.resultHint")}</dd></div>
+            </dl>
+            <footer className="mt-5 border-t border-line-faint pt-4">
+              {blocked && <p role="status" id={`recipe-${selected.id}-blocked`} className="mb-3 text-[12px] leading-relaxed text-fg-2">{t(`workflows.${blocked}.description`)}</p>}
+              <AqPrimaryButton data-workflow-run className="h-9 justify-center" disabled={blocked !== null} aria-busy={busy}
+                aria-describedby={blocked ? `recipe-${selected.id}-blocked` : undefined}
+                onClick={() => runWorkflowRecipe(selected, editedBrief === undefined ? { availableTools: toolNames ?? [] } : options)}>
+                {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Play size={14} aria-hidden />}{busy ? t("workflows.busy.title") : t("workflows.run")}
+              </AqPrimaryButton>
+              <p className="mt-2 text-[11px] leading-relaxed text-fg-3">{t("workflows.builder.launchHint")}</p>
+            </footer>
+          </section>
+        </div>
+
+        <section className="border-t border-line-faint pt-4" aria-label={t("workflows.builder.capabilities")}>
+          <h2 className="text-[13px] font-medium text-fg-1">{t("workflows.builder.capabilities")}</h2>
+          <p className="mt-1 text-[11px] leading-relaxed text-fg-3">{t("workflows.builder.capabilitiesHint")}</p>
+          <ul className="mt-3 grid min-w-0 gap-2 @lg/workflows:grid-cols-3">
+            {CAPABILITIES.map((name) => <li key={name} className="min-w-0 rounded-md border border-line-faint px-3 py-2 text-[12px]">
+              <div className="text-fg-2">{t(`workflows.capability.${name}`)}</div>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-fg-3">
+                {toolNames?.includes(name) && <Check size={12} aria-hidden />}
+                {offline ? t("workflows.offline.title") : toolError ? t("workflows.builder.loadError") : toolNames === null ? t("workflows.builder.loading") : t(toolNames.includes(name) ? "workflows.builder.available" : "workflows.builder.disabled")}
+              </div>
+            </li>)}
+          </ul>
         </section>
 
-        {/* Section B — skills library */}
-        <SkillsLibrary />
-
-        {/* Section C — how runs work */}
-        <RunsStrip />
+        <section aria-label={t("workflows.builder.recent")}>
+          <h2 className="text-[13px] font-medium text-fg-1">{t("workflows.builder.recent")}</h2>
+          {recent.length ? <ul className="mt-2 divide-y divide-line-faint">{recent.map((session) => <li key={session.id}><button type="button" className="aq-focus-ring flex w-full min-w-0 items-center justify-between gap-3 rounded-sm py-2 text-left text-[12px] text-fg-2 hover:text-fg-1" onClick={() => { state.selectSession(session.id); state.setSurface("chat"); }}><span className="min-w-0 truncate">{session.title}</span><span className="shrink-0 text-[11px] text-fg-3">{t(`tasks.status.${state.sessionRunnerOf(session.id).status}`)}</span></button></li>)}</ul>
+            : <p className="mt-2 text-[12px] leading-relaxed text-fg-3">{t("workflows.builder.recentEmpty")}</p>}
+        </section>
       </div>
+      {pickerOpen && <div ref={pickerDialog} className="fixed inset-0 z-50 flex items-start justify-center bg-scrim px-3 pt-16" role="dialog" aria-modal="true" aria-label={t("workflows.builder.model")} onClick={() => setPickerOpen(false)}><div className="max-w-full" onClick={(event) => event.stopPropagation()}><ModelPicker sessionId={target?.id} onClose={() => setPickerOpen(false)} /></div></div>}
     </div>
   );
 }

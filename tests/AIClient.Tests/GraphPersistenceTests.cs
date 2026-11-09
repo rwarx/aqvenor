@@ -466,6 +466,7 @@ public sealed class GraphPersistenceTests : IAsyncLifetime
         builder.Services.AddSingleton<IGraphStore>(store);
         builder.Services.AddSingleton<IGraphService>(graph);
         builder.Services.AddSingleton(persist);
+        builder.Services.AddSingleton<RunRegistry>();
         builder.Services.AddSingleton<GraphWriteRegistry>();
         builder.Services.AddSingleton<JsonCheckpointStore>();
         builder.Services.AddSingleton(new SidecarToken("graph-integration-tests"));

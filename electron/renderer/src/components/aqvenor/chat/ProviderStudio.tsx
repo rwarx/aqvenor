@@ -430,7 +430,7 @@ export function ProviderStudioLauncher() {
   const t = useT();
   const providersList = useAqvenor((s) => s.providers);
   const setProviderStudioOpen = useAqvenor((s) => s.setProviderStudioOpen);
-  const connected = providersList.filter((p) => p.state === "connected").length;
+  const configured = providersList.filter((p) => p.hasApiKey ?? p.state !== "missing-key").length;
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-md border border-line-faint bg-surface-2 px-4 py-3">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-sunken text-accent">
@@ -439,9 +439,11 @@ export function ProviderStudioLauncher() {
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-2 text-[13px] font-medium text-fg-1">
           {t("providerStudio.title")}
-          <AqBadge tone={connected > 0 ? "success" : "neutral"}>{connected}/{providersList.length}</AqBadge>
+          <AqBadge>{configured}/{providersList.length}</AqBadge>
         </span>
-        <span className="truncate text-[11.5px] text-fg-3">{t("providerStudio.subtitle")}</span>
+        <span className="truncate text-[11.5px] text-fg-3">{configured > 0
+          ? t("providerStudio.configuredSummary", configured)
+          : t("providerStudio.subtitle")}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <AqGhostButton onClick={() => setProviderStudioOpen(true, "connect")}>

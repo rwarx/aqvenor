@@ -28,14 +28,15 @@ import {
   type ServerModel,
   type ServerProject,
 } from "./backend";
-import { isPlaceholderTitle, newId, sessionModeOf, useAqvenor } from "./store";
+import { isPlaceholderTitle, makePlaceholder, newId, sessionModeOf, useAqvenor } from "./store";
 import { serverCreateTitle } from "./session-titles";
 import { loadEditorDocument, mergeListedFiles, readCompleteDocument } from "./editor-documents";
 import { FileWriteQueue } from "./file-write-queue";
 import { GraphCoordinator, type CanvasDocument } from "./graph-coordinator";
 import { hasAgentWorkInFlight, retryAgentCancellations } from "./agent-live";
-import { looksLikeImageGenModel } from "./data";
+import { DEMO_FILES, looksLikeImageGenModel, SEED_SESSIONS } from "./data";
 import { tp, translate } from "./i18n";
+import { delegatedAgentFromResult, withDelegatedAgent, isDelegatedConversationId, refuseDelegatedSend } from "./delegation";
 import type {
   Checkpoint,
   DemoFile,
@@ -72,6 +73,7 @@ function requestCanvasFit(): void {
 
 let booted = false;
 let hydration: Promise<HydrateResult> | null = null;
+let hydratedSelection: string | null = null;
 
 /* ---------------- mapping ---------------- */
 
@@ -122,7 +124,7 @@ function toolStateFrom(outcome: boolean | null | undefined, hasMessage: boolean)
 
 function riskFrom(tool: string): ToolCall["risk"] {
   const t = tool.toLowerCase();
-  if (t.includes("run_command") || t.includes("command")) return "execute";
+  if (t === "run_shell" || t.includes("run_command") || t.includes("command")) return "execute";
   if (
     t.includes("write") || t.includes("edit") || t.includes("delete") || t.includes("move") ||
     t.includes("commit") || t.includes("checkout") || t.includes("revert") || t.includes("mkdir") ||
@@ -138,11 +140,24 @@ export function mapDetail(detail: ServerConversationDetail): { messages: Message
   const messages: Message[] = [];
   const events: TrajectoryEvent[] = [];
   const toolByCallId = new Map<string, ServerMessage>();
+  const ownerByCallId = new Map<string, string>();
+  for (const message of detail.messages) {
+    if (message.role === "Assistant") {
+      for (const call of parseStoredCalls(message.toolCallsJson)) ownerByCallId.set(call.id, message.id);
+    }
+  }
+  let precedingAssistant: string | undefined;
   for (const m of detail.messages) {
-    if (m.role === "Tool" && m.toolCallId) toolByCallId.set(m.toolCallId, m);
+    if (m.role === "Assistant") precedingAssistant = m.id;
+    if (m.role === "User") precedingAssistant = undefined;
+    if (m.role === "Tool" && m.toolCallId) {
+      toolByCallId.set(m.toolCallId, m);
+      // Stored calls have explicit ownership. Only interrupted orphan rows use
+      // proximity, and a later user turn closes the preceding assistant step.
+      if (!ownerByCallId.has(m.toolCallId) && precedingAssistant) ownerByCallId.set(m.toolCallId, precedingAssistant);
+    }
   }
 
-  let assistantById = new Map<string, Message>();
   let firstUser: ServerMessage | null = null;
 
   for (const m of detail.messages) {
@@ -167,6 +182,7 @@ export function mapDetail(detail: ServerConversationDetail): { messages: Message
       modelId: m.modelId ? toCompositeModel(m.providerId ?? "openrouter", m.modelId) : undefined,
       providerId: m.providerId ?? undefined,
       streaming: m.status === "Streaming",
+      cancelled: m.status === "Cancelled" || undefined,
       toolCalls: [],
       live: true,
       usage:
@@ -204,7 +220,7 @@ export function mapDetail(detail: ServerConversationDetail): { messages: Message
       // tool rows without a stored call entry (interrupted runs): attach by proximity
       for (const [callId, row] of toolByCallId) {
         if (msg.toolCalls.some((t) => t.id === callId)) continue;
-        if (toMs(row.createdAt) < toMs(m.createdAt)) continue;
+        if (ownerByCallId.get(callId) !== m.id) continue;
         msg.toolCalls.push({
           id: callId,
           tool: row.toolName ?? translate(S().ui.locale, "tool.unnamed"),
@@ -214,7 +230,22 @@ export function mapDetail(detail: ServerConversationDetail): { messages: Message
           body: row.content,
         });
       }
-      assistantById.set(m.id, msg);
+      for (const call of msg.toolCalls) {
+        if (call.tool !== "delegate_task") continue;
+        const child = delegatedAgentFromResult(call.body, call.id, S().ui.locale);
+        if (!child) continue;
+        if (msg.cancelled && child.status === "running") child.status = "stopped";
+        if (m.status === "Failed" && child.status === "running") child.status = "failed";
+        const parentStatus = msg.cancelled ? "stopped" : m.status === "Failed" ? "failed" : msg.streaming || child.status === "running" ? "running" : "done";
+        msg.blocks = withDelegatedAgent(msg, child, parentStatus);
+        const row = toolByCallId.get(call.id);
+        events.push({ id: newId("ev"), ts: toMs(row?.createdAt ?? m.createdAt), kind: "subagent", agent: child.name,
+          title: child.name, detail: child.summary, status: child.status === "running" ? "running" : child.status === "failed" ? "failed" : child.status === "stopped" ? "warning" : "done" });
+      }
+      msg.blocks = msg.blocks?.map((block) => block.type === "agenttree" ? {
+        ...block,
+        parentStatus: msg.cancelled ? "stopped" : m.status === "Failed" ? "failed" : msg.streaming || block.agents.some((child) => child.status === "running") ? "running" : "done",
+      } : block);
       if (m.status === "Failed") {
         // Surface the failure on the message itself so the bubble can show it
         // inline (see MessageItem) — not only as a trajectory event the user
@@ -232,7 +263,6 @@ export function mapDetail(detail: ServerConversationDetail): { messages: Message
     }
     messages.push(msg);
   }
-  void assistantById;
   return { messages, events };
 }
 
@@ -312,6 +342,7 @@ function mapProviders(list: Awaited<ReturnType<typeof providers.list>>): Provide
       name: p.name,
       endpoint: p.apiKeyUrl ?? "",
       state,
+      hasApiKey: p.hasApiKey,
       statusMessage: p.statusMessage ?? undefined,
       models: [],
       builtin: !p.isCustom,
@@ -322,6 +353,46 @@ function mapProviders(list: Awaited<ReturnType<typeof providers.list>>): Provide
 }
 
 /* ---------------- boot hydration ---------------- */
+
+// Older local caches also contain these samples. Ignore their relative timestamps,
+// but preserve a sample if the person edited its history, title or settings.
+const sessionContent = ({ createdAt: _created, updatedAt: _updated, messages, mode, projectId, ...session }: Session) => ({
+  ...session,
+  mode: mode ?? "chat",
+  projectId: projectId ?? null,
+  messages: messages.map(({ createdAt: _timestamp, ...message }) => message),
+});
+const sampleSessions = new Map(SEED_SESSIONS.map((session) => [session.id, JSON.stringify(sessionContent(session))]));
+const sampleFiles = new Map(DEMO_FILES.map((file) => [file.path, file]));
+
+function isUntouchedSampleSession(session: Session): boolean {
+  const sample = sampleSessions.get(session.id);
+  const draft = S().drafts[session.id];
+  return sample !== undefined && !draft?.text.trim() && !draft?.attachments.length
+    && JSON.stringify(sessionContent(session)) === sample;
+}
+
+function removeUntouchedSampleFiles(): void {
+  const state = S();
+  const files = state.files.filter((file) => {
+    const sample = sampleFiles.get(file.path);
+    if (!sample || file.workspaceRoot || file.contentHash || file.modified !== undefined || file.revision
+      || ["unsaved", "saving", "error"].includes(state.saveStatus[file.path])) return true;
+    // Persisted file entries intentionally omit bodies; the legacy sample metadata
+    // has no workspace owner, edit revision or explicit modified flag. Keep real
+    // legacy entries that recorded modified:false before ownership was persisted.
+    return file.language !== sample.language || (file.content !== undefined && file.content !== sample.content);
+  });
+  if (files.length === state.files.length) return;
+  const removed = new Set(state.files.filter((file) => !files.includes(file)).map((file) => file.path));
+  const codeTabs = state.codeTabs.filter((path) => !removed.has(path));
+  useAqvenor.setState({
+    files,
+    codeTabs,
+    activeCodeTab: state.activeCodeTab && removed.has(state.activeCodeTab) ? codeTabs[0] ?? null : state.activeCodeTab,
+    contextFiles: state.contextFiles.filter((file) => !removed.has(file.path)),
+  });
+}
 
 export interface HydrateResult {
   ok: boolean;
@@ -437,16 +508,34 @@ async function hydrateBackendState(): Promise<HydrateResult> {
   }
 
   const prev = S();
-  const keepLocal = prev.sessions.filter((s) => !isServerId(s.id));
+  const keepLocal = prev.sessions.filter((s) => !isServerId(s.id) && !isUntouchedSampleSession(s));
+  const nextSessions = [...sessions, ...keepLocal].sort((a, b) => {
+    if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    return b.updatedAt - a.updatedAt;
+  });
+  let currentSessionId = prev.currentSessionId;
+  if (!nextSessions.some((session) => session.id === currentSessionId)) {
+    let target = nextSessions.find((session) => sessionModeOf(session) === prev.ui.workMode);
+    if (!target) {
+      target = makePlaceholder(prev.ui.workMode, (uiPatch["selectedModelId"] as string) ?? prev.ui.selectedModelId);
+      nextSessions.unshift(target);
+    }
+    currentSessionId = target.id;
+  }
+  const activeSessionByMode = Object.fromEntries(Object.entries(prev.ui.activeSessionByMode)
+    .filter(([, id]) => nextSessions.some((session) => session.id === id)));
+  const currentMode = sessionModeOf(nextSessions.find((session) => session.id === currentSessionId)!);
+  activeSessionByMode[currentMode] = currentSessionId;
   useAqvenor.setState({
     providers: S().providers,
-    ui: { ...prev.ui, ...uiPatch },
-    sessions: [...sessions, ...keepLocal].sort((a, b) => {
-      if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
-      return b.updatedAt - a.updatedAt;
-    }),
+    ui: { ...prev.ui, ...uiPatch, activeSessionByMode },
+    sessions: nextSessions,
+    currentSessionId,
+    focusedChatSessionId: prev.focusedChatSessionId && !nextSessions.some((session) => session.id === prev.focusedChatSessionId)
+      ? currentSessionId : prev.focusedChatSessionId,
     checkpoints: mappedCps,
   });
+  removeUntouchedSampleFiles();
   installServerActions();
   installCanvasOverrides(prev);
   void loadProjects().catch(() => undefined);
@@ -545,6 +634,7 @@ export async function saveServerSettings(
    live values instead. Filtering here too, so a stale caller cannot even try. */
 export const SERVER_LOCKED_SETTINGS = new Set([
   "allowCommands",
+  "allowShellCommands",
   "allowedCommands",
   "allowNetwork",
   "allowExternalFiles",
@@ -638,7 +728,7 @@ function installServerActions() {
       // remembers it for its mode (other chats' approval gates are untouched);
       // we only add the server transcript pull.
       prev.selectSession(id);
-      if (isServerId(id)) void loadServerTranscript(id);
+      if (isServerId(id) && hydratedSelection !== id) void loadServerTranscript(id);
     },
     setWorkMode: (mode: WorkMode) => {
       // Base action repoints currentSessionId to this mode's remembered/most-recent
@@ -696,6 +786,7 @@ function installServerActions() {
       return local;
     },
     deleteSession: (id: string) => {
+      if (refuseDelegatedSend(S(), id)) return;
       if (isServerId(id)) {
         void conversations.remove(id).catch(() => undefined);
       }
@@ -832,13 +923,45 @@ function installServerActions() {
 }
 
 /** Reload the canonical transcript for a server conversation (after runs). */
-export async function reloadSession(sessionId?: string): Promise<void> {
+export async function openDelegatedConversation(id: string, shouldOpen: () => boolean = () => true): Promise<boolean> {
+  if (!isDelegatedConversationId(id) || S().updateClosing || S().workspaceSwitching) return false;
+  const previousSelection = S().currentSessionId;
+  const detail = await conversations.get(id);
+  if (detail.id !== id) throw new Error("Conversation response did not match the requested subagent.");
+  if (!shouldOpen() || S().currentSessionId !== previousSelection || S().updateClosing || S().workspaceSwitching) return false;
+  const mapped = mapDetail(detail);
+  useAqvenor.setState((state) => {
+    const known = state.resolveSession(id);
+    const session: Session = {
+      ...(known ?? { id, mode: "cowork", method: "plan", pinned: false, preview: "", goalIds: [] }),
+      title: detail.title,
+      titleUserDefined: detail.isTitleUserDefined || known?.titleUserDefined,
+      createdAt: toMs(detail.createdAt),
+      updatedAt: toMs(detail.updatedAt),
+      projectId: detail.projectId ?? known?.projectId ?? null,
+      modelId: known?.modelId ?? (detail.providerId && detail.modelId ? toCompositeModel(detail.providerId, detail.modelId) : state.ui.selectedModelId),
+      messages: mapped.messages,
+      events: mapped.events,
+    };
+    return { sessions: [session, ...state.sessions.filter((entry) => entry.id !== id)] };
+  });
+  // The normal server-backed select action reloads a transcript. This one has
+  // just loaded it, so keep all selection behavior without a second request.
+  hydratedSelection = id;
+  try { S().selectSession(id); }
+  finally { hydratedSelection = null; }
+  return true;
+}
+
+export async function reloadSession(sessionId?: string, shouldApply: () => boolean = () => true): Promise<void> {
   const st = S();
   const id = sessionId ?? st.currentSessionId;
   if (!isServerId(id)) return;
   const detail = await conversations.get(id);
+  if (!shouldApply()) return;
   const { messages, events } = mapDetail(detail);
   useAqvenor.setState((s) => {
+    if (!shouldApply()) return {};
     const local = s.sessions.find((x) => x.id === id);
     // A failed/empty provider turn can leave the server conversation with the
     // whole turn rolled back (no persisted messages). The wire already streamed
@@ -1001,7 +1124,11 @@ export async function syncWorkspaceFiles(): Promise<void> {
   // single source of truth for the open project (item 5) — every surface reads
   // store.workspaceRoot instead of fetching workspace.status() on its own.
   useAqvenor.setState({ workspaceRoot: status.isOpen && status.root ? status.root : null });
-  if (!status.isOpen) return;
+  if (!status.isOpen) {
+    serverPaths.clear();
+    removeUntouchedSampleFiles();
+    return;
+  }
   const listing = await workspace.list(".", true).catch(() => null);
   if (!listing) return;
   const files = mergeListedFiles(listing.entries, previousRoot === status.root);

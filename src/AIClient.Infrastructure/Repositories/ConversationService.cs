@@ -462,6 +462,11 @@ public sealed class ConversationService : IConversationService
             message.ToolCallsJson = update.ToolCallsJson;
         }
 
+        if (update.ToolSucceeded is { } succeeded)
+        {
+            message.ToolSucceeded = succeeded;
+        }
+
         // A successful update clears a stale error from a previous failed attempt.
         if (update.Status == MessageStatus.Complete)
         {
@@ -470,6 +475,17 @@ public sealed class ConversationService : IConversationService
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Guid?> GetMessageConversationIdAsync(Guid messageId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        return await db.Messages
+            .AsNoTracking()
+            .Where(message => message.Id == messageId)
+            .Select(message => (Guid?)message.ConversationId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task DeleteMessageAsync(Guid messageId, CancellationToken cancellationToken = default)

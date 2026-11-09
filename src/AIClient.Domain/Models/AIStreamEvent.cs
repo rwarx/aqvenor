@@ -43,7 +43,8 @@ public abstract record AIStreamEvent
     /// <remarks>
     /// The agent loop keys off this rather than off <c>finish_reason == "tool_calls"</c>:
     /// providers disagree about the finish reason when a model both writes text and calls a
-    /// tool, and some send <c>stop</c> with calls attached. Calls present means act.
+    /// tool, and some send <c>stop</c> with calls attached. Calls present means act unless the
+    /// provider explicitly reports truncated output with <c>length</c>.
     /// </remarks>
     public sealed record ToolCalls(IReadOnlyList<AIToolCall> Calls) : AIStreamEvent;
 

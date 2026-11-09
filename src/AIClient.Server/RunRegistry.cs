@@ -25,6 +25,7 @@ public sealed class RunRegistry
 
     private readonly object _lock = new();
     private readonly Dictionary<Guid, RunEntry> _runs = new();
+    private readonly Dictionary<Guid, ChildConversationLease> _children = new();
 
     /// <summary>
     /// Registers a run, or returns null when the id is already in flight or the ceiling is reached.
@@ -48,7 +49,8 @@ public sealed class RunRegistry
 
         lock (_lock)
         {
-            if (_runs.ContainsKey(runId) || (conversationId is { } conversation && _runs.Values.Any(run => run.ConversationId == conversation)))
+            if (_runs.ContainsKey(runId) || (conversationId is { } conversation &&
+                (_children.ContainsKey(conversation) || _runs.Values.Any(run => run.ConversationId == conversation))))
             {
                 entry.Dispose();
                 return null;
@@ -71,7 +73,8 @@ public sealed class RunRegistry
     {
         lock (_lock)
         {
-            if (_runs.Values.Any(run => run.RunId != runId && run.ConversationId == conversationId))
+            if (_children.ContainsKey(conversationId) ||
+                _runs.Values.Any(run => run.RunId != runId && run.ConversationId == conversationId))
             {
                 throw new InvalidOperationException("A run is already active in this conversation.");
             }
@@ -87,15 +90,64 @@ public sealed class RunRegistry
         }
     }
 
+    /// <summary>Reserves a child's transcript while its parent owns the execution and approvals.</summary>
+    public IDisposable? TryReserveChild(Guid parentRunId, Guid conversationId)
+    {
+        lock (_lock)
+        {
+            if (!_runs.TryGetValue(parentRunId, out var parent) || parent.Cancellation.IsCancellationRequested ||
+                _children.ContainsKey(conversationId) || _runs.Values.Any(run => run.ConversationId == conversationId))
+            {
+                return null;
+            }
+
+            var lease = new ChildConversationLease(this, parentRunId, conversationId);
+            _children.Add(conversationId, lease);
+            return lease;
+        }
+    }
+
+    /// <summary>Whether a parent still owns this child's transcript, including cancellation cleanup.</summary>
+    public bool IsChildConversationReserved(Guid conversationId)
+    {
+        lock (_lock)
+        {
+            return _children.ContainsKey(conversationId);
+        }
+    }
+
+    private void ReleaseChild(ChildConversationLease lease)
+    {
+        lock (_lock)
+        {
+            // A delayed Dispose must not release a newer reservation after its parent finished.
+            if (_children.TryGetValue(lease.ConversationId, out var current) && ReferenceEquals(current, lease))
+            {
+                _children.Remove(lease.ConversationId);
+            }
+        }
+    }
+
     public void Finish(Guid runId)
     {
         RunEntry? entry;
         lock (_lock)
         {
             _runs.Remove(runId, out entry);
+            foreach (var conversationId in _children.Where(child => child.Value.ParentRunId == runId).Select(child => child.Key).ToArray())
+            {
+                _children.Remove(conversationId);
+            }
         }
 
         entry?.Finish();
+    }
+
+    private sealed class ChildConversationLease(RunRegistry owner, Guid parentRunId, Guid conversationId) : IDisposable
+    {
+        public Guid ParentRunId { get; } = parentRunId;
+        public Guid ConversationId { get; } = conversationId;
+        public void Dispose() => owner.ReleaseChild(this);
     }
 }
 

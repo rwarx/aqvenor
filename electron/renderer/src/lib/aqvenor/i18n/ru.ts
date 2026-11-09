@@ -1,7 +1,10 @@
 import type { Dictionary } from "./types-dict";
 
 /* Russian — полный словарь (Task 2-d) */
+import { workflowCopy } from "./workflows";
+
 export const ru: Dictionary = {
+  ...workflowCopy("ru"),
   "graphSync.loading": "Загрузка графа…",
   "graphSync.loadError": "Не удалось загрузить граф",
   "graphSync.saved": "Граф сохранён",
@@ -501,6 +504,7 @@ export const ru: Dictionary = {
   /* ---- Provider Studio в стиле opencode (пункт 12) ---- */
   "providerStudio.title": "Провайдеры",
   "providerStudio.subtitle": "Подключайте провайдеров моделей и управляйте API-ключами",
+  "providerStudio.configuredSummary": "Сохранённые API-ключи: {0}. Управляйте ключами и проверяйте подключение.",
   "providerStudio.tab.manage": "Управление",
   "providerStudio.tab.connect": "Подключить",
   "providerStudio.custom": "Свой",
@@ -1154,9 +1158,18 @@ export const ru: Dictionary = {
 
   /* навигация и поиск по настройкам */
   "settings.nav.general": "Общие",
+  "settings.group.general.hint": "Внешний вид, язык и повседневные настройки чата.",
+  "settings.group.agent.hint": "Лимиты работы, инструкции и контекст диалога.",
+  "settings.group.workspace.hint": "Текущий проект и индекс его графа.",
+  "settings.group.integrations": "Интеграции",
+  "settings.group.updates.hint": "Установленная версия и обновления из GitHub Releases.",
+  "settings.group.advanced": "Дополнительно",
+  "settings.group.advanced.hint": "Ограничения доступа, локальные данные и диагностика. Раскройте нужный раздел.",
+  "settings.search.clear": "Очистить поиск",
+  "settings.search.results": "Результаты поиска",
   "settings.nav.general.kw": "подтверждение удаление заголовки чат сессия восстановление",
   "settings.nav.appearance.kw": "тема тёмная светлая системная сайдбар ширина",
-  "settings.nav.interface.kw": "enter markdown прокрутка масштаб",
+  "settings.nav.interface.kw": "enter прокрутка масштаб",
   "settings.nav.language": "Язык",
   "settings.nav.language.kw": "локаль язык русский немецкий английский перевод",
   "settings.nav.models": "Модели и провайдеры",
@@ -1164,8 +1177,8 @@ export const ru: Dictionary = {
   "settings.nav.agent.kw": "шаги время лимит бюджет папка команда таймаут",
   "settings.nav.permissions": "Разрешения",
   "settings.nav.permissions.kw": "безопасность разрешить команды сеть внешние файлы подтверждение белый список",
-  "settings.nav.tools": "Инструменты и навыки",
-  "settings.nav.tools.kw": "реестр риск навыки",
+  "settings.nav.tools": "Реестр инструментов",
+  "settings.nav.tools.kw": "реестр риск инструменты",
   "settings.nav.context": "Контекст",
   "settings.nav.context.kw": "системный промпт вложения сжатие история резюме",
   "settings.nav.workspace.kw": "папка каталог индекс канвас граф",
@@ -1205,8 +1218,8 @@ export const ru: Dictionary = {
   "settings.maxSearch.unit": "результатов",
 
   /* разрешения */
-  "settings.permissions.hint": "До чего агенту можно дотянуться. Четыре переключателя ниже принадлежат десктопному хосту.",
-  "settings.locked.note": "Заблокировано — сервер игнорирует изменения с этой поверхности.",
+  "settings.permissions.hint": "Запуск программ и оболочек включается с подтверждением. Доступ к сети, внешним файлам и список разрешённых программ здесь только для чтения.",
+  "settings.locked.note": "Настройка управляется хостом приложения; здесь показано её текущее значение.",
   "settings.locked.wpf": "Меняется в окне настроек десктопного (WPF) приложения.",
   "settings.locked.listNote": "Здесь только чтение — списком владеет десктопный хост.",
   "settings.locked.refused": "Сервер отклонил часть сохранения — заблокированные настройки не изменились.",
@@ -1261,6 +1274,7 @@ export const ru: Dictionary = {
   "settings.snapshot.hint": "Все секции как хранятся — секретов внутри нет, можно вставлять.",
   "settings.snapshot.copy": "Скопировать снимок",
   "settings.snapshot.copied": "Снимок скопирован — секретов внутри нет.",
+  "settings.snapshot.copyFailed": "Не удалось скопировать снимок. Проверьте доступ к буферу обмена и повторите.",
   "settings.reset": "Сброс к значениям по умолчанию",
   "settings.reset.hint": "Одна секция — к исходным значениям. История, ключи и файлы не тронуты.",
   "settings.resetOne": "Сбросить",

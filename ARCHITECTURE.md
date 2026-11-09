@@ -8,7 +8,7 @@ rewritten. That sets the constraint everything below follows from: the parts tha
 will still be true in an IDE — provider abstraction, streaming, context assembly,
 storage — are separated from the parts that are only true of a chat window.
 
-> **Status.** Updated for `0.3.1-alpha` and the November 2026 reliability fixes. Where the code and this document
+> **Status.** Updated for `0.3.3-alpha` and the November 2026 reliability fixes. Where the code and this document
 > disagree, the code is right and this document is a bug. Known gaps are listed in
 > [SECURITY.md](SECURITY.md#known-gaps).
 
@@ -142,7 +142,7 @@ interface and about HTTP not at all.
   multi-step loop, discussed below. Beside it,
   [`AgentToolRegistry`](src/AIClient.Application/Services/AgentToolRegistry.cs),
   [`AgentModePolicy`](src/AIClient.Application/Services/AgentModePolicy.cs) and the
-  **24 tools** in `Services/Tools/`, each one an `IAgentTool` that declares its own
+  **26 tools** in `Services/Tools/`, each one an `IAgentTool` that declares its own
   JSON schema and its own risk level.
 - **Graph**: [`GraphService`](src/AIClient.Application/Graph/GraphService.cs) (state,
   undo/redo, persistence), [`WorkspaceGraphIndexer`](src/AIClient.Application/Graph/WorkspaceGraphIndexer.cs)
@@ -182,7 +182,7 @@ Every dependency on the outside world.
 
 ### AIClient.Server
 
-The ASP.NET Core host for the Electron renderer. Thin on purpose: four endpoint
+The ASP.NET Core host for the Electron renderer. Thin on purpose: five endpoint
 groups and three supporting types.
 
 | File | Responsibility |
@@ -191,6 +191,7 @@ groups and three supporting types.
 | [`SidecarAuthentication.cs`](src/AIClient.Server/SidecarAuthentication.cs) | The bearer token, its handler, and the origin and bind policy. |
 | `RunEndpoints` | Chat and agent runs over NDJSON, plus approval polling and cancellation. |
 | `DataEndpoints` | Conversations, settings, workspace, graph, tools, export, checkpoints. |
+| `HostEndpoints` | Execution permissions chosen in the desktop host, protected by an additional private host token. |
 | `GitEndpoints` | Repository reads and writes. |
 | `AiEndpoints` | The single-shot completion behind inline AI and ghost text. |
 | `RunRegistry` | In-flight runs, their cancellation tokens and approval waiters. |
@@ -248,12 +249,16 @@ send a request to `127.0.0.1` and, under permissive CORS, read the response. So:
    and the token itself is never logged — only its source ("supplied by the
    launcher" or "generated for this process").
 
-**Settings that reduce containment are not writable over HTTP.** `AllowCommands`,
-`AllowedCommands`, `AllowNetwork`, `AllowExternalFiles` and `WorkspaceRoot` are
+**Settings that reduce containment are not writable through ordinary settings HTTP.** `AllowCommands`,
+`AllowShellCommands`, `AllowedCommands`, `AllowNetwork`, `AllowExternalFiles` and `WorkspaceRoot` are
 refused by name in `DataEndpoints`. The reasoning is specific: the approval gate
 runs over the same authenticated surface, so a caller that could widen the agent's
-reach could then answer its own approvals. The user's Settings window goes through
-the WPF host, not this route.
+reach could then answer its own approvals. The WPF Settings window changes them directly.
+Electron changes only the two execution switches through `POST /api/host/agent-permissions`
+after a native permission choice. That route requires both the ordinary bearer and
+`X-Aqvenor-Host-Token`, a separate launch secret (`AICLIENT_HostToken`) retained in the
+main process. Missing or incorrect host credentials are refused. The body accepts only
+the two boolean switches; disabling programs also disables shells.
 
 **`/api/ai/complete` is clamped** — prompt length, system length, temperature and
 output tokens. It is the cheapest way to turn a loopback socket into an open tab on
@@ -406,13 +411,16 @@ One iteration of the loop is one step:
 5. **Loop**, with the tool rows now part of the history the next request is built
    from.
 
-Every call gets an answer row, whatever became of it. A call with no answer is not a
+Every proposed call gets an answer row, whatever became of it. A call with no answer is not a
 smaller failure; it is a hole in the next request, which providers reject outright.
 
 A run ends in exactly one of `Completed`, `Failed` or `Cancelled`, and `Completed`
-carries an `AgentStopReason` — `Answered`, `StepLimit` or `TimeLimit`. On the last
+carries an `AgentStopReason` — `Answered`, `StepLimit`, `TimeLimit` or `OutputLimit`. On the last
 permitted step the tools are withheld, so a run that hits the step limit ends in a
 sentence rather than on a file listing, and it is still reported as `StepLimit`.
+When the provider reports `length`, partial text and usage remain in the transcript,
+but calls from that truncated turn are discarded before approval or execution.
+The run stops as `OutputLimit`; a delegated child is recorded as `incomplete`.
 
 ### What kind of run it is
 
@@ -482,7 +490,7 @@ the user turns it on**.
 ### Running a program, which neither door contains
 
 [`RunCommandTool`](src/AIClient.Application/Services/Tools/RunCommandTool.cs) is the
-one tool the sandbox cannot describe, because a path guard bounds what a program is
+direct program tool the sandbox cannot describe, because a path guard bounds what a program is
 *started* on and nothing about what it does afterwards. `npm install` reaches the
 network, a test suite reads whatever the machine will give it, and a build script is
 a program someone else wrote. So the containment is a different shape, and none of
@@ -505,6 +513,38 @@ is decoration, since `cmd /c anything` passes it. `ProcessRunner` drains both pi
 as they fill rather than after the wait, closes standard input, kills the whole
 process tree on a timeout or cancellation, and strips this application's own
 environment variables so a child that prints its environment cannot print a key.
+
+`run_shell` is the explicit Windows scripting capability. It requires both
+`AllowCommands` and `AllowShellCommands`, uses system CMD or Windows PowerShell
+instead of a workspace executable, and still asks for approval on every call with
+the complete script. PowerShell receives an encoded multiline script; CMD receives
+one line with its own quoting rules and a hidden UTF-8 console. Multiline CMD is
+refused because CMD otherwise silently ignores the later lines. The same timeout,
+output cap, environment filtering and process-tree cancellation apply. A shell's
+working directory is checked against the workspace; its access to the computer is
+not an OS sandbox.
+
+### Delegated tasks
+
+`delegate_task` creates a real child conversation and runs the same agent loop with
+the captured model, project, workspace and mode. The child gets the explicit task
+and shared selected-node context, rather than the parent's complete transcript. A
+parent can create at most three children; each child gets at most twelve steps and
+cannot delegate again. `AllowSubagents` can switch the capability off.
+
+Delegation changes app state, so its own risk is Read. Each child write or command
+still uses its own approval gate; planning children cannot write. Stop reaches the
+child provider, tools and pending approval. Approval waits pause the parent deadline
+as well as the child's. Child messages remain in their own conversation; the parent
+receives ownership-scoped lifecycle events and one JSON tool result containing the
+child id, title, status, steps and answer. The link is persisted before execution and
+finalized on cancellation or stream disposal, so reopening the parent keeps the result.
+The HTTP host reserves the child conversation under the parent's run until cleanup
+finishes; a concurrent chat or agent request for that child receives HTTP 409.
+Deleting that conversation, deleting or editing its messages, and truncating its
+history also return HTTP 409 while the lease is held, including Stop cleanup.
+Deleting a project only unfiles its conversations, so it preserves a running child's
+transcript. Once cleanup releases the lease, ordinary mutations work again.
 
 ---
 

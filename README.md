@@ -134,15 +134,25 @@ The agent runs a tool loop, and its reach is the thing to understand before you 
 
 | | |
 | --- | --- |
-| **Works in** | One folder you nominate, and refuses to read or write outside it |
-| **Also refused, inside that folder** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — by name, always |
+| **File tools work in** | One folder you nominate, and refuse to read or write outside it |
+| **Refused by file tools, inside that folder** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — by name, always |
 | **Asks before** | Every write, every external file, every network request, every program |
-| **Never** | Runs a shell. `&&`, `\|`, `>` and `$HOME` are text the program receives |
+| **Shells** | CMD/PowerShell require a separate off-by-default permission and full-script approval on every call; scripts run with your Windows account's rights |
 | **Programs** | Off by default. Then an allowlist only a person edits. Then approval on *every* call |
 | **Undo** | Your version control. Changes are shown before they are made, not reversed after |
 
 A refusal names the rule and tells the model what to do instead, so it stops reaching for the same
 tool three times.
+
+The Electron Scenarios screen provides seven editable tasks and shows the
+available model and tools. Delegation creates real child conversations with the
+same captured model, workspace and approval policy, limited to three tasks per
+run and twelve steps per child. Children cannot delegate further. Enable
+delegation in Settings → Agent; program and shell permissions are in
+Settings → Advanced → Permissions. Allow running programs before enabling
+CMD/PowerShell. Direct `run_command` calls still use an
+argument list. Shell scripts can access resources beyond the file tools' project
+boundary; their starting directory is not an OS sandbox.
 
 **Everything outside that folder is opt-in, and off until you turn it on.** Network fetching and
 out-of-project file access are separate switches in Settings, and each call still goes through the

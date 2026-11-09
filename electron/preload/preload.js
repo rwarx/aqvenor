@@ -23,6 +23,7 @@ if (typeof window !== "undefined") {
 }
 
 contextBridge.exposeInMainWorld("aqvenor", {
+  agentPermissions: (patch, locale) => ipcRenderer.invoke("aqvenor:agent-permissions", patch, locale),
   getBackendUrl: () => ipcRenderer.invoke("aqvenor:getBackendUrl"),
 
   /* The sidecar's per-launch bearer token. It is fetched, never bundled, and the renderer only ever

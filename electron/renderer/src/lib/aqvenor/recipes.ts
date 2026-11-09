@@ -2,15 +2,17 @@ import { sendMessage } from "./scenario";
 import { sessionModeOf, useAqvenor } from "./store";
 import { isServerMode } from "./sync";
 import { translate } from "./i18n";
+import { delegatedOwnerOf } from "./delegation";
 import type { Session, WorkMethod, WorkMode } from "./types";
 
 export interface WorkflowRecipe {
-  id: "fix-test" | "draft-readme" | "refactor-service" | "review-changes";
+  id: "fix-test" | "draft-readme" | "refactor-service" | "review-changes" | "landing" | "delegate-review" | "shell-check";
   mode: "build" | "plan";
   nameKey: string;
   descKey: string;
   stepKeys: string[];
   promptKey: string;
+  requiredTool?: "delegate_task" | "run_shell";
 }
 
 function recipe(
@@ -33,6 +35,9 @@ export const WORKFLOW_RECIPES: WorkflowRecipe[] = [
   recipe("draft-readme", "plan", "readme"),
   recipe("refactor-service", "build", "refactor"),
   recipe("review-changes", "plan", "review"),
+  recipe("landing", "build", "landing"),
+  { ...recipe("delegate-review", "plan", "delegate"), requiredTool: "delegate_task" },
+  { ...recipe("shell-check", "build", "shell"), requiredTool: "run_shell" },
 ];
 
 export function recipeControls(recipe: WorkflowRecipe): { workMode: WorkMode; workMethod: WorkMethod } {
@@ -42,7 +47,12 @@ export function recipeControls(recipe: WorkflowRecipe): { workMode: WorkMode; wo
 }
 
 type WorkflowState = ReturnType<typeof useAqvenor.getState>;
-export type RecipeBlockReason = "offline" | "workspace" | "busy" | "draft" | "workspaceMismatch";
+export type RecipeBlockReason = "offline" | "workspace" | "busy" | "draft" | "workspaceMismatch" | "transition" | "tools" | "empty";
+
+export interface WorkflowLaunchOptions {
+  brief?: string;
+  availableTools?: readonly string[];
+}
 
 /** Predict the chat setWorkMode opens, so a refused launch changes no UI or chat state. */
 export function recipeTarget(recipe: WorkflowRecipe, state: WorkflowState): Session | undefined {
@@ -65,14 +75,17 @@ function sameWorkspace(a: string, b: string): boolean {
     : left === right;
 }
 
-export function recipeBlockReason(recipe: WorkflowRecipe, state: WorkflowState): RecipeBlockReason | null {
+export function recipeBlockReason(recipe: WorkflowRecipe, state: WorkflowState, options?: WorkflowLaunchOptions): RecipeBlockReason | null {
+  if (state.updateClosing || state.workspaceSwitching) return "transition";
   // Offline playback is the explicit demo command. Recipes need the real workspace agent.
   if (!isServerMode() || state.backendReachable === false) return "offline";
   if (!state.workspaceRoot?.trim()) return "workspace";
+  if (options?.brief !== undefined && !options.brief.trim()) return "empty";
+  if (recipe.requiredTool && !options?.availableTools?.includes(recipe.requiredTool)) return "tools";
   const target = recipeTarget(recipe, state);
   if (!target) return null; // setWorkMode will create an empty chat for this mode.
   const status = state.sessionRunnerOf(target.id).status;
-  if (status === "running" || status === "awaiting-approval" || state.approvalOf(target.id)) return "busy";
+  if (status === "running" || status === "awaiting-approval" || state.approvalOf(target.id) || delegatedOwnerOf(state, target.id)) return "busy";
   // sendMessage consumes the target chat's draft and attachment tray.
   const draft = state.draftOf(target.id);
   if (draft.text.trim() || draft.attachments.length) return "draft";
@@ -87,10 +100,10 @@ export function recipeModeLabel(recipe: WorkflowRecipe, state: WorkflowState): s
 }
 
 /** Recheck at click time: a sibling panel may have started a run since the card rendered. */
-export function runWorkflowRecipe(recipe: WorkflowRecipe): boolean {
+export function runWorkflowRecipe(recipe: WorkflowRecipe, options?: WorkflowLaunchOptions): boolean {
   const state = useAqvenor.getState();
   const locale = state.ui.locale;
-  const blocked = recipeBlockReason(recipe, state);
+  const blocked = recipeBlockReason(recipe, state, options);
   if (blocked) {
     state.pushToast(
       translate(locale, `workflows.${blocked}.title`),
@@ -99,7 +112,9 @@ export function runWorkflowRecipe(recipe: WorkflowRecipe): boolean {
     );
     return false;
   }
-  const prompt = translate(locale, recipe.promptKey, state.workspaceRoot!);
+  const prompt = options?.brief === undefined
+    ? translate(locale, recipe.promptKey, state.workspaceRoot!)
+    : `${translate(locale, "workflows.customContext", state.workspaceRoot!)}\n\n${options.brief.trim()}`;
   const { workMode, workMethod } = recipeControls(recipe);
   state.setWorkMode(workMode);
   const targetId = useAqvenor.getState().currentSessionId;

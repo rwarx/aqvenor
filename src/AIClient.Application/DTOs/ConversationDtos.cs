@@ -167,4 +167,7 @@ public sealed record MessageUpdate
     /// written as an empty array.
     /// </remarks>
     public string? ToolCallsJson { get; init; }
+
+    /// <summary>Updates the terminal outcome of a tool row created before a delegated run.</summary>
+    public bool? ToolSucceeded { get; init; }
 }

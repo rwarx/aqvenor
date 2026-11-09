@@ -98,11 +98,10 @@ const backendReady = /** @type {Promise<void>} */ (
   })
 );
 
-/* One token per launch, shared between this process, the sidecar it starts, and the renderer that
-   talks to it. It is the sidecar's only credential, so it is generated here where it never touches
-   the file system: the renderer receives it over the context bridge, the sidecar over an inherited
-   environment variable, and neither can be read by a web page the user happens to have open. */
+/* The renderer uses a launch-scoped bearer for the sidecar. Permission changes also require a
+   separate host credential, held only here and by the sidecar. Neither is written to disk. */
 const authToken = crypto.randomBytes(32).toString("base64");
+const hostToken = crypto.randomBytes(32).toString("base64");
 
 /*
  * Folders the user has actually chosen through the OS dialog in this session.
@@ -185,7 +184,7 @@ function startSidecar() {
     stdio: ["ignore", "pipe", "pipe"],
     // Without this a console-subsystem child of a GUI app flashes a console window on every launch.
     windowsHide: true,
-    env: { ...process.env, AICLIENT_AUTHTOKEN: authToken },
+    env: { ...process.env, AICLIENT_AUTHTOKEN: authToken, AICLIENT_HostToken: hostToken },
   });
   backendUrl = LOOPBACK_URL;
 
@@ -416,6 +415,19 @@ function registerIpc() {
     return listener(event, ...args);
   });
   const { registerMcpIpc } = require("./mcp");
+  const { registerAgentPermissionIpc } = require("./agent-permissions");
+  registerAgentPermissionIpc({ handle }, {
+    ready: backendReady, getBackendUrl: () => backendUrl || LOOPBACK_URL,
+      authToken, hostToken, fetchImpl: (input, init) => fetch(input, init),
+      confirm: async (message, detail, buttons) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return false;
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: "question", title: "Aqvenor", message, detail,
+          buttons, defaultId: 0, cancelId: 0, noLink: true,
+      });
+      return result.response === 1;
+    },
+  });
   registerUpdaterIpc({ handle }, updates);
   // Built-in MCP servers (memory / thinking / computer) + the remote-server
   // fetch proxy. Lives in the main process so the renderer's CSP never has to

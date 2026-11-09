@@ -135,10 +135,11 @@ usarlo.
 
 | | |
 | --- | --- |
-| **Trabaja en** | Una carpeta que tú designas, y se niega a leer o escribir fuera de ella |
-| **También se niega, dentro de esa carpeta** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — por nombre, siempre |
+| **Trabaja en** | Por defecto, las herramientas de archivos se limitan a la carpeta elegida. Para el shell se comprueba el directorio de trabajo; esto no es un aislamiento del sistema operativo y los comandos pueden acceder fuera de la carpeta |
+| **Rechazado por las herramientas de archivos** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — por nombre, siempre |
 | **Pregunta antes de** | Cada escritura, cada archivo externo, cada petición de red, cada programa |
-| **Nunca** | Ejecuta un shell. `&&`, `\|`, `>` y `$HOME` son texto que recibe el programa |
+| **Comandos directos** | `run_command` pasa los argumentos directamente al programa. `&&`, `\|`, `>` y `$HOME` son texto literal |
+| **Shell** | `run_shell` separado para CMD/PowerShell, desactivado por defecto. Primero hay que permitir programas y después habilitar el permiso adicional de shell mediante un diálogo nativo; requiere aprobación en *cada* llamada |
 | **Programas** | Desactivados por defecto. Después, solo una lista blanca que edita una persona. Después, aprobación en *cada* llamada |
 | **Deshacer** | Tu control de versiones. Los cambios se muestran antes de hacerse, no se revierten después |
 

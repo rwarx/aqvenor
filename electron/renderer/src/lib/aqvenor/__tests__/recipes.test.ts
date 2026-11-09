@@ -40,12 +40,28 @@ beforeEach(() => {
     sessions: [session("chat", "chat"), session("code", "code"), session("cowork", "cowork")],
     currentSessionId: "chat", sessionAliases: {}, drafts: {}, projects: [], approvals: {},
     runningSessions: {}, runner: { status: "idle" }, backendReachable: true, workspaceRoot,
-    toasts: [], surface: "workflows",
-    ui: { ...S().ui, locale: "en", workMode: "chat", workMethod: "full", agentMode: "off", activeSessionByMode: { code: "code", cowork: "cowork" } },
+    toasts: [], surface: "workflows", updateClosing: false, workspaceSwitching: false,
+    ui: { ...S().ui, workflowBriefs: {}, selectedWorkflow: "fix-test", locale: "en", workMode: "chat", workMethod: "full", agentMode: "off", activeSessionByMode: { code: "code", cowork: "cowork" } },
   });
 });
 
 describe("workflow dispatch", () => {
+  it("sends an edited task exactly once with the current workspace context", () => {
+    expect(runWorkflowRecipe(fix, { brief: "Проверь только форму заказа." })).toBe(true);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith(expect.stringContaining("Проверь только форму заказа."), { sessionId: "code" });
+    expect(vi.mocked(sendMessage).mock.calls[0][0]).toContain(workspaceRoot);
+  });
+
+  it("refuses an empty brief or unavailable delegated tool without changing the destination", () => {
+    const delegated = WORKFLOW_RECIPES.find((r) => r.id === "delegate-review")!;
+    expect(runWorkflowRecipe(fix, { brief: "  " })).toBe(false);
+    expect(runWorkflowRecipe(delegated, { availableTools: [] })).toBe(false);
+    expect(S().surface).toBe("workflows");
+    expect(S().currentSessionId).toBe("chat");
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(runWorkflowRecipe(delegated, { availableTools: ["delegate_task"] })).toBe(true);
+  });
   it("opens the Code chat for a build recipe and asks before changes", () => {
     expect(runWorkflowRecipe(fix)).toBe(true);
     expect(S().ui.workMode).toBe("code");
@@ -60,7 +76,7 @@ describe("workflow dispatch", () => {
   });
 
   it.each(WORKFLOW_RECIPES.filter((r) => r.mode === "plan"))("runs $id in Cowork / Plan", (recipe) => {
-    expect(runWorkflowRecipe(recipe)).toBe(true);
+    expect(runWorkflowRecipe(recipe, { availableTools: ["delegate_task"] })).toBe(true);
     expect(S().ui.workMode).toBe("cowork");
     expect(S().ui.workMethod).toBe("plan");
     expect(S().resolveSession("cowork")?.method).toBe("plan");
@@ -113,6 +129,48 @@ describe("workflow dispatch", () => {
 });
 
 describe("recipe safeguards", () => {
+  it("shows one editable task and no demo skills in the live workflow page", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      flushSync(() => root.render(createElement(WorkflowsView)));
+      expect(container.querySelector('textarea[aria-label="Task brief"]')).not.toBeNull();
+      expect(container.querySelectorAll("button[data-workflow-id]")).toHaveLength(WORKFLOW_RECIPES.length);
+      expect(container.textContent).not.toContain("Skills library");
+      expect(container.querySelector('[role="switch"]')).toBeNull();
+    } finally { flushSync(() => root.unmount()); }
+  });
+
+  it("preserves each edited brief when selecting another recipe or locale", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    try {
+      flushSync(() => root.render(createElement(WorkflowsView)));
+      const edit = container.querySelector<HTMLTextAreaElement>("textarea")!;
+      flushSync(() => {
+        edit.value = "Only check the coffee form";
+        edit.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      flushSync(() => container.querySelector<HTMLButtonElement>('[data-workflow-id="draft-readme"]')!.click());
+      expect(container.querySelector("textarea")?.value).not.toBe("Only check the coffee form");
+      flushSync(() => container.querySelector<HTMLButtonElement>('[data-workflow-id="fix-test"]')!.click());
+      expect(container.querySelector("textarea")?.value).toBe("Only check the coffee form");
+      flushSync(() => S().setUi({ locale: "ru" }));
+      expect(container.querySelector("textarea")?.value).toBe("Only check the coffee form");
+    } finally { flushSync(() => root.unmount()); container.remove(); }
+  });
+  it.each(["updateClosing", "workspaceSwitching"] as const)("does not announce a launch while %s", (flag) => {
+    useAqvenor.setState({ [flag]: true });
+    const before = S();
+    expect(runWorkflowRecipe(fix)).toBe(false);
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(S().ui).toEqual(before.ui);
+    expect(S().sessions).toEqual(before.sessions);
+    expect(S().surface).toBe("workflows");
+    expect(S().toasts.at(-1)?.variant).toBe("destructive");
+  });
+
   it("requires a backend even when demo files are available", () => {
     vi.mocked(isServerMode).mockReturnValue(false);
     expect(runWorkflowRecipe(fix)).toBe(false);
@@ -156,14 +214,14 @@ describe("recipe safeguards", () => {
     expect(recipeBlockReason(fix, S())).toBeNull();
   });
 
-  it("disables only cards whose destination chat is busy", () => {
+  it("blocks the selected workflow whose destination chat is busy", () => {
     S().setSessionRunner("code", { status: "running" });
     const container = document.createElement("div");
     const root = createRoot(container);
     try {
       flushSync(() => root.render(createElement(WorkflowsView)));
-      const buttons = [...container.querySelectorAll("button")].filter((button) => button.textContent?.includes("Run workflow"));
-      expect(buttons.map((button) => button.disabled)).toEqual([true, false, true, false]);
+      const buttons = [...container.querySelectorAll<HTMLButtonElement>("button[data-workflow-run]")];
+      expect(buttons.map((button) => button.disabled)).toEqual([true]);
       expect(buttons[0].getAttribute("aria-describedby")).toBe("recipe-fix-test-blocked");
       expect(container.querySelector("#recipe-fix-test-blocked")?.textContent).toContain("this recipe's chat");
     } finally {

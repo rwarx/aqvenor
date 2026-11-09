@@ -81,6 +81,139 @@ async function mountApp() {
 }
 
 describe("retryable backend hydration", () => {
+  it("shows an empty server's blank composer without sample chats or files when no workspace is open", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    expect(f.useAqvenor.getState().sessions.map((session) => session.id)).toEqual(["seed-1", "seed-2", "current"]);
+    expect(f.useAqvenor.getState().files.length).toBeGreaterThan(0);
+
+    expect(await f.sync.hydrateFromBackend()).toEqual({ ok: true, sessions: 0, providers: 0 });
+    await f.sync.syncWorkspaceFiles();
+    const state = f.useAqvenor.getState();
+    expect(state.sessions.map((session) => session.id)).toEqual(["current"]);
+    expect(state.sessions[0].messages).toEqual([]);
+    expect(state.currentSessionId).toBe("current");
+    expect(state.workspaceRoot).toBeNull();
+    expect(state.files).toEqual([]);
+    expect(f.workspaceList).not.toHaveBeenCalled();
+  });
+
+  it("retains genuine offline history, composer drafts and edited documents during server hydration", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    const localId = f.useAqvenor.getState().newSession();
+    f.useAqvenor.setState((state) => ({
+      sessions: state.sessions.map((session) => session.id === localId ? {
+        ...session, title: "Landing page draft", messages: [{
+          id: "my-offline-message", role: "user", content: "Build a coffee landing page", createdAt: 1, toolCalls: [],
+        }],
+      } : session),
+      drafts: { [localId]: { text: "Use a warm ivory palette", attachments: [] } },
+      files: [...state.files, { path: "landing.html", language: "text", content: "<h1>My own draft</h1>", loadState: "loaded", revision: 1 }],
+      codeTabs: ["README.md", "landing.html"], activeCodeTab: "README.md",
+    }));
+    const localSession = f.useAqvenor.getState().sessions.find((session) => session.id === localId)!;
+    const draft = f.useAqvenor.getState().drafts[localId];
+    const localFile = f.useAqvenor.getState().files.find((file) => file.path === "landing.html")!;
+
+    await f.sync.hydrateFromBackend();
+    await f.sync.syncWorkspaceFiles();
+    const state = f.useAqvenor.getState();
+    expect(state.sessions.find((session) => session.id === localId)).toEqual(localSession);
+    expect(state.currentSessionId).toBe(localId);
+    expect(state.drafts[localId]).toEqual(draft);
+    expect(state.files).toEqual([localFile]);
+    expect(state.codeTabs).toEqual(["landing.html"]);
+    expect(state.activeCodeTab).toBe("landing.html");
+    expect(state.sessions.some((session) => session.id.startsWith("seed-"))).toBe(false);
+  });
+
+  it("preserves a sample conversation or document that the person has turned into their own draft", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    f.useAqvenor.setState((state) => ({
+      currentSessionId: "seed-1",
+      drafts: { "seed-1": { text: "Apply this to my own project", attachments: [] } },
+      sessions: state.sessions.map((session) => session.id === "seed-2" ? {
+        ...session, messages: [...session.messages, {
+          id: "my-followup", role: "user", content: "Now explain my own architecture", createdAt: 1, toolCalls: [],
+        }],
+      } : session),
+    }));
+    f.useAqvenor.getState().setFileContent("README.md", "# My own landing project");
+    const sessions = f.useAqvenor.getState().sessions;
+    const ownFile = f.useAqvenor.getState().files.find((file) => file.path === "README.md")!;
+
+    await f.sync.hydrateFromBackend();
+    await f.sync.syncWorkspaceFiles();
+    expect(f.useAqvenor.getState().sessions).toEqual(expect.arrayContaining(sessions));
+    expect(f.useAqvenor.getState().drafts["seed-1"].text).toBe("Apply this to my own project");
+    expect(f.useAqvenor.getState().currentSessionId).toBe("seed-1");
+    expect(f.useAqvenor.getState().files).toEqual([ownFile]);
+  });
+
+  it("removes unchanged samples restored from the older metadata cache and repairs their selected chat", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    f.useAqvenor.setState((state) => ({
+      currentSessionId: "seed-2",
+      ui: { ...state.ui, activeSessionByMode: { chat: "seed-2" } },
+      sessions: state.sessions.map((session) => ({ ...session, createdAt: 1, updatedAt: 2,
+        messages: session.messages.map((message) => ({ ...message, createdAt: 1 })),
+      })),
+      files: state.files.map((file) => {
+        const { content: _body, ...metadata } = file;
+        return metadata as typeof file;
+      }),
+    }));
+
+    await f.sync.hydrateFromBackend();
+    await f.sync.syncWorkspaceFiles();
+    const state = f.useAqvenor.getState();
+    expect(state.sessions.map((session) => session.id)).toEqual(["current"]);
+    expect(state.currentSessionId).toBe("current");
+    expect(state.ui.activeSessionByMode.chat).toBe("current");
+    expect(state.files).toEqual([]);
+  });
+
+  it("preserves a genuine legacy README metadata entry and its tab and context", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    // Older real workspace caches omitted bodies and ownership, but explicitly
+    // recorded modified:false. An unchanged bundled sample has no such field.
+    const ownReadme = { path: "README.md", language: "markdown" as const, modified: false };
+    const context = { path: "README.md", tokens: 42, reason: "pinned" as const };
+    f.useAqvenor.setState((state) => ({
+      files: state.files.map((file) => {
+        if (file.path === "README.md") return ownReadme as typeof file;
+        const { content: _body, ...metadata } = file;
+        return metadata as typeof file;
+      }),
+      codeTabs: ["README.md"], activeCodeTab: "README.md", contextFiles: [context],
+    }));
+
+    await f.sync.hydrateFromBackend();
+    await f.sync.syncWorkspaceFiles();
+    const state = f.useAqvenor.getState();
+    expect(state.files).toEqual([ownReadme]);
+    expect(state.codeTabs).toEqual(["README.md"]);
+    expect(state.activeCodeTab).toBe("README.md");
+    expect(state.contextFiles).toEqual([context]);
+  });
+
+  it("opens a fresh blank composer when the removed sample was the only chat in this mode", async () => {
+    const f = await fixture();
+    f.conversationList.mockResolvedValue([]);
+    f.useAqvenor.setState((state) => ({
+      sessions: state.sessions.filter((session) => session.id !== "current"), currentSessionId: "seed-1",
+    }));
+    await f.sync.hydrateFromBackend();
+    const state = f.useAqvenor.getState();
+    expect(state.sessions).toHaveLength(1);
+    expect(state.sessions[0]).toMatchObject({ id: state.currentSessionId, title: "New chat", messages: [], mode: "chat" });
+    expect(state.currentSessionId.startsWith("seed-")).toBe(false);
+  });
+
   it("shares startup hydration and installs each server action only once", async () => {
     const f = await fixture();
     let answer!: (ok: boolean) => void;

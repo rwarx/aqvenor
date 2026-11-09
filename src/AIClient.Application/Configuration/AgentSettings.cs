@@ -105,6 +105,12 @@ public sealed class AgentSettings
     /// </remarks>
     public int MaxIdenticalCalls { get; set; } = 3;
 
+    /// <summary>Allows bounded delegated tasks with the same model, workspace and approval rules.</summary>
+    public bool AllowSubagents { get; set; } = true;
+
+    /// <summary>Maximum children in one parent run. The server also caps this at three.</summary>
+    public int MaxDelegatedTasks { get; set; } = 3;
+
     /// <summary>
     /// Whether the agent may run programs at all. Off until the user turns it on.
     /// </summary>
@@ -118,6 +124,9 @@ public sealed class AgentSettings
     /// arbitrary commands during an update.
     /// </remarks>
     public bool AllowCommands { get; set; }
+
+    /// <summary>Explicit permission for Windows shell scripts. Requires AllowCommands as well.</summary>
+    public bool AllowShellCommands { get; set; }
 
     /// <summary>
     /// The programs the agent may run, matched by name without a path or an extension.

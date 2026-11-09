@@ -12,6 +12,7 @@ import { ensureServerSession, flushPendingWrites, isServerId, refreshCanvasAfter
 import { failPendingApprovals, isChatVisible, newId, onSessionDeleted, useAqvenor, waitForApproval } from "./store";
 import { memoryContextFor, rememberRun } from "./mcp";
 import { translate } from "./i18n";
+import { delegatedAgent, delegatedAgentFromResult, finishDelegatedAgents, refuseDelegatedSend, withDelegatedAgent } from "./delegation";
 import type { AgentMode, Approval, Attachment, DiffLine, Message, ToolCall } from "./types";
 
 const S = () => useAqvenor.getState();
@@ -21,11 +22,15 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 interface ActiveRun {
   runId: string;
   abort: AbortController;
+  dispatched: boolean;
+  stopStreaming?: () => void;
+  cancellation?: Promise<boolean>;
 }
 
 /* Live runs keyed by chat session: three chats side by side run three
    independent generations. Stopping one never touches the others. */
 const activeRuns = new Map<string, ActiveRun>();
+const latestRunIds = new Map<string, string>();
 let agentWorkInFlight = 0;
 const pendingCancellations = new Set<Promise<unknown>>();
 const unconfirmedCancellations = new Set<string>();
@@ -36,9 +41,9 @@ export function hasAgentWorkInFlight() {
 }
 
 function cancelOnServer(runId: string) {
-  const cancellation: Promise<unknown> = Promise.resolve().then(() => runs.cancel(runId))
-    .then(() => unconfirmedCancellations.delete(runId))
-    .catch(() => { unconfirmedCancellations.add(runId); })
+  const cancellation = Promise.resolve().then(() => runs.cancel(runId))
+    .then(() => { unconfirmedCancellations.delete(runId); S().releaseDelegatedRun(runId); return true; })
+    .catch(() => { unconfirmedCancellations.add(runId); return false; })
     .finally(() => pendingCancellations.delete(cancellation));
   pendingCancellations.add(cancellation);
   return cancellation;
@@ -62,7 +67,10 @@ export function stopAgentRun(sessionId?: string) {
   abort.abort();
   if (S().approvalOf(sid)) S().resolveApproval("denied", undefined, sid);
   S().clearSessionRunner(sid);
-  void cancelOnServer(runId);
+  activeRun.stopStreaming?.();
+  // Preparation has no server task to cancel; a failed request here would
+  // otherwise block updates for a run that was never sent.
+  if (activeRun.dispatched) activeRun.cancellation = cancelOnServer(runId);
 }
 
 export function isAgentRunActive(sessionId?: string) {
@@ -73,7 +81,7 @@ export function isAgentRunActive(sessionId?: string) {
 /* Deleting a chat stops its run: the stream would otherwise pour into a
    dropped transcript while the server keeps burning tokens. Registered here
    (not imported by the store) to avoid a module cycle. */
-onSessionDeleted((sid) => stopAgentRun(sid));
+onSessionDeleted((sid) => { stopAgentRun(sid); latestRunIds.delete(sid); });
 
 /** Extract workspace-relative file paths from tool arguments (best effort). */
 function argPaths(argsJson: string): string[] {
@@ -143,6 +151,7 @@ async function runConversation(
   // The run belongs to one chat: concurrent runs in different chats coexist,
   // a second send into the SAME chat is still refused while it streams.
   let sid = opts?.sessionId ?? store.currentSessionId;
+  if (refuseDelegatedSend(store, sid)) return;
   if (isAgentRunActive(sid)) {
     store.pushToast(translate(locale, "run.busy.title"), translate(locale, "run.busy.desc"), "destructive");
     return;
@@ -163,6 +172,7 @@ async function runConversation(
   // must write to the upgraded session, not the dropped placeholder.
   sid = conversationId;
   if (S().updateClosing || S().workspaceSwitching) return;
+  if (refuseDelegatedSend(S(), sid)) return;
   if (isAgentRunActive(sid)) return;
 
   // Each chat keeps its own agent: the picker's choice is stored on the
@@ -175,31 +185,41 @@ async function runConversation(
   // streaming. Mint a real UUID so the whole run lifecycle binds.
   const runId = crypto.randomUUID();
   const abort = new AbortController();
-  activeRuns.set(sid, { runId, abort });
+  const activeRun: ActiveRun = { runId, abort, dispatched: false };
+  activeRuns.set(sid, activeRun);
+  latestRunIds.set(sid, runId);
+  const isCurrentRun = () => latestRunIds.get(sid) === runId;
 
   store.setSessionRunner(sid, { status: "running", label: mode === "off" ? "Answering" : "Working" });
   store.setDraft("", sid);
 
-  // Files staged on the paperclip travel with this one turn, then the tray clears.
+  // Files staged on the paperclip travel with this one turn.
   // When the memory MCP server is enabled, relevant memories from other chats
   // ride along as one extra read-only attachment.
   const staged = store.draftOf(sid).attachments;
   const memoryCtx = await memoryContextFor(trimmed);
+  if (abort.signal.aborted || !isCurrentRun()) {
+    if (isCurrentRun()) latestRunIds.delete(sid);
+    return;
+  }
   const stagedList: RunAttachment[] = staged.map((a) => ({ fileName: a.name, mimeType: a.mimeType, textContent: a.textContent }));
   if (memoryCtx) stagedList.unshift(memoryCtx);
   const runAttachments: RunAttachment[] | undefined = stagedList.length > 0 ? stagedList : undefined;
   const displayAttachments: Attachment[] | undefined =
     staged.length > 0 ? staged.map((a) => ({ id: a.id, name: a.name, sizeKb: a.sizeKb })) : undefined;
-  store.clearDraftAttachments(sid);
+  for (const attachment of staged) store.removeDraftAttachment(attachment.id, sid);
 
   let assistantId: string | null = null;
+  const runMessageIds = new Set<string>();
   let needsReload = false;
+  let terminalFrameReceived = false;
   // On retry we keep the failed turn's user bubble locally; the wire then persists a fresh
   // user message. Rebind the kept bubble onto that new id instead of appending a duplicate.
   let rebindUserId = opts?.rebindUserId ?? null;
 
   const ensureAssistant = (serverId: string, createdAt: string) => {
-    if (assistantId) return assistantId;
+    if (runMessageIds.has(serverId)) { assistantId = serverId; return serverId; }
+    if (assistantId) S().updateMessage(assistantId, { streaming: false }, sid);
     const msg: Message = {
       id: serverId,
       role: "assistant",
@@ -212,17 +232,30 @@ async function runConversation(
       live: true,
     };
     assistantId = serverId;
+    runMessageIds.add(serverId);
     S().addMessage(msg, sid);
     return serverId;
   };
 
-  const finishStreaming = () => {
+  const finishStreaming = (parentStatus: "done" | "stopped" | "failed" = "done") => {
     S().flushMessageBuffer(sid);
-    if (assistantId) S().updateMessage(assistantId, { streaming: false }, sid);
+    for (const id of runMessageIds) {
+      const message = S().resolveSession(sid)?.messages.find((entry) => entry.id === id);
+      if (message) S().updateMessage(id, { streaming: false, blocks: finishDelegatedAgents(message, parentStatus) }, sid);
+    }
   };
 
+  const finishStopped = () => {
+    S().flushMessageBuffer(sid);
+    for (const id of runMessageIds) {
+      const message = S().resolveSession(sid)?.messages.find((entry) => entry.id === id);
+      if (message) S().updateMessage(id, { streaming: false, cancelled: message.cancelled || id === assistantId || undefined, blocks: finishDelegatedAgents(message, "stopped") }, sid);
+    }
+  };
+  activeRun.stopStreaming = finishStopped;
+
   const fail = async (title: string, fatal: boolean) => {
-    finishStreaming();
+    finishStreaming("failed");
     // Pin the error onto the assistant bubble so it shows inline immediately,
     // even before the server reload — a failed run must never look like an
     // empty reply. reloadSession re-applies the same error from the wire.
@@ -257,17 +290,38 @@ async function runConversation(
     }
   };
 
-  const complete = async (label: string, inputTokens?: number, outputTokens?: number, ms?: number) => {
+  const refreshAfterStop = () => {
+    finishStopped();
+    if (isCurrentRun()) S().clearSessionRunner(sid);
+    // The abort can finish before the server has persisted its Cancelled row.
+    // Keep this cleanup tracked, then read only once cancellation is confirmed.
+    const cancellation = activeRun.cancellation ?? cancelOnServer(runId);
+    const refresh: Promise<unknown> = cancellation.then(async (confirmed) => {
+      if (!confirmed || !isCurrentRun()) return;
+      await reloadSession(sid, isCurrentRun);
+      if (!isCurrentRun()) return;
+      finishStopped();
+      await refreshAfterRun();
+    }).catch(() => {
+      // Retain the stopped local reply if the canonical transcript is unavailable.
+    }).finally(() => {
+      pendingCancellations.delete(refresh);
+      if (isCurrentRun() && !activeRuns.has(sid)) latestRunIds.delete(sid);
+    });
+    pendingCancellations.add(refresh);
+  };
+
+  const complete = async (label: string, inputTokens?: number, outputTokens?: number, ms?: number, status: "done" | "stopped" = "done") => {
     S().flushMessageBuffer(sid);
+    finishStreaming(status);
     if (assistantId && (inputTokens || outputTokens)) {
       S().updateMessage(assistantId, {
         streaming: false,
         usage: { inputTokens: inputTokens ?? 0, outputTokens: outputTokens ?? 0, ms: ms ?? 0 },
       }, sid);
-    } else {
-      finishStreaming();
     }
-    S().setSessionRunner(sid, { status: "done", label: label || "Completed" });
+    S().setSessionRunner(sid, { status, label: label || "Completed" });
+    S().addEvent({ id: newId("ev"), ts: Date.now(), kind: "complete", title: label, status: status === "done" ? "done" : "warning" }, sid);
     // Memory-between-chats: after a successful run, keep a one-line fact about
     // this exchange so future chats (any chat) can recall it via the memory MCP.
     void (async () => {
@@ -414,6 +468,7 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
   };
 
   const onFrame = async (frame: StreamFrame) => {
+    if (abort.signal.aborted) return;
     const st = S();
 
     // Keepalive, not content. The server writes one of these every five seconds while a run is
@@ -427,7 +482,7 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     if (frame.type === "delta" && frame.text) {
       const id = (frame.messageId as string) ?? assistantId;
       if (id) {
-        if (!assistantId) ensureAssistant(id, new Date().toISOString());
+        if (!runMessageIds.has(id)) ensureAssistant(id, new Date().toISOString());
         st.appendToMessageBuffered(id, frame.text, sid);
       }
       return;
@@ -437,6 +492,7 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     // and content stay exact.
     st.flushMessageBuffer(sid);
     if (frame.type === "error") {
+      terminalFrameReceived = true;
       await fail((frame.message as string) || translate(S().ui.locale, "error.requestFailed"), false);
       return;
     }
@@ -483,6 +539,23 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
         if (cur) st.updateMessage(id, { reasoning: (cur.reasoning ?? "") + ((data["text"] as string) ?? "") }, sid);
         break;
       }
+      case "subagent-started":
+      case "subagent-progress":
+      case "subagent-completed": {
+        const ownerId = data["parentMessageId"];
+        const callId = data["toolCallId"];
+        if (typeof ownerId !== "string" || !runMessageIds.has(ownerId) || typeof callId !== "string") break;
+        const owner = st.resolveSession(sid)?.messages.find((message) => message.id === ownerId);
+        const agent = delegatedAgent(data, callId, st.ui.locale);
+        if (!owner || !agent) break;
+        st.reserveDelegatedSession(sid, agent.conversationId!, runId);
+        st.updateMessage(ownerId, { blocks: withDelegatedAgent(owner, agent) }, sid);
+        if (frame.name === "subagent-progress") break;
+        const status = agent.status === "running" ? "running" : agent.status === "failed" ? "failed" : agent.status === "stopped" ? "warning" : "done";
+        st.addEvent({ id: newId("ev"), ts: Date.now(), kind: "subagent", agent: agent.name,
+          title: frame.name === "subagent-started" ? translate(st.ui.locale, "agents.started", agent.name) : translate(st.ui.locale, "agents.finished", agent.name, agent.status === "done" ? translate(st.ui.locale, "tasks.status.done") : agent.status === "stopped" ? translate(st.ui.locale, "tasks.status.stopped") : translate(st.ui.locale, "agents.failed")), status }, sid);
+        break;
+      }
       case "tool-proposed": {
         const call = data["call"] as { id: string; name: string; argumentsJson: string };
         const msgId = (data["messageId"] as string) ?? assistantId;
@@ -521,6 +594,10 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
           if (detail && detail !== body) {
             // surface the diff separately when the tool offered one
             st.updateToolCall(owner.id, call.id, { body: detail.slice(0, 4000) }, sid);
+          }
+          if (call.name === "delegate_task") {
+            const child = delegatedAgentFromResult(row?.content, call.id, st.ui.locale);
+            if (child) st.updateMessage(owner.id, { blocks: withDelegatedAgent(owner, child) }, sid);
           }
         }
         st.addEvent({
@@ -561,34 +638,37 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
         break;
       }
       case "completed": {
+        terminalFrameReceived = true;
         await complete(translate(S().ui.locale, "tasks.status.done"), data["inputTokens"] as number, data["outputTokens"] as number, data["generationTimeMs"] as number);
         if (activeRuns.get(sid)?.runId === runId) activeRuns.delete(sid);
         break;
       }
       case "run-completed": {
+        terminalFrameReceived = true;
         const reason = (data["reason"] as string) ?? "Answered";
-        await complete(
-          reason === "Answered"
-            ? translate(S().ui.locale, "tasks.status.done")
-            : reason === "StepLimit"
-              ? translate(S().ui.locale, "run.stop.stepLimit")
-              : translate(S().ui.locale, "run.stop.timeLimit"),
-        );
+        const labelKey = reason === "Answered" ? "tasks.status.done"
+          : reason === "StepLimit" ? "run.stop.stepLimit"
+          : reason === "OutputLimit" ? "run.stop.outputLimit"
+          : "run.stop.timeLimit";
+        const label = translate(S().ui.locale, labelKey);
+        await complete(label, undefined, undefined, undefined, reason === "Answered" ? "done" : "stopped");
         if (reason !== "Answered") {
           st.pushToast(
-            translate(S().ui.locale, reason === "StepLimit" ? "run.stop.stepLimit" : "run.stop.timeLimit"),
-            translate(S().ui.locale, "run.stop.continueHint"),
+            label,
+            translate(S().ui.locale, reason === "OutputLimit" ? "run.stop.outputLimit.desc" : "run.stop.continueHint"),
           );
         }
         if (activeRuns.get(sid)?.runId === runId) activeRuns.delete(sid);
         break;
       }
       case "cancelled": {
-        finishStreaming();
+        terminalFrameReceived = true;
+        finishStopped();
         st.addEvent({ id: newId("ev"), ts: Date.now(), kind: "complete", title: translate(S().ui.locale, "chat.stopped"), status: "warning" }, sid);
         st.setSessionRunner(sid, { status: "stopped", label: translate(S().ui.locale, "tasks.status.stopped") });
         try {
-          await reloadSession(sid);
+          await reloadSession(sid, isCurrentRun);
+          if (isCurrentRun()) finishStopped();
         } catch {
           /* keep local */
         }
@@ -628,6 +708,7 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     // Canvas selection travels with the turn (capped): what "this" points at.
     const focusNodeIds = store.canvas.selectedIds.slice(0, 20);
     const focus = focusNodeIds.length > 0 ? focusNodeIds : undefined;
+    activeRun.dispatched = true;
     if (mode === "off") {
       await runs.chatSend(
         { runId, conversationId, content: trimmed, providerId, modelId, attachments, focusNodeIds: focus },
@@ -644,20 +725,15 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     }
   } catch (err) {
     if (abort.signal.aborted || S().sessionRunnerOf(sid).status === "stopped") {
-      finishStreaming();
-      S().setSessionRunner(sid, { status: "stopped", label: "Stopped" });
-      try {
-        await reloadSession(sid);
-      } catch {
-        /* keep local */
-      }
-      await refreshAfterRun();
+      finishStopped();
     } else {
       await fail(err instanceof Error ? err.message : translate(S().ui.locale, "error.requestFailed"), true);
     }
   } finally {
     pollActive = false;
     if (activeRuns.get(sid)?.runId === runId) activeRuns.delete(sid);
+    if (abort.signal.aborted) refreshAfterStop();
+    else if (isCurrentRun()) latestRunIds.delete(sid);
     if (pollPromise) await pollPromise.catch(() => undefined);
 
     // Nothing can answer an approval question now, so anything still waiting must be released.
@@ -665,6 +741,13 @@ const MAX_CONSECUTIVE_POLL_FAILURES = 8;
     // spinner with no error and no way to tell whether it was still working.
     // Scoped to this chat: another chat's open question survives our ending.
     failPendingApprovals("The run ended before this question was answered.", sid);
+    if (!abort.signal.aborted) {
+      const ownsChildren = Object.values(S().delegatedRuns).some((owner) => owner.runId === runId);
+      // A broken stream cannot prove the server released its child leases.
+      // Failed cancellation retains ownership until the existing retry path confirms cleanup.
+      if (ownsChildren && !terminalFrameReceived) await cancelOnServer(runId);
+      else S().releaseDelegatedRun(runId);
+    }
   }
 }
 

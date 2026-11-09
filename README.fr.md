@@ -137,10 +137,11 @@ l'utiliser.
 
 | | |
 | --- | --- |
-| **Travaille dans** | Un dossier que vous désignez, et refuse de lire ou d'écrire en dehors |
-| **Également refusé, dans ce dossier même** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — par nom, toujours |
+| **Travaille dans** | Par défaut, les outils de fichiers sont limités au dossier choisi. Pour le shell, le répertoire de travail est vérifié ; ce n'est pas un bac à sable du système d'exploitation et les commandes peuvent accéder hors du dossier |
+| **Refusé par les outils de fichiers** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — par nom, toujours |
 | **Demande avant** | Chaque écriture, chaque fichier externe, chaque requête réseau, chaque programme |
-| **Jamais** | Exécuter un shell. `&&`, `\|`, `>` et `$HOME` sont du texte que reçoit le programme |
+| **Commandes directes** | `run_command` transmet les arguments directement au programme. `&&`, `\|`, `>` et `$HOME` sont du texte littéral |
+| **Shell** | `run_shell` distinct pour CMD/PowerShell, désactivé par défaut. Autoriser d'abord les programmes, puis activer la permission supplémentaire du shell par une boîte de dialogue native ; approbation à *chaque* appel |
 | **Programmes** | Désactivés par défaut. Ensuite, une simple liste blanche qu'un humain édite. Ensuite, l'approbation à *chaque* appel |
 | **Annulation** | Votre gestion de versions. Les modifications sont affichées avant d'être faites, pas annulées après |
 

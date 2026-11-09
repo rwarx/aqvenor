@@ -1,9 +1,11 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
 using AIClient.Application.Graph;
 using AIClient.Application.Interfaces;
 using AIClient.Application.Services;
+using AIClient.Application.Services.Tools;
 using AIClient.Domain.Enums;
 using AIClient.Domain.Interfaces;
 using AIClient.Domain.Models;
@@ -81,6 +83,424 @@ public sealed class AgentServiceTests : IAsyncLifetime
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Not worth failing a run over a leftover temporary directory.
+        }
+    }
+
+    [Theory]
+    [InlineData("The answer is only partly written.")]
+    [InlineData("")]
+    public async Task Length_output_keeps_partial_text_and_usage_and_reports_an_incomplete_run(string partial)
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping([
+            new AIStreamEvent.ContentDelta(partial),
+            new AIStreamEvent.Usage(41, 512, 200, 10, 3),
+            new AIStreamEvent.Completed("length"),
+        ]);
+
+        var events = await CollectAsync(Service(provider).RunAsync(Ask(conversationId), Token));
+
+        Assert.Equal(AgentStopReason.OutputLimit, Assert.Single(events.OfType<AgentEvent.Completed>()).Reason);
+        Assert.Empty(events.OfType<AgentEvent.Failed>());
+        Assert.False(Assert.Single(events.OfType<AgentEvent.StepCompleted>()).CalledTools);
+        Assert.Single(provider.Requests);
+        var message = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Assistant);
+        Assert.Equal(partial, message.Content);
+        Assert.Equal(MessageStatus.Complete, message.Status);
+        Assert.Equal(41, message.InputTokens);
+        Assert.Equal(512, message.OutputTokens);
+        Assert.Equal(200, message.ReasoningTokens);
+        Assert.Equal(10, message.CacheReadTokens);
+        Assert.Equal(3, message.CacheWriteTokens);
+        Assert.Null(message.ToolCallsJson);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Length_output_discards_assembled_or_fragmented_calls_without_approval_or_file_write(bool assembled)
+    {
+        var conversationId = await NewChatAsync();
+        AIStreamEvent call = assembled
+            ? new AIStreamEvent.ToolCalls([Call("write_file", """{"path":"index.html","content":"<h1>Must not be written</h1>"}""")])
+            : new AIStreamEvent.ToolCallDelta(0, "call-1", "write_file", "{\"path\":\"index.html\",\"content\":\"<h1>");
+        var provider = Stepping([
+            new AIStreamEvent.ContentDelta("I started generating the file."),
+            call,
+            new AIStreamEvent.Usage(42, 512),
+            new AIStreamEvent.Completed("length"),
+        ], Answer("This extra step must never be requested."));
+        var approval = new ScriptedApproval();
+
+        var events = await CollectAsync(Service(provider, [new WriteFileTool(_workspace)], approval)
+            .RunAsync(Ask(conversationId), Token));
+
+        Assert.False(File.Exists(Path.Combine(_root, "index.html")));
+        Assert.Equal(AgentStopReason.OutputLimit, Assert.Single(events.OfType<AgentEvent.Completed>()).Reason);
+        Assert.Single(provider.Requests);
+        Assert.Empty(approval.Asked);
+        Assert.Empty(events.OfType<AgentEvent.ToolCallProposed>());
+        Assert.Empty(events.OfType<AgentEvent.ToolCallFinished>());
+        Assert.False(Assert.Single(events.OfType<AgentEvent.StepCompleted>()).CalledTools);
+        var messages = await MessagesAsync(conversationId);
+        Assert.DoesNotContain(messages, message => message.Role == MessageRole.Tool);
+        Assert.Null(Assert.Single(messages, message => message.Role == MessageRole.Assistant).ToolCallsJson);
+    }
+
+    [Fact]
+    public async Task Continuing_after_length_output_sends_partial_text_without_orphaned_tool_calls()
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(
+            [new AIStreamEvent.ContentDelta("The unfinished explanation."),
+                new AIStreamEvent.ToolCalls([Call("write_file", """{"path":"index.html","content":"unfinished"}""")]),
+                new AIStreamEvent.Completed("length")],
+            Answer("Now the explanation is complete."));
+        var service = Service(provider, [new WriteFileTool(_workspace)]);
+
+        await CollectAsync(service.RunAsync(Ask(conversationId), Token));
+        var continued = await CollectAsync(service.RunAsync(Ask(conversationId, "Continue the explanation."), Token));
+
+        Assert.Equal(2, provider.Requests.Count);
+        var history = provider.Requests[1].Messages;
+        Assert.Contains(history, message => message.Role == "assistant" && message.Content == "The unfinished explanation.");
+        Assert.DoesNotContain(history, message => message.Role == "tool" || message.ToolCalls.Count > 0 || message.ToolCallId is not null);
+        Assert.False(File.Exists(Path.Combine(_root, "index.html")));
+        Assert.Equal(AgentStopReason.Answered, Assert.Single(continued.OfType<AgentEvent.Completed>()).Reason);
+    }
+
+    [Fact]
+    public async Task Delegation_marks_a_length_limited_child_as_incomplete_and_preserves_its_partial_answer()
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"task":"Review the project."}""")),
+            [new AIStreamEvent.ContentDelta("The review is partial."), new AIStreamEvent.Usage(43, 512), new AIStreamEvent.Completed("length")],
+            Answer("The subagent reached its output limit and its review remains incomplete."));
+
+        var events = await CollectAsync(Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token));
+
+        var completed = Assert.Single(events.OfType<AgentEvent.SubagentCompleted>());
+        Assert.Equal("incomplete", completed.Status);
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        Assert.False(result.ToolSucceeded);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("incomplete", payload.RootElement.GetProperty("status").GetString());
+        Assert.Equal("The review is partial.", payload.RootElement.GetProperty("answer").GetString());
+        var child = await MessagesAsync(payload.RootElement.GetProperty("conversationId").GetGuid());
+        Assert.DoesNotContain(child, message => message.Status == MessageStatus.Streaming);
+        var childAnswer = Assert.Single(child, message => message.Role == MessageRole.Assistant);
+        Assert.Equal("The review is partial.", childAnswer.Content);
+        Assert.Equal(43, childAnswer.InputTokens);
+        Assert.Equal(512, childAnswer.OutputTokens);
+        Assert.Equal(AgentStopReason.Answered, Assert.Single(events.OfType<AgentEvent.Completed>()).Reason);
+    }
+
+    [Fact]
+    public async Task Delegation_runs_a_real_child_with_its_own_transcript_and_the_same_model_and_workspace()
+    {
+        var conversationId = await NewChatAsync();
+        var project = await _conversations.CreateProjectAsync(new NewProject { Name = "Delegation project" }, Token);
+        await _conversations.SetProjectAsync(conversationId, project.Id, Token);
+        var approval = new ScriptedApproval();
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"title":"Build the landing","task":"Create landing.html and report the result."}""")),
+            Calls(Call("write_file", """{"path":"landing.html","content":"<h1>Delegated work</h1>"}""")),
+            Answer("Created landing.html."),
+            Answer("The delegated landing is ready."));
+
+        var events = await CollectAsync(Service(provider,
+            [DelegationTool(), new WriteFileTool(_workspace)], approval)
+            .RunAsync(Ask(conversationId), Token));
+
+        Assert.Equal("<h1>Delegated work</h1>", await File.ReadAllTextAsync(Path.Combine(_root, "landing.html"), Token));
+        var parent = await MessagesAsync(conversationId);
+        Assert.Equal(4, parent.Count);
+        var result = Assert.Single(parent, message => message.Role == MessageRole.Tool);
+        Assert.Equal("delegate_task", result.ToolName);
+        using var payload = JsonDocument.Parse(result.Content);
+        var childId = payload.RootElement.GetProperty("conversationId").GetGuid();
+        Assert.NotEqual(conversationId, childId);
+        Assert.Equal(conversationId, payload.RootElement.GetProperty("parentConversationId").GetGuid());
+        Assert.Equal("done", payload.RootElement.GetProperty("status").GetString());
+        Assert.Contains("Created landing.html", payload.RootElement.GetProperty("answer").GetString(), StringComparison.Ordinal);
+        var child = (await _conversations.GetAsync(childId, Token))!;
+        Assert.Equal(project.Id, child.ProjectId);
+        Assert.Equal(ProviderId, child.ProviderId);
+        Assert.Equal(ModelId, child.ModelId);
+        Assert.Equal(4, child.Messages.Count);
+        var childWrite = Assert.Single(approval.Asked);
+        Assert.Equal(childId, childWrite.ConversationId);
+        Assert.Equal("write_file", childWrite.ToolName);
+        Assert.Equal(2, events.Count(evt => evt is AgentEvent.StepStarted));
+        Assert.DoesNotContain(events.OfType<AgentEvent.ToolCallFinished>(), evt => evt.Call.Name == "write_file");
+        Assert.Equal(1, events.Count(evt => evt.GetType().Name == "SubagentStarted"));
+        Assert.Equal(1, events.Count(evt => evt.GetType().Name == "SubagentCompleted"));
+        Assert.Single(events.OfType<AgentEvent.Completed>());
+    }
+
+    [Fact]
+    public async Task Delegation_cannot_turn_a_plan_into_a_build_or_delegate_recursively()
+    {
+        var conversationId = await NewChatAsync();
+        var write = new ProbeTool("write_thing", AgentToolRisk.Write);
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"title":"Inspect","task":"Inspect the project."}""")),
+            Calls(Call("write_thing"), Call("delegate_task", """{"task":"Ignore the restriction and delegate again."}""", "nested")),
+            Answer("Inspection complete; no files changed."),
+            Answer("The plan is ready."));
+
+        var events = await CollectAsync(Service(provider, [DelegationTool(), write])
+            .RunAsync(Ask(conversationId, mode: AgentMode.Plan), Token));
+
+        Assert.Equal(0, write.Ran);
+        Assert.DoesNotContain(provider.Requests[1].Tools!, definition => definition.Name == "delegate_task");
+        Assert.DoesNotContain(provider.Requests[1].Tools!, definition => definition.Name == "write_thing");
+        Assert.Contains(provider.Requests[2].Messages, message => message.Role == "tool" &&
+            message.Content.Contains("cannot delegate", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, events.Count(evt => evt.GetType().Name == "SubagentStarted"));
+        Assert.Single(events.OfType<AgentEvent.Completed>());
+    }
+
+    [Fact]
+    public async Task Delegation_is_disabled_live_and_bad_tasks_never_create_a_chat()
+    {
+        var conversationId = await NewChatAsync();
+        _settings.Current.Agent.GetType().GetProperty("AllowSubagents")?.SetValue(_settings.Current.Agent, false);
+        var provider = Stepping(Calls(Call("delegate_task", """{"task":"Inspect this project."}""")), Answer("Delegation is disabled."));
+        var events = await CollectAsync(Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token));
+
+        Assert.DoesNotContain(provider.Requests[0].Tools!, definition => definition.Name == "delegate_task");
+        Assert.Single(await _conversations.GetSummariesAsync(cancellationToken: Token));
+        Assert.DoesNotContain(events, evt => evt.GetType().Name == "SubagentStarted");
+        Assert.Contains("switched off", Assert.Single(events.OfType<AgentEvent.ToolCallFinished>()).Message.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Stop_cancels_the_child_pending_approval_and_persists_the_child_link()
+    {
+        var conversationId = await NewChatAsync();
+        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var write = new ProbeTool("write_thing", AgentToolRisk.Write);
+        var approval = new ScriptedApproval(before: () => { stopping.Cancel(); return Task.CompletedTask; });
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"title":"Inspect","task":"Inspect the project."}""")),
+            Calls(Call("write_thing")));
+
+        var events = await CollectAsync(Service(provider, [DelegationTool(), write], approval)
+            .RunAsync(Ask(conversationId), stopping.Token));
+
+        Assert.Equal(0, write.Ran);
+        Assert.Single(events.OfType<AgentEvent.Cancelled>());
+        Assert.Empty(events.OfType<AgentEvent.Completed>());
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("stopped", payload.RootElement.GetProperty("status").GetString());
+        Assert.NotEqual(conversationId, payload.RootElement.GetProperty("conversationId").GetGuid());
+        Assert.Equal(MessageStatus.Complete, result.Status);
+        Assert.False(result.ToolSucceeded);
+    }
+
+    [Fact]
+    public async Task The_parent_has_a_three_child_budget_even_when_every_task_is_different()
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"task":"First inspection."}""", "d1")), Answer("First result."),
+            Calls(Call("delegate_task", """{"task":"Second inspection."}""", "d2")), Answer("Second result."),
+            Calls(Call("delegate_task", """{"task":"Third inspection."}""", "d3")), Answer("Third result."),
+            Calls(Call("delegate_task", """{"task":"Fourth inspection."}""", "d4")), Answer("Three inspections completed."));
+
+        var events = await CollectAsync(Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token));
+
+        Assert.Equal(3, events.Count(evt => evt.GetType().Name == "SubagentStarted"));
+        Assert.Equal(4, (await _conversations.GetSummariesAsync(cancellationToken: Token)).Count);
+        Assert.Contains("delegation budget", events.OfType<AgentEvent.ToolCallFinished>().Last().Message.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private IAgentTool DelegationTool() => new DelegateTaskTool(_workspace, _settings);
+
+    [Theory]
+    [InlineData("{\"task\":\"   \"}")]
+    [InlineData("{\"task\":\"Inspect the project.\",\"title\":42}")]
+    [InlineData("{}")]
+    public async Task Invalid_delegation_never_creates_a_child(string arguments)
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(Calls(Call("delegate_task", arguments)), Answer("No child was started."));
+        var events = await CollectAsync(Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token));
+        Assert.Single(await _conversations.GetSummariesAsync(cancellationToken: Token));
+        Assert.DoesNotContain(events, evt => evt.GetType().Name == "SubagentStarted");
+        Assert.Equal(AgentCallOutcome.Failed, Assert.Single(events.OfType<AgentEvent.ToolCallFinished>()).Outcome);
+    }
+
+    [Fact]
+    public async Task Stop_before_the_child_provider_request_does_not_leave_a_streaming_placeholder()
+    {
+        var conversationId = await NewChatAsync();
+        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var provider = Stepping(Calls(Call("delegate_task", """{"task":"Inspect the project."}""")), Answer("This should not arrive."));
+        var events = new List<AgentEvent>();
+        await foreach (var evt in Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), stopping.Token))
+        {
+            events.Add(evt);
+            if (evt.GetType().Name == "SubagentProgress")
+            {
+                stopping.Cancel();
+            }
+        }
+        Assert.Single(provider.Requests);
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        var childId = payload.RootElement.GetProperty("conversationId").GetGuid();
+        Assert.Equal("stopped", payload.RootElement.GetProperty("status").GetString());
+        var child = (await _conversations.GetAsync(childId, Token))!;
+        Assert.DoesNotContain(child.Messages, message => message.Status == MessageStatus.Streaming);
+        Assert.Single(child.Messages, message => message.Status == MessageStatus.Cancelled);
+        Assert.Single(events.OfType<AgentEvent.Cancelled>());
+    }
+
+    [Fact]
+    public async Task A_child_has_a_twelve_step_budget_and_its_incomplete_result_is_visible_to_the_parent()
+    {
+        var conversationId = await NewChatAsync();
+        var scripts = new List<AIStreamEvent[]> { Calls(Call("delegate_task", """{"task":"Inspect all files."}""")) };
+        scripts.AddRange(Enumerable.Range(1, 11).Select(index => Calls(Call("read_thing", $"{{\"path\":\"file{index}.txt\"}}"))));
+        scripts.Add(Answer("The remaining files still need inspection."));
+        scripts.Add(Answer("The delegated task reached its budget."));
+        var provider = Stepping(scripts.ToArray());
+        var events = await CollectAsync(Service(provider, [DelegationTool(), new ProbeTool("read_thing")]).RunAsync(Ask(conversationId), Token));
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("incomplete", payload.RootElement.GetProperty("status").GetString());
+        Assert.Equal(12, payload.RootElement.GetProperty("steps").GetInt32());
+        Assert.False(result.ToolSucceeded);
+        Assert.Equal(AIToolChoice.None, provider.Requests[12].ToolChoice);
+        Assert.Single(events.OfType<AgentEvent.Completed>());
+    }
+
+    [Fact]
+    public async Task A_child_provider_error_is_recorded_without_failing_the_parent()
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"task":"Inspect the project."}""")),
+            [new AIStreamEvent.Error(AIErrorKind.RateLimited, "Provider rate limit reached.", null)],
+            Answer("The child could not finish because of the rate limit."));
+        var events = await CollectAsync(Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token));
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("error", payload.RootElement.GetProperty("status").GetString());
+        Assert.Contains("rate limit", payload.RootElement.GetProperty("answer").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.ToolSucceeded);
+        Assert.Empty(events.OfType<AgentEvent.Failed>());
+        Assert.Single(events.OfType<AgentEvent.Completed>());
+    }
+
+    [Theory]
+    [InlineData("SubagentStarted")]
+    [InlineData("SubagentProgress")]
+    public async Task Disposing_a_parent_stream_keeps_a_terminal_child_link(string stopAt)
+    {
+        var conversationId = await NewChatAsync();
+        var provider = Stepping(Calls(Call("delegate_task", """{"task":"Inspect the project."}""")), Answer("This should not arrive."));
+        var stream = Service(provider, [DelegationTool()]).RunAsync(Ask(conversationId), Token).GetAsyncEnumerator(Token);
+        try
+        {
+            while (await stream.MoveNextAsync())
+            {
+                if (stream.Current.GetType().Name == stopAt)
+                {
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            await stream.DisposeAsync();
+        }
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("stopped", payload.RootElement.GetProperty("status").GetString());
+        Assert.Equal(MessageStatus.Complete, result.Status);
+        var childId = payload.RootElement.GetProperty("conversationId").GetGuid();
+        Assert.DoesNotContain((await _conversations.GetAsync(childId, Token))!.Messages, message => message.Status == MessageStatus.Streaming);
+    }
+
+    [Fact]
+    public async Task A_child_approval_pauses_the_parent_deadline_as_well_as_its_own()
+    {
+        var conversationId = await NewChatAsync();
+        _settings.With<AgentSettings>(agent => agent.MaxDurationSeconds = 3);
+        var clock = new ManualTimeProvider();
+        var approval = new ScriptedApproval(before: () => { clock.Advance(TimeSpan.FromSeconds(40)); return Task.CompletedTask; });
+        var provider = Stepping(
+            Calls(Call("delegate_task", """{"task":"Update the widget."}""")),
+            Calls(Call("write_thing")),
+            Answer("Widget updated."),
+            Answer("The delegated work is complete."));
+        var events = await CollectAsync(Service(provider, [DelegationTool(), new ProbeTool("write_thing", AgentToolRisk.Write)],
+            approval, timeProvider: clock).RunAsync(Ask(conversationId), Token));
+        Assert.Equal(AgentStopReason.Answered, Assert.Single(events.OfType<AgentEvent.Completed>()).Reason);
+        Assert.Empty(events.OfType<AgentEvent.Cancelled>());
+        Assert.Single(approval.Asked);
+    }
+
+    [Fact]
+    public async Task A_child_transcript_is_reserved_before_start_and_released_after_stream_disposal()
+    {
+        var conversationId = await NewChatAsync();
+        var guard = new ChildConversationProbe();
+        var provider = Stepping(Calls(Call("delegate_task", """{"task":"Inspect the project."}""")), Answer("Never reached."));
+        var stream = Service(provider, [DelegationTool()], childGuard: guard).RunAsync(Ask(conversationId), Token).GetAsyncEnumerator(Token);
+        try
+        {
+            while (await stream.MoveNextAsync())
+            {
+                if (stream.Current.GetType().Name == "SubagentStarted")
+                {
+                    Assert.Single(guard.Reserved);
+                    Assert.Equal(0, guard.Released);
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            await stream.DisposeAsync();
+        }
+        Assert.Equal(1, guard.Released);
+    }
+
+    [Fact]
+    public async Task A_conflicting_child_reservation_cannot_start_or_cancel_another_run()
+    {
+        var conversationId = await NewChatAsync();
+        var guard = new ChildConversationProbe { Refuse = true };
+        var provider = Stepping(Calls(Call("delegate_task", """{"task":"Inspect the project."}""")), Answer("The child could not start."));
+        var events = await CollectAsync(Service(provider, [DelegationTool()], childGuard: guard).RunAsync(Ask(conversationId), Token));
+        Assert.DoesNotContain(events, evt => evt.GetType().Name == "SubagentStarted");
+        var childId = Assert.Single(guard.Reserved);
+        Assert.Empty((await _conversations.GetAsync(childId, Token))!.Messages);
+        var result = Assert.Single(await MessagesAsync(conversationId), message => message.Role == MessageRole.Tool);
+        using var payload = JsonDocument.Parse(result.Content);
+        Assert.Equal("error", payload.RootElement.GetProperty("status").GetString());
+        Assert.False(result.ToolSucceeded);
+    }
+
+    private sealed class ChildConversationProbe : IAgentChildConversationGuard
+    {
+        public List<Guid> Reserved { get; } = [];
+        public int Released { get; private set; }
+        public bool Refuse { get; init; }
+        public IDisposable? TryReserve(Guid conversationId)
+        {
+            Reserved.Add(conversationId);
+            return Refuse ? null : new ProbeLease(() => Released++);
+        }
+        private sealed class ProbeLease(Action release) : IDisposable
+        {
+            public void Dispose() => release();
         }
     }
 
@@ -741,7 +1161,8 @@ public sealed class AgentServiceTests : IAsyncLifetime
         IAgentApproval? approval = null,
         IProviderRegistry? registry = null,
         ICompactionService? compaction = null,
-        TimeProvider? timeProvider = null) =>
+        TimeProvider? timeProvider = null,
+        IAgentChildConversationGuard? childGuard = null) =>
         new(_conversations,
             registry ?? new StubProviderRegistry(provider).WithModel(Model()),
             new ContextBuilder(
@@ -753,7 +1174,7 @@ public sealed class AgentServiceTests : IAsyncLifetime
             new AgentToolRegistry(tools ?? []),
             approval ?? new ScriptedApproval(),
             _workspace,
-            NullLogger<AgentService>.Instance, timeProvider);
+            NullLogger<AgentService>.Instance, timeProvider, childGuard);
 
     /// <summary>
     /// A model that can call tools, which is the only capability the loop insists on.

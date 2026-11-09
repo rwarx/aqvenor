@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using AIClient.Domain.Enums;
 using AIClient.Domain.Models;
 
@@ -13,7 +14,7 @@ namespace AIClient.Application.Services;
 /// and so the mapping is unit-testable without a network. Nothing here ever includes
 /// a request header or an API key in its output.
 /// </remarks>
-public static class ProviderErrorMapper
+public static partial class ProviderErrorMapper
 {
     /// <summary>Maps an HTTP status plus response body to a classified exception.</summary>
     /// <param name="statusCode">Status returned by the provider.</param>
@@ -26,6 +27,7 @@ public static class ProviderErrorMapper
         string providerName,
         string providerId)
     {
+        responseBody = SanitizeProviderText(responseBody);
         var detail = ExtractProviderMessage(responseBody);
         var technical = BuildTechnicalDetails(statusCode, responseBody);
 
@@ -87,6 +89,28 @@ public static class ProviderErrorMapper
         var finalMessage = string.IsNullOrWhiteSpace(detail) ? message : $"{message}\n\n{detail}";
         return new AIProviderException(kind, finalMessage, technical, providerId);
     }
+
+    /// <summary>Hides provider account and deployment ids while retaining useful error wording.</summary>
+    public static string? SanitizeProviderText(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+        text = AccountIdentifier().Replace(text, RedactIdentifier);
+        return FunctionIdentifier().Replace(text, RedactIdentifier);
+    }
+
+    private static string RedactIdentifier(Match match) =>
+        $"{match.Groups["label"].Value} {match.Groups["quote"].Value}[redacted]{match.Groups["quote"].Value}";
+
+    // Keep each original quote encoding so a raw JSON error body remains valid after redaction.
+    [GeneratedRegex("""\b(?<label>account)\s+(?<quote>\\u002[27]|\\?['"])[^'"\r\n]+?\k<quote>""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex AccountIdentifier();
+
+    // A human-readable tool name is useful; only UUID deployment identifiers are private here.
+    [GeneratedRegex("""\b(?<label>function)\s+(?<quote>\\u002[27]|\\?['"])[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\k<quote>""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex FunctionIdentifier();
 
     /// <summary>Maps a client-side transport exception.</summary>
     public static AIProviderException FromException(Exception exception, string providerName, string providerId)

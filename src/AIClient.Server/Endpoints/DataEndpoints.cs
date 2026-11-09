@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
 using AIClient.Application.Graph;
@@ -16,7 +17,10 @@ namespace AIClient.Server;
 /// </summary>
 public static class DataEndpoints
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     public static void Map(WebApplication app)
     {
@@ -72,26 +76,30 @@ public static class DataEndpoints
             return Results.Ok(await s.GetAsync(id, ct).ConfigureAwait(false));
         });
 
-        g.MapDelete("/conversations/{id:guid}", async (Guid id, IConversationService s, CancellationToken ct) =>
+        g.MapDelete("/conversations/{id:guid}", async (Guid id, IConversationService s, RunRegistry runs, CancellationToken ct) =>
         {
+            if (runs.IsChildConversationReserved(id)) { return ChildTranscriptConflict(); }
             await s.DeleteAsync(id, ct).ConfigureAwait(false);
             return Results.Ok(new { deleted = true });
         });
 
-        g.MapDelete("/messages/{id:guid}", async (Guid id, IConversationService s, CancellationToken ct) =>
+        g.MapDelete("/messages/{id:guid}", async (Guid id, IConversationService s, RunRegistry runs, CancellationToken ct) =>
         {
+            if (await IsReservedChildMessageAsync(id, s, runs, ct).ConfigureAwait(false)) { return ChildTranscriptConflict(); }
             await s.DeleteMessageAsync(id, ct).ConfigureAwait(false);
             return Results.Ok(new { deleted = true });
         });
 
-        g.MapPatch("/messages/{id:guid}", async (Guid id, UpdateMessageRequest req, IConversationService s, CancellationToken ct) =>
+        g.MapPatch("/messages/{id:guid}", async (Guid id, UpdateMessageRequest req, IConversationService s, RunRegistry runs, CancellationToken ct) =>
         {
+            if (await IsReservedChildMessageAsync(id, s, runs, ct).ConfigureAwait(false)) { return ChildTranscriptConflict(); }
             await s.UpdateMessageAsync(new MessageUpdate { MessageId = id, Content = req.Content }, ct).ConfigureAwait(false);
             return Results.Ok(new { updated = true });
         });
 
-        g.MapPost("/messages/{id:guid}/truncate-after", async (Guid id, IConversationService s, CancellationToken ct) =>
+        g.MapPost("/messages/{id:guid}/truncate-after", async (Guid id, IConversationService s, RunRegistry runs, CancellationToken ct) =>
         {
+            if (await IsReservedChildMessageAsync(id, s, runs, ct).ConfigureAwait(false)) { return ChildTranscriptConflict(); }
             await s.DeleteFromMessageAsync(id, inclusive: false, ct).ConfigureAwait(false);
             return Results.Ok(new { truncated = true });
         });
@@ -614,6 +622,15 @@ public static class DataEndpoints
     private sealed record UpdateConversationRequest(string? Title, bool? IsPinned, string? ProviderId, string? ModelId, Guid? ProjectId);
     private sealed record UpdateMessageRequest(string Content);
     private sealed record ApiKeyRequest(string ApiKey);
+    private static IResult ChildTranscriptConflict() => Results.Conflict(new
+    {
+        error = "A subagent owns this conversation. Wait for it to finish or stop the parent task before changing its transcript.",
+    });
+
+    private static async Task<bool> IsReservedChildMessageAsync(Guid messageId, IConversationService conversations, RunRegistry runs, CancellationToken ct) =>
+        await conversations.GetMessageConversationIdAsync(messageId, ct).ConfigureAwait(false) is { } conversationId &&
+        runs.IsChildConversationReserved(conversationId);
+
     private sealed record EnabledRequest(bool IsEnabled);
     private sealed record CustomProviderRequest(string Name, string BaseUrl);
     private sealed record OpenWorkspaceRequest(string Directory);
@@ -900,6 +917,7 @@ public static class DataEndpoints
         // Program execution. The allowlist deliberately excludes cmd/powershell/bash; adding one to
         // the list over HTTP is the same as turning a sandbox off.
         nameof(AgentSettings.AllowCommands),
+        nameof(AgentSettings.AllowShellCommands),
         nameof(AgentSettings.AllowedCommands),
 
         // Reaching outside the project folder and onto the network. Both are refused by a name-based

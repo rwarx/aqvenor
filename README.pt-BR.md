@@ -136,10 +136,11 @@ antes de usá-lo.
 
 | | |
 | --- | --- |
-| **Trabalha em** | Uma pasta que você indicar, e recusa ler ou escrever fora dela |
-| **Também recusado, dentro dessa pasta** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — por nome, sempre |
+| **Trabalha em** | Por padrão, as ferramentas de arquivos ficam limitadas à pasta escolhida. Para o shell, o diretório de trabalho é verificado; isso não é um isolamento do sistema operacional, e os comandos podem acessar fora da pasta |
+| **Recusado pelas ferramentas de arquivos** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — por nome, sempre |
 | **Pergunta antes de** | Toda escrita, todo arquivo externo, toda requisição de rede, todo programa |
-| **Nunca** | Executar um shell. `&&`, `\|`, `>` e `$HOME` são texto que o programa recebe |
+| **Comandos diretos** | `run_command` passa os argumentos diretamente ao programa. `&&`, `\|`, `>` e `$HOME` são texto literal |
+| **Shell** | `run_shell` separado para CMD/PowerShell, desligado por padrão. Primeiro permita programas e depois ative a permissão adicional de shell por um diálogo nativo; aprovação em *cada* chamada |
 | **Programas** | Desligados por padrão. Depois, uma lista de permissões que só uma pessoa edita. Depois, aprovação em *cada* chamada |
 | **Desfazer** | Seu controle de versão. As mudanças são mostradas antes de serem feitas, não revertidas depois |
 

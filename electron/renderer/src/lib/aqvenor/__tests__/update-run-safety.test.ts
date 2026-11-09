@@ -98,6 +98,27 @@ describe("generation during an update restart", () => {
     expect(hasAgentWorkInFlight()).toBe(false);
   });
 
+  it.each(["off", "build"] as const)("allows an update after Stop during %s memory preparation even when cancellation would fail", async (mode) => {
+    const mcp = await import("../mcp");
+    let finishMemory!: (value: null) => void;
+    const memory = vi.spyOn(mcp, "memoryContextFor").mockReturnValueOnce(new Promise((resolve) => { finishMemory = resolve; }));
+    const cancel = vi.spyOn(runs, "cancel").mockRejectedValue(new Error("cancel connection lost"));
+    const agentRun = vi.spyOn(runs, "agentRun").mockResolvedValue(undefined);
+    const generation = runAgentConversation("hello", mode);
+    await vi.waitFor(() => expect(memory).toHaveBeenCalledOnce());
+    stopAgentRun(id);
+    finishMemory(null);
+    await generation;
+    expect(runs.chatSend).not.toHaveBeenCalled();
+    expect(agentRun).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+    expect(isAgentRunActive()).toBe(false);
+    expect(hasAgentWorkInFlight()).toBe(false);
+    const { close, finishClose } = closeBridge();
+    close();
+    await vi.waitFor(() => expect(finishClose).toHaveBeenCalledExactlyOnceWith("work-in-flight-update", true));
+  });
+
   it.each(["resolved", "rejected"] as const)("refuses an update until stopped-run cancellation is %s and contains its errors", async (outcome) => {
     vi.mocked(runs.chatSend).mockImplementationOnce((_body, _emit, signal) => new Promise<void>((resolve) => {
       signal!.addEventListener("abort", () => resolve(), { once: true });

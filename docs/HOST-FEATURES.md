@@ -1,6 +1,6 @@
 # Desktop host capabilities
 
-Updated 2026-11-04. Both hosts are Windows desktop applications built by CI.
+Updated 2026-11-09. Both hosts are Windows desktop applications built by CI.
 The shared Application/Infrastructure services own provider calls, conversations,
 workspace access, agent approval contracts and graph mutations.
 
@@ -8,6 +8,10 @@ workspace access, agent approval contracts and graph mutations.
 | --- | --- | --- |
 | Chat, provider configuration and streaming | Shared core, WPF views | Shared core over authenticated HTTP/NDJSON |
 | Workspace file access and agent tools | Shared core in process | Shared core through sidecar |
+| Editable scenarios | No matching scenario editor | Seven editable tasks, model selection and real capability state |
+| Task delegation | Shared core; no matching child-run controller | Real child conversations, progress and parent-controlled cancellation |
+| CMD and PowerShell | Shared tool; no matching shell permission control | Explicit off-by-default permission, native confirmation and per-call script approval |
+| Output-token limits | Shared run reason; no dedicated WPF banner | Partial text preserved and an unfinished-task explanation |
 | Spatial graph | Retained DrawingVisual canvas | React/SVG canvas |
 | Code editor | WPF code view | CodeMirror 6, tabs and inline completions |
 | Git panel and portable session bundles | No matching panel/bundle workflow | Renderer panels and sidecar Git endpoints |

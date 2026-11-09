@@ -45,6 +45,7 @@ import {
 import { modeDefaultSurface, surfaceAllowedInMode } from "./modes";
 import { tp, translate } from "./i18n";
 import { fmtInt } from "./format";
+import { refuseDelegatedSend, type DelegatedRunOwner } from "./delegation";
 
 /* approval waiters (module-scoped, outside the store) */
 type ApprovalResolution = { decision: ApprovalDecision; reason?: string };
@@ -176,6 +177,9 @@ const MAX_EVENTS = 500;
 const MAX_MESSAGES_PER_SESSION = 2000;
 
 interface UiPrefs {
+  workflowBriefs?: Record<string, string>;
+  selectedWorkflow?: string;
+  settingsCategory?: "general" | "advanced";
   theme: ThemeMode;
   locale: Locale;
   sidebarCollapsed: boolean;
@@ -338,6 +342,8 @@ interface AqvenorState {
   /** live run state per chat session; the global `runner` mirrors the most
    *  active one so title/status bars keep working unchanged. */
   runningSessions: Record<string, RunnerState>;
+  /** Runtime ownership, separate from the child's transcript or its own runner. */
+  delegatedRuns: Record<string, DelegatedRunOwner>;
   /** finished-while-away counters per chat (sidebar badge); cleared on view */
   unread: Record<string, number>;
   bumpUnread: (sessionId: string) => void;
@@ -474,6 +480,8 @@ interface AqvenorState {
   sessionRunnerOf: (sessionId?: string) => RunnerState;
   setSessionRunner: (sessionId: string, patch: Partial<RunnerState>) => void;
   clearSessionRunner: (sessionId: string) => void;
+  reserveDelegatedSession: (parentSessionId: string, childSessionId: string, runId: string) => void;
+  releaseDelegatedRun: (runId: string) => void;
 
   /* canvas */
   setCanvas: (patch: Partial<CanvasState>) => void;
@@ -689,7 +697,7 @@ function pickSessionForMode(
 
 /* A fresh, empty local chat stamped with its mode. Stays local (offline id)
    until the first message upgrades it to a server conversation. */
-function makePlaceholder(mode: WorkMode, modelId: string): Session {
+export function makePlaceholder(mode: WorkMode, modelId: string): Session {
   return {
     id: uid("s"),
     title: "New chat",
@@ -816,6 +824,7 @@ export const useAqvenor = create<AqvenorState>()(
       dockLayout: {},
       approvals: {},
       runningSessions: {},
+      delegatedRuns: {},
       sessionAliases: {},
       unread: {},
       allowForRunTools: {},
@@ -1020,6 +1029,19 @@ export const useAqvenor = create<AqvenorState>()(
           return { runningSessions, runner: summarizeRuns(runningSessions) };
         });
       },
+      reserveDelegatedSession: (parentSessionId, childSessionId, runId) => {
+        set((s) => {
+          const prior = s.delegatedRuns[childSessionId];
+          if (prior?.parentSessionId === parentSessionId && prior.runId === runId) return {};
+          return { delegatedRuns: { ...s.delegatedRuns, [childSessionId]: { parentSessionId, runId } } };
+        });
+      },
+      releaseDelegatedRun: (runId) => {
+        set((s) => {
+          const remaining = Object.entries(s.delegatedRuns).filter(([, owner]) => owner.runId !== runId);
+          return remaining.length === Object.keys(s.delegatedRuns).length ? {} : { delegatedRuns: Object.fromEntries(remaining) };
+        });
+      },
       bumpUnread: (sessionId) => {
         set((s) => ({ unread: { ...s.unread, [sessionId]: (s.unread[sessionId] ?? 0) + 1 } }));
       },
@@ -1134,6 +1156,7 @@ export const useAqvenor = create<AqvenorState>()(
         });
       },
       deleteSession: (id) => {
+        if (refuseDelegatedSend(get(), id)) return;
         const { sessions: all, currentSessionId, ui } = get();
         const removed = all.find((s) => s.id === id);
         const sessions = all.filter((s) => s.id !== id);
@@ -2043,6 +2066,7 @@ export const useAqvenor = create<AqvenorState>()(
             runner: { status: "idle" },
             approvals: {},
             runningSessions: {},
+            delegatedRuns: {},
             unread: {},
             toasts: [],
             recording: false,

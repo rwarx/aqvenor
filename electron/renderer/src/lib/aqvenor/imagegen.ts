@@ -13,6 +13,7 @@ import { newId, useAqvenor } from "./store";
 import { resolveModel } from "./useModel";
 import { looksLikeImageGenModel } from "./data";
 import { translate } from "./i18n";
+import { refuseDelegatedSend } from "./delegation";
 import type { Locale, ModelInfo } from "./types";
 
 /** The model an /image run should use: this chat's own model when it can
@@ -31,6 +32,7 @@ function pickImageModel(sessionModelId: string): ModelInfo | undefined {
 export async function generateImage(prompt: string, sessionId?: string): Promise<void> {
   const st = useAqvenor.getState();
   const sid = sessionId ?? st.focusedChat();
+  if (refuseDelegatedSend(st, sid)) return;
   const session = st.resolveSession(sid);
   const locale = st.ui.locale;
 

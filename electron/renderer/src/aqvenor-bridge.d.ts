@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface AqvenorBridge {
+  agentPermissions?: (patch: { allowCommands?: boolean; allowShellCommands?: boolean }, locale: string) => Promise<{ cancelled?: true; allowCommands?: boolean; allowShellCommands?: boolean }>;
   onPrepareClose: (cb: (request: string, forUpdate?: boolean) => void) => () => void;
   finishClose: (request: string, saved: boolean) => Promise<void>;
   /** GitHub Releases updates; installation first flushes pending project writes. */

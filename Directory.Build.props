@@ -19,11 +19,11 @@
       The prerelease suffix identifies the alpha release channel used by the Electron updater.
       See CHANGELOG.md for the scope of each release.
     -->
-    <Version>0.3.2-alpha</Version>
-    <VersionPrefix>0.3.2</VersionPrefix>
-    <AssemblyVersion>0.3.2.0</AssemblyVersion>
-    <FileVersion>0.3.2.0</FileVersion>
-    <InformationalVersion>0.3.2-alpha</InformationalVersion>
+    <Version>0.3.3-alpha</Version>
+    <VersionPrefix>0.3.3</VersionPrefix>
+    <AssemblyVersion>0.3.3.0</AssemblyVersion>
+    <FileVersion>0.3.3.0</FileVersion>
+    <InformationalVersion>0.3.3-alpha</InformationalVersion>
   </PropertyGroup>
 
 </Project>

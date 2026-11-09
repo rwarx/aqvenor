@@ -29,6 +29,7 @@ import { fmtInt } from "@/lib/aqvenor/format";
 import { getNodeDragIds, hasNodeDrag } from "@/lib/aqvenor/dnd";
 import { attachCanvasNodeToDraft } from "@/lib/aqvenor/attachNode";
 import { sendMessage, stopGeneration } from "@/lib/aqvenor/scenario";
+import { delegatedOwnerOf } from "@/lib/aqvenor/delegation";
 import { useModel } from "@/lib/aqvenor/useModel";
 import { generateImage, wrapSequentialThinking } from "@/lib/aqvenor/imagegen";
 import type { WorkMethod, WorkMode, Locale } from "@/lib/aqvenor/types";
@@ -101,6 +102,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   const recording = useAqvenor((s) => s.recording);
   const setRecording = useAqvenor((s) => s.setRecording);
   const runnerStatus = useAqvenor((s) => s.sessionRunnerOf(resolvedId).status);
+  const delegatedParentId = useAqvenor((s) => delegatedOwnerOf(s, resolvedId)?.parentSessionId);
   const pushToast = useAqvenor((s) => s.pushToast);
   const approval = useAqvenor((s) => s.approvals[resolvedId] ?? null);
 
@@ -406,7 +408,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   }, []);
 
   const submit = () => {
-    if (!draft.trim() || generating) return;
+    if (!draft.trim() || generating || delegatedOwnerOf(useAqvenor.getState(), resolvedId)) return;
     /* /image <prompt> — generate a picture instead of a text turn. */
     const imageMatch = draft.match(/^\/image\s+([\s\S]+)$/);
     if (imageMatch) {
@@ -483,8 +485,18 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
   };
 
   return (
-    <div ref={composerBoxRef} className="px-3 pb-3 sm:px-4" data-aqvenor-composer>
+    <div ref={composerBoxRef} className="@container min-w-0 px-3 pb-3 sm:px-4" data-aqvenor-composer>
       <div className="mx-auto max-w-[820px]">
+        {delegatedParentId && (
+          <div className="mb-2 rounded-sm border border-line-faint bg-surface-2 px-3 py-2 text-[11px] leading-relaxed text-fg-2">
+            <p>{t("agents.delegated.hint")}</p>
+            <button type="button" className="aq-focus-ring mt-1 rounded-sm text-accent hover:underline" onClick={() => {
+              const state = useAqvenor.getState();
+              state.selectSession(delegatedParentId);
+              state.setSurface("chat");
+            }}>{t("agents.delegated.return")}</button>
+          </div>
+        )}
         <div
           onDragOver={(e) => {
             if (!dropAccepts(e)) return;
@@ -514,7 +526,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                 <span className="shrink-0 font-medium text-accent">{t("chat.voice.interim")}</span>
                 <span className="truncate italic text-fg-2">{interim || "…"}</span>
                 {dictationLive && (
-                  <span className="ml-auto hidden shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-fg-3 sm:block">
+                  <span className="ml-auto hidden shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-fg-3 @[480px]:block">
                     {t("chat.voice.live")}
                   </span>
                 )}
@@ -661,7 +673,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
           )}
 
           {/* footer */}
-          <div className="flex items-center gap-1 border-t border-line-faint px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-1 border-t border-line-faint px-2 py-1.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -708,7 +720,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                 title={t("agent.tooltip")}
               >
                 <activeMethod.icon size={13} className="text-fg-3" />
-                <span className="hidden sm:inline">
+                <span className="hidden @[480px]:inline">
                   {`${t("work.method")} · ${t(`work.method.${workMethod}`)}`}
                 </span>
                 <ChevronDown size={11} className="text-fg-3" />
@@ -775,7 +787,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                   ref={modelBtnRef}
                   type="button"
                   onClick={() => setModelOpen((v) => !v)}
-                  className="aq-focus-ring hidden h-7 items-center gap-1.5 rounded-sm px-2 text-[11.5px] text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1 md:flex"
+                  className="aq-focus-ring hidden h-7 items-center gap-1.5 rounded-sm px-2 text-[11.5px] text-fg-2 transition-colors hover:bg-surface-hover hover:text-fg-1 @[640px]:flex"
                   aria-label={t("composer.selectModel")}
                   title={t("composer.selectModel")}
                 >
@@ -814,7 +826,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                   title={t("chat.voice.stop")}
                 >
                   <MicOff size={13} className="animate-pulse-dot" />
-                  <span className="hidden sm:inline">{t("chat.voice.stop")}</span>
+                  <span className="hidden @[480px]:inline">{t("chat.voice.stop")}</span>
                 </button>
               ) : (
                 <button
@@ -846,7 +858,7 @@ export function Composer({ targetSessionId }: { targetSessionId?: string } = {})
                 <button
                   type="button"
                   onClick={submit}
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() || !!delegatedParentId}
                   className="aq-focus-ring flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent transition-all duration-100 hover:bg-accent-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-40"
                   aria-label={t("composer.send")}
                   title={t("composer.send")}

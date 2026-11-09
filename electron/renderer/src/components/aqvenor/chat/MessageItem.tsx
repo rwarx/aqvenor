@@ -8,6 +8,7 @@ import { useT } from "@/lib/aqvenor/useT";
 import { fmtInt, fmtTimeShort } from "@/lib/aqvenor/format";
 import { useModel } from "@/lib/aqvenor/useModel";
 import { regenerate } from "@/lib/aqvenor/scenario";
+import { delegatedOwnerOf, refuseDelegatedSend } from "@/lib/aqvenor/delegation";
 import { conversations } from "@/lib/aqvenor/backend";
 import { isServerId } from "@/lib/aqvenor/sync";
 import { Markdown } from "./Markdown";
@@ -130,19 +131,21 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
   const [copied, setCopied] = useState(false);
   const currentSessionId = useAqvenor((s) => s.currentSessionId);
   const resolvedId = sessionId ?? currentSessionId;
+  const delegatedBusy = useAqvenor((s) => !!delegatedOwnerOf(s, resolvedId));
   const runnerBusy = useAqvenor((s) => {
     const st = s.sessionRunnerOf(resolvedId).status;
     return st === "running" || st === "awaiting-approval";
   });
   const deleteMessage = useAqvenor((s) => s.deleteMessage);
   const model = useModel(message.modelId ?? "");
+  const streaming = !!message.streaming && !message.cancelled && runnerBusy;
 
   return (
     <div className="group/msg animate-msg-in py-2">
       {/* header line */}
       <div className="mb-1.5 flex items-center gap-2">
         <span className="flex h-[18px] w-[18px] items-center justify-center rounded-xs bg-accent-soft text-accent">
-          {message.streaming ? (
+          {streaming ? (
             <Sparkles size={10} className="animate-pulse-dot" />
           ) : (
             <Bot size={10} />
@@ -160,7 +163,9 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
             {message.skills.join(" · ")}
           </span>
         )}
-        {message.streaming && (
+        {message.cancelled ? (
+          <span className="text-[11px] text-fg-3">{t("tasks.status.stopped")}</span>
+        ) : streaming && (
           <span className="text-[11px] text-fg-3">{t("chat.thinking")}</span>
         )}
         {message.usage && (
@@ -177,16 +182,16 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
 
       {/* reasoning / chain-of-thought — collapsed by default, streamed live from the provider */}
       {message.reasoning && message.reasoning.trim().length > 0 && (
-        <ReasoningBlock text={message.reasoning} streaming={message.streaming} />
+        <ReasoningBlock text={message.reasoning} streaming={streaming} />
       )}
 
       {/* content */}
       {message.content ? (
-        <div className={message.streaming ? "aq-caret" : undefined}>
+        <div className={streaming ? "aq-caret" : undefined}>
           <Markdown text={message.content} />
         </div>
       ) : (
-        message.streaming && (
+        streaming && (
           <div className="flex items-center gap-2 py-1">
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
@@ -212,7 +217,7 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
             <button
               type="button"
               onClick={() => regenerate(resolvedId)}
-              disabled={runnerBusy}
+              disabled={runnerBusy || delegatedBusy}
               className="aq-focus-ring mt-1.5 flex h-6 items-center gap-1 rounded-xs border border-error/40 px-2 text-[11px] font-medium text-error transition-colors hover:bg-error-soft disabled:opacity-40"
               aria-label={t("chat.retry")}
               title={t("chat.retry")}
@@ -239,7 +244,7 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
       )}
 
       {/* hover actions */}
-      {!message.streaming && (
+      {!streaming && (
         <div className="mt-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/msg:opacity-100">
           <button
             type="button"
@@ -257,7 +262,7 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
           <button
             type="button"
             onClick={() => regenerate(resolvedId)}
-            disabled={runnerBusy}
+            disabled={runnerBusy || delegatedBusy}
             className="flex h-6 w-6 items-center justify-center rounded-xs text-fg-3 transition-colors hover:bg-surface-hover hover:text-fg-1 disabled:opacity-40"
             aria-label={t("chat.regenerate")}
             title={t("chat.regenerate")}
@@ -267,6 +272,7 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
           <button
             type="button"
             onClick={() => {
+              if (refuseDelegatedSend(useAqvenor.getState(), resolvedId)) return;
               // Optimistic local removal; also drop it on the server so a
               // session reload doesn't resurrect the message.
               if (isServerId(message.id)) {
@@ -274,7 +280,8 @@ function AssistantMessage({ message, sessionId }: { message: Message; sessionId?
               }
               deleteMessage(message.id, resolvedId);
             }}
-            className="flex h-6 w-6 items-center justify-center rounded-xs text-fg-3 transition-colors hover:bg-error-soft hover:text-error"
+            disabled={delegatedBusy}
+            className="flex h-6 w-6 items-center justify-center rounded-xs text-fg-3 transition-colors hover:bg-error-soft hover:text-error disabled:opacity-40"
             aria-label={t("common.delete")}
             title={t("common.delete")}
           >

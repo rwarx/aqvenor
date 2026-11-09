@@ -29,6 +29,7 @@ builder.Services.AddSingleton<GraphPersistence>();
 builder.Services.AddSingleton<GraphWriteRegistry>();
 builder.Services.AddSingleton<HttpAgentApproval>();
 builder.Services.AddSingleton<IAgentApproval>(p => p.GetRequiredService<HttpAgentApproval>());
+builder.Services.AddSingleton<IAgentChildConversationGuard, HttpChildConversationGuard>();
 
 // PlanCanvas actually draws in this build: override Infrastructure's text-only
 // TranscriptPlanSink so submit_plan lands on the shared graph the canvas reads.
@@ -99,6 +100,7 @@ using (var scope = app.Services.CreateScope())
 
 RunEndpoints.Map(app);
 DataEndpoints.Map(app);
+HostEndpoints.Map(app);
 GitEndpoints.Map(app);
 AiEndpoints.Map(app);
 

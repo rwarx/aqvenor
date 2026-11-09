@@ -1,7 +1,10 @@
 import type { Dictionary } from "./types-dict";
 
 /* German — vollständiges Wörterbuch (Task 2-d) */
+import { workflowCopy } from "./workflows";
+
 export const de: Dictionary = {
+  ...workflowCopy("de"),
   "graphSync.loading": "Graph wird geladen…",
   "graphSync.loadError": "Graph konnte nicht geladen werden",
   "graphSync.saved": "Graph gespeichert",
@@ -481,6 +484,7 @@ export const de: Dictionary = {
   /* ---- Provider Studio im opencode-Stil (Punkt 12) ---- */
   "providerStudio.title": "Anbieter",
   "providerStudio.subtitle": "Modellanbieter verbinden und API-Schlüssel verwalten",
+  "providerStudio.configuredSummary": "Gespeicherte API-Schlüssel: {0}. Schlüssel verwalten und Verbindung prüfen.",
   "providerStudio.tab.manage": "Verwalten",
   "providerStudio.tab.connect": "Verbinden",
   "providerStudio.custom": "Eigen",
@@ -1114,9 +1118,18 @@ export const de: Dictionary = {
 
   /* Einstellungs-Navigation + Suche */
   "settings.nav.general": "Allgemein",
+  "settings.group.general.hint": "Darstellung, Sprache und alltägliche Chat-Einstellungen.",
+  "settings.group.agent.hint": "Lauflimits, Anweisungen und Gesprächskontext.",
+  "settings.group.workspace.hint": "Das aktuelle Projekt und sein Graphindex.",
+  "settings.group.integrations": "Integrationen",
+  "settings.group.updates.hint": "Installierte Version und Updates aus GitHub Releases.",
+  "settings.group.advanced": "Erweitert",
+  "settings.group.advanced.hint": "Zugriffslimits, lokale Daten und Diagnose. Öffnen Sie nur den benötigten Bereich.",
+  "settings.search.clear": "Suche löschen",
+  "settings.search.results": "Suchergebnisse",
   "settings.nav.general.kw": "bestätigen löschen titel chat sitzung wiederherstellen",
   "settings.nav.appearance.kw": "design dunkel hell system seitenleiste breite",
-  "settings.nav.interface.kw": "enter markdown scrollen zoom skalierung",
+  "settings.nav.interface.kw": "enter scrollen zoom skalierung",
   "settings.nav.language": "Sprache",
   "settings.nav.language.kw": "sprache russisch deutsch englisch übersetzung",
   "settings.nav.models": "Modelle & Anbieter",
@@ -1124,8 +1137,8 @@ export const de: Dictionary = {
   "settings.nav.agent.kw": "schritte zeit limit budget ordner befehl timeout",
   "settings.nav.permissions": "Berechtigungen",
   "settings.nav.permissions.kw": "sicherheit erlauben befehle netzwerk externe dateien freigabe allowlist",
-  "settings.nav.tools": "Werkzeuge & Skills",
-  "settings.nav.tools.kw": "register risiko skills",
+  "settings.nav.tools": "Werkzeugregister",
+  "settings.nav.tools.kw": "register risiko werkzeuge",
   "settings.nav.context": "Kontext",
   "settings.nav.context.kw": "systemprompt anhänge komprimierung verlauf zusammenfassung",
   "settings.nav.workspace.kw": "ordner verzeichnis index canvas graph",
@@ -1165,8 +1178,8 @@ export const de: Dictionary = {
   "settings.maxSearch.unit": "Treffer",
 
   /* Berechtigungen */
-  "settings.permissions.hint": "Woran der Agent herankommt. Die vier Schalter unten gehören dem Desktop-Host.",
-  "settings.locked.note": "Gesperrt — der Server ignoriert Änderungen von hier.",
+  "settings.permissions.hint": "Programme und Shells mit Bestätigung aktivieren. Netzwerkzugriff, externe Dateien und die Programmliste sind hier schreibgeschützt.",
+  "settings.locked.note": "Vom Anwendungshost verwaltet; hier wird der aktuelle Wert angezeigt.",
   "settings.locked.wpf": "Ändere es in den Einstellungen der Desktop-App (WPF).",
   "settings.locked.listNote": "Hier nur lesbar — die Liste gehört dem Desktop-Host.",
   "settings.locked.refused": "Der Server hat einen Teil abgelehnt — gesperrte Einstellungen bleiben.",
@@ -1221,6 +1234,7 @@ export const de: Dictionary = {
   "settings.snapshot.hint": "Alle Bereiche wie gespeichert — keine Geheimnisse, darf geteilt werden.",
   "settings.snapshot.copy": "Schnappschuss kopieren",
   "settings.snapshot.copied": "Schnappschuss kopiert — keine Geheimnisse enthalten.",
+  "settings.snapshot.copyFailed": "Schnappschuss konnte nicht kopiert werden. Prüfen Sie den Zugriff auf die Zwischenablage und versuchen Sie es erneut.",
   "settings.reset": "Auf Standard zurücksetzen",
   "settings.reset.hint": "Ein Bereich zurück auf die Auslieferungswerte. Verlauf, Schlüssel und Dateien bleiben.",
   "settings.resetOne": "Zurücksetzen",

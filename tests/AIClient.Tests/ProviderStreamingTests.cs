@@ -99,6 +99,38 @@ public sealed class ProviderStreamingTests
     }
 
     [Fact]
+    public async Task A_200_stream_error_redacts_private_provider_identifiers()
+    {
+        const string functionId = "11111111-2222-3333-4444-555555555555";
+        const string accountId = "synthetic-account-12345";
+        var detail = $"Function '{functionId}' Not found for account '{accountId}'. Refresh the catalogue.";
+        var body = JsonSerializer.Serialize(new { error = new { message = detail, type = "upstream_error" } });
+        var handler = new FakeHttpMessageHandler().RespondSse($"data: {body}\n\n");
+
+        var events = await StreamAsync(handler, provider: ProviderHarness.Nvidia(handler));
+
+        var error = Assert.IsType<AIStreamEvent.Error>(Assert.Single(events));
+        Assert.DoesNotContain(functionId, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(accountId, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(functionId, error.TechnicalDetails ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(accountId, error.TechnicalDetails ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains("Refresh the catalogue.", error.Message, StringComparison.Ordinal);
+        Assert.Contains("upstream_error", error.TechnicalDetails!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_ordinary_200_stream_error_keeps_its_useful_function_and_parameter_details()
+    {
+        const string detail = "Function 'search' rejected parameter 'query': expected a string.";
+        var body = JsonSerializer.Serialize(new { error = new { message = detail, type = "invalid_request" } });
+        var handler = new FakeHttpMessageHandler().RespondSse($"data: {body}\n\n");
+
+        var events = await StreamAsync(handler);
+
+        Assert.Equal(detail, Assert.IsType<AIStreamEvent.Error>(Assert.Single(events)).Message);
+    }
+
+    [Fact]
     public async Task A_content_filter_stop_is_explained_rather_than_passed_off_as_a_normal_finish()
     {
         // The answer is cut short and nothing failed, so the user is owed a reason. A plain

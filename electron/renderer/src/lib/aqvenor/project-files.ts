@@ -51,6 +51,16 @@ export async function hydrateProjectFiles(): Promise<void> {
   const root = useAqvenor.getState().workspaceRoot!;
 
   try {
+    const status = await workspace.status();
+    if (!status.isOpen || status.root !== root || useAqvenor.getState().workspaceRoot !== root) return;
+    // This file is optional. Check directory entries instead of issuing a
+    // document request that reports a failed HTTP response on every fresh project.
+    const directory = await workspace.list(".", false);
+    if (useAqvenor.getState().workspaceRoot !== root
+      || !directory.entries.some((entry) => entry.isDirectory && entry.path.replace(/\\/g, "/") === AQ_DIR)) return;
+    const configDirectory = await workspace.list(AQ_DIR, false);
+    if (useAqvenor.getState().workspaceRoot !== root
+      || !configDirectory.entries.some((entry) => !entry.isDirectory && entry.path.replace(/\\/g, "/") === MCP_FILE)) return;
     const res = await workspace.readDocument(MCP_FILE, root);
     if (res.isTruncated || useAqvenor.getState().workspaceRoot !== root) return;
     importMcpServers(JSON.parse(res.content), root);

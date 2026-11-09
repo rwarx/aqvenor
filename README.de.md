@@ -137,10 +137,11 @@ bevor du ihn benutzt.
 
 | | |
 | --- | --- |
-| **Arbeitet in** | Einem Ordner, den du benennst, und verweigert Lesen oder Schreiben außerhalb davon |
-| **Ebenfalls verweigert, innerhalb dieses Ordners** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — nach Namen, immer |
+| **Arbeitet in** | Die Dateitools sind standardmäßig auf den gewählten Ordner beschränkt. Bei Shells wird das Arbeitsverzeichnis geprüft; das ist keine Betriebssystem-Sandbox, und Befehle können außerhalb des Ordners zugreifen |
+| **Von Dateitools verweigert** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — nach Namen, immer |
 | **Fragt vorher** | Jeden Schreibvorgang, jede externe Datei, jede Netzwerkanfrage, jedes Programm |
-| **Niemals** | Eine Shell auszuführen. `&&`, `\|`, `>` und `$HOME` sind Text, den das Programm erhält |
+| **Direkte Befehle** | `run_command` übergibt Argumente direkt an das Programm. `&&`, `\|`, `>` und `$HOME` sind dabei wörtlicher Text |
+| **Shell** | Separates `run_shell` für CMD/PowerShell, standardmäßig aus. Zuerst Programme erlauben, dann die zusätzliche Shell-Berechtigung im nativen Dialog aktivieren; Freigabe bei *jedem* Aufruf |
 | **Programme** | Standardmäßig aus. Dann nur eine Positivliste, die ein Mensch pflegt. Dann eine Freigabe bei *jedem* Aufruf |
 | **Rückgängig** | Deine Versionsverwaltung. Änderungen werden gezeigt, bevor sie entstehen, nicht danach zurückgenommen |
 

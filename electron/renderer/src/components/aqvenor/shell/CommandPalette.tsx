@@ -32,6 +32,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useAqvenor } from "@/lib/aqvenor/store";
+import { setUiPreferences } from "@/lib/aqvenor/ui-preferences";
 import { useT } from "@/lib/aqvenor/useT";
 import { exportCurrentSession, isServerMode, openWorkspaceByPath, reindexCanvas } from "@/lib/aqvenor/sync";
 import {
@@ -83,7 +84,6 @@ export function CommandPalette() {
   const forkSession = useAqvenor((s) => s.forkSession);
   const compactSession = useAqvenor((s) => s.compactSession);
   const pushToast = useAqvenor((s) => s.pushToast);
-  const setUi = useAqvenor((s) => s.setUi);
   const ui = useAqvenor((s) => s.ui);
   const currentSessionId = useAqvenor((s) => s.currentSessionId);
   const setRunner = useAqvenor((s) => s.setRunner);
@@ -231,16 +231,16 @@ export function CommandPalette() {
         label: ui.theme === "dark" ? t("theme.light") : t("theme.dark"),
         icon: ui.theme === "dark" ? Sun : Moon,
         keywords: t("palette.k.toggleTheme"),
-        run: () => setUi({ theme: ui.theme === "dark" ? "light" : "dark" }),
+        run: () => void setUiPreferences({ theme: ui.theme === "dark" ? "light" : "dark" }),
       },
       { id: "toggle-locale", group: t("sidebar.section.tools"), label: `${t("language")} · ${ui.locale.toUpperCase()} → ${ui.locale === "en" ? "RU" : ui.locale === "ru" ? "DE" : "EN"}`, icon: Languages, keywords: t("palette.k.toggleLocale"), run: () => {
         const next = ui.locale === "en" ? "ru" : ui.locale === "ru" ? "de" : "en";
-        setUi({ locale: next });
+        void setUiPreferences({ locale: next });
         pushToast(t("language"), next.toUpperCase());
       } },
     ];
     return cmds.filter((c) => c.label);
-  }, [t, ui.theme, ui.locale, setSurface, newSession, toggleSidebar, toggleContextPanel, forkSession, compactSession, setUi, pushToast, currentSessionId, setRunner, showCheckpointJump, setCheckpointJumpOpen]);
+  }, [t, ui.theme, ui.locale, setSurface, newSession, toggleSidebar, toggleContextPanel, forkSession, compactSession, pushToast, currentSessionId, setRunner, showCheckpointJump, setCheckpointJumpOpen]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;

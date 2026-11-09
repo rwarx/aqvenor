@@ -126,6 +126,7 @@ public static partial class SettingsLimits
         agent.MaxListEntries = Math.Clamp(agent.MaxListEntries, 1, 10_000);
         agent.MaxSearchResults = Math.Clamp(agent.MaxSearchResults, 1, 5000);
         agent.MaxIdenticalCalls = Math.Clamp(agent.MaxIdenticalCalls, 0, 1000);
+        agent.MaxDelegatedTasks = Math.Clamp(agent.MaxDelegatedTasks, 0, 3);
         agent.CommandTimeoutSeconds = Math.Clamp(agent.CommandTimeoutSeconds, 5, 3600);
         agent.MaxCommandOutputCharacters = Math.Clamp(agent.MaxCommandOutputCharacters, 1000, 1_000_000);
         agent.FetchTimeoutSeconds = Math.Clamp(agent.FetchTimeoutSeconds, 5, 300);

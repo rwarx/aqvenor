@@ -87,7 +87,9 @@ export interface SubAgent {
   id: string;
   name: string;
   role: string;
-  status: "pending" | "running" | "done" | "failed";
+  status: "pending" | "running" | "done" | "failed" | "stopped";
+  conversationId?: string;
+  steps?: number;
   summary?: string;
   tokens?: number;
 }
@@ -95,7 +97,7 @@ export interface SubAgent {
 export type MessageBlock =
   | { type: "plan"; goal: string; steps: PlanStep[] }
   | { type: "contract"; title: string; items: ContractItem[] }
-  | { type: "agenttree"; agents: SubAgent[] }
+  | { type: "agenttree"; agents: SubAgent[]; parentStatus?: SubAgent["status"] }
   | { type: "checkpoint"; label: string; file: string; restorable: boolean }
   | { type: "event"; level: "info" | "error" | "success"; title: string; detail?: string };
 
@@ -108,6 +110,8 @@ export interface Message {
   modelId?: string;
   providerId?: string;
   streaming?: boolean;
+  /** The assistant turn was stopped; partial content remains visible. */
+  cancelled?: boolean;
   toolCalls: ToolCall[];
   blocks?: MessageBlock[];
   attachments?: Attachment[];
@@ -337,6 +341,8 @@ export interface Provider {
   name: string;
   endpoint: string;
   state: ProviderState;
+  /** Presence of a stored credential, independent of the latest connection test. */
+  hasApiKey?: boolean;
   statusMessage?: string;
   models: ModelInfo[];
   builtin: boolean;

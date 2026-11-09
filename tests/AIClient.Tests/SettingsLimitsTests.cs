@@ -9,6 +9,16 @@ namespace AIClient.Tests;
 public sealed class SettingsLimitsTests
 {
     [Theory]
+    [InlineData(-10, 0)]
+    [InlineData(100, 3)]
+    [InlineData(2, 2)]
+    public void Delegated_task_budget_stays_within_the_run_limit(int input, int expected)
+    {
+        var agent = new AgentSettings { MaxDelegatedTasks = input };
+        SettingsLimits.Clamp(agent);
+        Assert.Equal(expected, agent.MaxDelegatedTasks);
+    }
+    [Theory]
     [InlineData(5, 2)]
     [InlineData(-1, 0)]
     [InlineData(0.7, 0.7)]

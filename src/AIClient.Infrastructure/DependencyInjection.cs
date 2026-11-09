@@ -212,12 +212,15 @@ public static class DependencyInjection
         services.AddSingleton<IAgentTool, MoveFileTool>();
         services.AddSingleton<IAgentTool, WriteFileTool>();
 
-        // Last, and the only one that can run a program. It is registered unconditionally and refuses
+        // Program execution tools are registered unconditionally and refuse
         // its own calls while the setting is off, rather than being registered conditionally: the
         // container is built once at startup, and a tool set that depended on a setting read at that
-        // moment would need a restart to reflect the switch the user just turned on.
+        // moment would need a restart to reflect the switch the user just turned on. Shell scripts
+        // require their own explicit permission; delegated tasks inherit their children's tool gates.
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IAgentTool, RunCommandTool>();
+        services.AddSingleton<IAgentTool, RunShellTool>();
+        services.AddSingleton<IAgentTool, DelegateTaskTool>();
 
         // Network: fetch one URL's content, reduced to text. Off until the user turns it on, and
         // Execute-risk for the same reason run_command is - it reaches outside the workspace, so every

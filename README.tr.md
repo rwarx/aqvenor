@@ -104,10 +104,11 @@ Ajan bir araç döngüsü çalıştırır ve erişebildiği yer, onu kullanmadan
 
 | | |
 | --- | --- |
-| **Çalıştığı yer** | Belirlediğiniz tek bir klasör ve dışına okumayı ya da yazmayı reddeder |
-| **O klasörün içinde de reddedilenler** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — ada göre, her zaman |
+| **Çalıştığı yer** | Dosya araçları varsayılan olarak seçtiğiniz klasörle sınırlıdır. Kabuk için çalışma dizini denetlenir; bu bir işletim sistemi korumalı alanı değildir ve komutlar klasörün dışına erişebilir |
+| **Dosya araçlarının reddettikleri** | `.git`, `.env`, `credentials.json`, `*.pem`, `*.key`, `*.pfx` — ada göre, her zaman |
 | **Önce sorar** | Her yazma, her dış dosya, her ağ isteği, her program |
-| **Asla** | Kabuk çalıştırmaz. `&&`, `\|`, `>` ve `$HOME` programın aldığı metindir |
+| **Doğrudan komutlar** | `run_command` bağımsız değişkenleri doğrudan programa iletir. `&&`, `\|`, `>` ve `$HOME` düz metindir |
+| **Kabuk** | CMD/PowerShell için ayrı `run_shell`, varsayılan olarak kapalıdır. Önce programlara izin verilir, sonra yerel izin penceresinde ek kabuk izni etkinleştirilir; *her* çağrı için onay gerekir |
 | **Programlar** | Varsayılan olarak kapalı. Sonra yalnızca bir insanın düzenlediği izin listesi. Sonra her çağrı için onay |
 | **Geri alma** | Sizin sürüm denetiminiz. Değişiklikler yapıldıktan sonra geri alınmaz, yapılmadan önce gösterilir |
 

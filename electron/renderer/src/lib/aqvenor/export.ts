@@ -1,6 +1,7 @@
 "use client";
 
 import type { CanvasEdge, CanvasNode, DemoFile, Goal, Session, ToolCall } from "./types";
+import pkg from "../../../../package.json";
 
 function download(name: string, content: string, mime: string) {
   const blob = new Blob([content], { type: `${mime};charset=utf-8` });
@@ -344,7 +345,7 @@ export function exportSessionBundle({ session, nodes, edges, files, goals }: Bun
   const manifest = {
     exportedAt: new Date().toISOString(),
     format: "kontur-code/bundle/v1",
-    app: "Aqvenor — redesign prototype v0.9",
+    app: `Aqvenor ${pkg.version}`,
     session: {
       id: session.id,
       title: session.title,

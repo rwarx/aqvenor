@@ -72,7 +72,7 @@ The asset collector can also be checked locally after `npm ci` in `electron`:
 ```powershell
 node --test scripts/collect-release-assets.test.cjs
 $testedSha = git rev-parse HEAD
-node scripts/collect-release-assets.cjs electron/release .tools/release-assets-check v0.3.2-alpha $testedSha
+node scripts/collect-release-assets.cjs electron/release .tools/release-assets-check v0.3.3-alpha $testedSha
 ```
 
 The output directory must not already exist. Collection checks metadata version,

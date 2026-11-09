@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using AIClient.Application.Configuration;
 using AIClient.Application.DTOs;
 using AIClient.Application.Interfaces;
@@ -53,6 +54,7 @@ public sealed class AgentService : IAgentService
     private readonly IWorkspaceService _workspace;
     private readonly ILogger<AgentService> _logger;
     private readonly TimeProvider _time;
+    private readonly IAgentChildConversationGuard? _childGuard;
 
     public AgentService(
         IConversationService conversations,
@@ -64,7 +66,8 @@ public sealed class AgentService : IAgentService
         IAgentApproval approval,
         IWorkspaceService workspace,
         ILogger<AgentService> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IAgentChildConversationGuard? childGuard = null)
     {
         _conversations = conversations;
         _providers = providers;
@@ -76,12 +79,17 @@ public sealed class AgentService : IAgentService
         _workspace = workspace;
         _logger = logger;
         _time = timeProvider ?? TimeProvider.System;
+        _childGuard = childGuard;
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<AgentEvent> RunAsync(
+    public IAsyncEnumerable<AgentEvent> RunAsync(AgentRunRequest request, CancellationToken cancellationToken) =>
+        RunOwnedAsync(request, cancellationToken, null);
+
+    private async IAsyncEnumerable<AgentEvent> RunOwnedAsync(
         AgentRunRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken,
+        RunState? parent)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -112,7 +120,7 @@ public sealed class AgentService : IAgentService
             yield return new AgentEvent.TitleGenerated(request.ConversationId, title);
         }
 
-        var run = new RunState(request, _settings.Current.Agent, cancellationToken, _time);
+        var run = new RunState(request, _settings.Current.Agent, cancellationToken, _time, workspaceLease.Root, parent);
 
         try
         {
@@ -196,7 +204,28 @@ public sealed class AgentService : IAgentService
             run.LastMessageId = placeholder.Id;
             yield return new AgentEvent.StepStarted(run.Step, placeholder);
 
-            var preparation = await PrepareAsync(run, offerTools: !lastStep).ConfigureAwait(false);
+            Preparation? preparation = null;
+            try
+            {
+                preparation = await PrepareAsync(run, offerTools: !lastStep).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (run.RunToken.IsCancellationRequested)
+            {
+                // Stop may arrive after the placeholder event and before the provider request.
+                // Keep that row terminal too; otherwise reopening the child shows Thinking forever.
+            }
+            if (preparation is null)
+            {
+                await _conversations.UpdateMessageAsync(new MessageUpdate
+                {
+                    MessageId = placeholder.Id,
+                    Status = MessageStatus.Cancelled,
+                }, CancellationToken.None).ConfigureAwait(false);
+                yield return run.UserToken.IsCancellationRequested
+                    ? new AgentEvent.Cancelled(placeholder.Id, run.Step)
+                    : Finish(run, AgentStopReason.TimeLimit);
+                yield break;
+            }
 
             if (preparation.Failure is { } early)
             {
@@ -216,6 +245,7 @@ public sealed class AgentService : IAgentService
             int? cacheReadTokens = null;
             int? cacheWriteTokens = null;
             IReadOnlyList<AIToolCall> calls = [];
+            var outputLimited = false;
 
             // Stepped by hand rather than with `await foreach`, as in chat, so that a mid-stream
             // exception can be caught without a try/catch wrapped around a yield.
@@ -324,7 +354,8 @@ public sealed class AgentService : IAgentService
                             yield return Failure(placeholder.Id, reported);
                             yield break;
 
-                        case AIStreamEvent.Completed:
+                        case AIStreamEvent.Completed completed:
+                            outputLimited = string.Equals(completed.FinishReason, "length", StringComparison.OrdinalIgnoreCase);
                             goto streamed;
 
                         case AIStreamEvent.ToolCallDelta:
@@ -334,14 +365,21 @@ public sealed class AgentService : IAgentService
                     }
                 }
 
-                streamed:
+            streamed:
                 clock.Stop();
 
                 var content = buffer.ToString();
 
+                if (outputLimited)
+                {
+                    // A token limit can cut off arguments or a later call in the same batch. Even
+                    // apparently complete calls must not run, or enter the next turn's transcript.
+                    calls = [];
+                }
+
                 // Neither words nor a call is nothing to continue from, and another step would send
                 // the same request and get the same nothing.
-                if (calls.Count == 0 && string.IsNullOrWhiteSpace(content))
+                if (!outputLimited && calls.Count == 0 && string.IsNullOrWhiteSpace(content))
                 {
                     var empty = new AIProviderException(
                         AIErrorKind.Unknown, "The model returned an empty response.", null, provider.Id);
@@ -382,6 +420,12 @@ public sealed class AgentService : IAgentService
                 await stream.DisposeAsync().ConfigureAwait(false);
             }
 
+            if (outputLimited)
+            {
+                yield return Finish(run, AgentStopReason.OutputLimit);
+                yield break;
+            }
+
             if (calls.Count == 0)
             {
                 // The model answered with words. Reported as StepLimit when this was the step whose
@@ -402,6 +446,14 @@ public sealed class AgentService : IAgentService
 
             if (run.Halted)
             {
+                if (run.UserToken.IsCancellationRequested)
+                {
+                    await _conversations.UpdateMessageAsync(new MessageUpdate
+                    {
+                        MessageId = placeholder.Id,
+                        Status = MessageStatus.Cancelled,
+                    }, CancellationToken.None).ConfigureAwait(false);
+                }
                 yield return run.UserToken.IsCancellationRequested
                     ? new AgentEvent.Cancelled(placeholder.Id, run.Step)
                     : Finish(run, AgentStopReason.TimeLimit);
@@ -453,6 +505,14 @@ public sealed class AgentService : IAgentService
                         $"Unknown tool '{call.Name}'"),
                     AgentCallOutcome.Failed).ConfigureAwait(false);
 
+                continue;
+            }
+
+            if (run.IsSubagent && tool is IAgentDelegatingTool)
+            {
+                yield return await RecordAsync(run, call,
+                    AgentToolResult.Fail("A subagent cannot delegate to another subagent. Complete your own task and report the result.",
+                        "Nested delegation is unavailable"), AgentCallOutcome.Failed).ConfigureAwait(false);
                 continue;
             }
 
@@ -517,6 +577,19 @@ public sealed class AgentService : IAgentService
 
             yield return new AgentEvent.ToolCallStarted(stepMessageId, call);
 
+            if (tool is IAgentDelegatingTool delegation)
+            {
+                await foreach (var progress in DelegateAsync(run, stepMessageId, call, delegation, arguments!).ConfigureAwait(false))
+                {
+                    yield return progress;
+                }
+                if (run.Halted)
+                {
+                    yield break;
+                }
+                continue;
+            }
+
             var result = await ExecuteAsync(run, tool, arguments!).ConfigureAwait(false);
 
             if (result is null)
@@ -537,6 +610,261 @@ public sealed class AgentService : IAgentService
                 call,
                 result,
                 result.Success ? AgentCallOutcome.Succeeded : AgentCallOutcome.Failed).ConfigureAwait(false);
+        }
+    }
+
+    private async IAsyncEnumerable<AgentEvent> DelegateAsync(
+        RunState parent, Guid parentMessageId, AIToolCall call, IAgentDelegatingTool tool, AgentToolArguments arguments)
+    {
+        var invalid = tool.ValidateTask(arguments, out var task, out var title);
+        if (invalid is not null)
+        {
+            yield return await RecordAsync(parent, call, invalid, AgentCallOutcome.Failed).ConfigureAwait(false);
+            yield break;
+        }
+        if (!parent.ReserveChild())
+        {
+            yield return await RecordAsync(parent, call,
+                AgentToolResult.Fail("The delegation budget for this run is spent. Finish the remaining work yourself; no further child was started.",
+                    "Delegation budget spent"), AgentCallOutcome.Failed).ConfigureAwait(false);
+            yield break;
+        }
+
+        ConversationDetail? parentConversation = null;
+        ConversationSummary? child = null;
+        IDisposable? childLease = null;
+        Exception? setupError = null;
+        try
+        {
+            parentConversation = await _conversations.GetAsync(parent.ConversationId, parent.RunToken).ConfigureAwait(false);
+            child = await _conversations.CreateAsync($"Subagent: {title}", parent.ProviderId, parent.ModelId, parent.RunToken).ConfigureAwait(false);
+            if (_childGuard is not null)
+            {
+                childLease = _childGuard.TryReserve(child.Id)
+                    ?? throw new InvalidOperationException("Another run owns the child conversation, so the subagent was not started.");
+            }
+            if (parentConversation?.ProjectId is { } projectId)
+            {
+                await _conversations.SetProjectAsync(child.Id, projectId, CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            setupError = ex;
+        }
+        if (child is null)
+        {
+            if (parent.RunToken.IsCancellationRequested)
+            {
+                parent.Halted = true;
+                yield break;
+            }
+            var failure = ProviderErrorMapper.FromException(setupError!, parent.ProviderId, parent.ProviderId);
+            yield return await RecordAsync(parent, call, AgentToolResult.Fail(failure.UserMessage, "Subagent could not start"),
+                AgentCallOutcome.Failed).ConfigureAwait(false);
+            yield break;
+        }
+        using var reservedChild = childLease;
+
+        var status = "running";
+        var steps = 0;
+        var answer = string.Empty;
+        string Payload() => JsonSerializer.Serialize(new
+        {
+            parentConversationId = parent.ConversationId,
+            conversationId = child.Id,
+            title,
+            status,
+            steps,
+            answer,
+        });
+
+        // The link is committed before the child starts so Stop, reload or a crash cannot lose it.
+        var row = await _conversations.AddMessageAsync(parent.ConversationId, new NewMessage
+        {
+            Role = MessageRole.Tool,
+            Content = Payload(),
+            Status = MessageStatus.Streaming,
+            ToolName = call.Name,
+            ToolCallId = call.Id,
+            ToolSucceeded = false,
+        }, CancellationToken.None).ConfigureAwait(false);
+        var terminalPersisted = false;
+        try
+        {
+            if (setupError is not null)
+            {
+                parent.Halted = parent.RunToken.IsCancellationRequested;
+                status = "error";
+                if (parent.Halted)
+                {
+                    status = parent.UserToken.IsCancellationRequested ? "stopped" : "incomplete";
+                }
+                answer = parent.Halted ? "The parent task ended before the subagent could start." :
+                    ProviderErrorMapper.FromException(setupError, parent.ProviderId, parent.ProviderId).UserMessage;
+                var failedPayload = Payload();
+                await _conversations.UpdateMessageAsync(new MessageUpdate
+                {
+                    MessageId = row.Id,
+                    Content = failedPayload,
+                    Status = MessageStatus.Complete,
+                    ToolSucceeded = false,
+                }, CancellationToken.None).ConfigureAwait(false);
+                terminalPersisted = true;
+                yield return new AgentEvent.SubagentCompleted(parentMessageId, call.Id, child.Id, title, status, steps);
+                yield return new AgentEvent.ToolCallFinished(call, AgentCallOutcome.Failed,
+                    row with { Content = failedPayload, Status = MessageStatus.Complete }, $"Subagent {title} — {status}", failedPayload);
+                yield break;
+            }
+            yield return new AgentEvent.SubagentStarted(parentMessageId, call.Id, child.Id, title, status, steps);
+
+            var request = new AgentRunRequest
+            {
+                ConversationId = child.Id,
+                Content = task,
+                ProviderId = parent.ProviderId,
+                ModelId = parent.ModelId,
+                WorkspaceBound = true,
+                WorkspaceRoot = parent.WorkspaceRoot,
+                FocusNodeIds = parent.FocusNodeIds,
+                Mode = parent.Mode,
+                IsSubagent = true,
+                SystemPromptOverride = parentConversation?.SystemPrompt ?? parent.SystemPromptOverride,
+            };
+            var currentText = new StringBuilder();
+            var stream = RunOwnedAsync(request, parent.RunToken, parent).GetAsyncEnumerator(parent.RunToken);
+            try
+            {
+                while (true)
+                {
+                    AgentEvent? progress = null;
+                    Exception? failure = null;
+                    try
+                    {
+                        progress = await stream.MoveNextAsync().ConfigureAwait(false) ? stream.Current : null;
+                    }
+                    catch (Exception ex)
+                    {
+                        failure = ex;
+                    }
+                    if (failure is not null)
+                    {
+                        status = parent.RunToken.IsCancellationRequested ? "stopped" : "error";
+                        answer = parent.RunToken.IsCancellationRequested ? "Stopped by the user." :
+                            ProviderErrorMapper.FromException(failure, parent.ProviderId, parent.ProviderId).UserMessage;
+                        break;
+                    }
+                    if (progress is null)
+                    {
+                        if (status == "running")
+                        {
+                            status = "error";
+                            answer = "The subagent ended without a result.";
+                        }
+                        break;
+                    }
+
+                    switch (progress)
+                    {
+                        case AgentEvent.StepStarted(var step, _):
+                            steps = step;
+                            currentText.Clear();
+                            yield return new AgentEvent.SubagentProgress(parentMessageId, call.Id, child.Id, title, status, steps, "thinking", null);
+                            break;
+                        case AgentEvent.ContentDelta(_, var text):
+                            currentText.Append(text);
+                            break;
+                        case AgentEvent.ToolCallStarted(_, var childCall):
+                            yield return new AgentEvent.SubagentProgress(parentMessageId, call.Id, child.Id, title, status, steps, "tool", childCall.Name);
+                            break;
+                        case AgentEvent.Completed(_, var completedSteps, var reason, _):
+                            steps = completedSteps;
+                            status = reason == AgentStopReason.Answered ? "done" : "incomplete";
+                            answer = currentText.Length > 0 ? currentText.ToString() : $"The subagent reached its {reason} budget.";
+                            break;
+                        case AgentEvent.Failed(_, _, var message, _, _):
+                            status = "error";
+                            answer = message;
+                            break;
+                        case AgentEvent.Cancelled:
+                            status = "stopped";
+                            answer = currentText.Length > 0 ? currentText.ToString() : "Stopped by the user.";
+                            break;
+                    }
+                }
+            }
+            finally
+            {
+                await stream.DisposeAsync().ConfigureAwait(false);
+            }
+
+            if (parent.RunToken.IsCancellationRequested)
+            {
+                parent.Halted = true;
+                if (!parent.UserToken.IsCancellationRequested)
+                {
+                    status = "incomplete";
+                    answer = "The parent task reached its time budget; the child was stopped.";
+                }
+            }
+            // Bound the result even if a provider ignores output-token settings; the complete answer stays in the child chat.
+            if (answer.Length > 20_000)
+            {
+                answer = answer[..20_000] + "\n[Truncated; open the child conversation for the full answer.]";
+            }
+            var payload = Payload();
+            var success = status == "done";
+            await _conversations.UpdateMessageAsync(new MessageUpdate
+            {
+                MessageId = row.Id,
+                Content = payload,
+                Status = MessageStatus.Complete,
+                ToolSucceeded = success,
+            }, CancellationToken.None).ConfigureAwait(false);
+            row = row with { Content = payload, Status = MessageStatus.Complete, ToolSucceeded = success };
+            terminalPersisted = true;
+            if (success)
+            {
+                parent.ForgetAttempts();
+            }
+            yield return new AgentEvent.SubagentCompleted(parentMessageId, call.Id, child.Id, title, status, steps);
+            yield return new AgentEvent.ToolCallFinished(call, success ? AgentCallOutcome.Succeeded : AgentCallOutcome.Failed,
+                row, $"Subagent {title} — {status}", payload);
+        }
+        finally
+        {
+            if (!terminalPersisted)
+            {
+                // Disposing an NDJSON consumer can skip the code after a yielded progress event.
+                // Finish the committed link and any child placeholder even when no final event can be sent.
+                if (status == "running")
+                {
+                    status = parent.RunToken.IsCancellationRequested && !parent.UserToken.IsCancellationRequested
+                        ? "incomplete" : "stopped";
+                    answer = "The parent run ended before the subagent finished.";
+                }
+                await _conversations.UpdateMessageAsync(new MessageUpdate
+                {
+                    MessageId = row.Id,
+                    Content = Payload(),
+                    Status = MessageStatus.Complete,
+                    ToolSucceeded = status == "done",
+                }, CancellationToken.None).ConfigureAwait(false);
+                var interrupted = await _conversations.GetAsync(child.Id, CancellationToken.None).ConfigureAwait(false);
+                foreach (var message in interrupted?.Messages.Where(message => message.Status == MessageStatus.Streaming) ?? [])
+                {
+                    await _conversations.UpdateMessageAsync(new MessageUpdate
+                    {
+                        MessageId = message.Id,
+                        Status = MessageStatus.Cancelled,
+                    }, CancellationToken.None).ConfigureAwait(false);
+                }
+                await _conversations.UpdateMessageAsync(new MessageUpdate
+                {
+                    MessageId = parentMessageId,
+                    Status = MessageStatus.Cancelled,
+                }, CancellationToken.None).ConfigureAwait(false);
+            }
         }
     }
 
@@ -735,11 +1063,13 @@ public sealed class AgentService : IAgentService
                 {
                     ConversationId = run.ConversationId,
                     SystemPrompt = AgentPrompt.Compose(
-                        conversation?.SystemPrompt ?? chat.SystemPrompt,
+                        run.SystemPromptOverride ?? conversation?.SystemPrompt ?? chat.SystemPrompt,
                         _workspace.Root,
                         _settings.Current.Agent.AllowCommands,
                         run.Mode,
-                        _settings.Current.Agent.AllowExternalFiles),
+                        _settings.Current.Agent.AllowExternalFiles,
+                        _settings.Current.Agent.AllowSubagents && !run.IsSubagent,
+                        _settings.Current.Agent.AllowShellCommands),
                     ContextWindow = model?.ContextWindow,
                     ReservedOutputTokens = chat.ReservedOutputTokens,
                     MaxHistoryTurns = chat.MaxHistoryMessages,
@@ -764,7 +1094,9 @@ public sealed class AgentService : IAgentService
                 TopP = Allow(model, "top_p") ? chat.TopP : null,
                 MaxTokens = Allow(model, "max_tokens") ? ClampMaxTokens(chat.MaxTokens, model) : null,
                 Stream = model?.SupportsStreaming ?? true,
-                Tools = _registry.Available(run.Mode),
+                Tools = run.IsSubagent
+                    ? _registry.Available(run.Mode).Where(definition => !_registry.TryGet(definition.Name, out var tool) || tool is not IAgentDelegatingTool).ToArray()
+                    : _registry.Available(run.Mode),
 
                 // The definitions stay attached on the final step. Withdrawing them entirely makes
                 // some providers forget the calls already in the history, which invalidates the very
@@ -976,11 +1308,20 @@ public sealed class AgentService : IAgentService
         private readonly HashSet<string> _approved = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _attempts = new(StringComparer.Ordinal);
         private TimeSpan _waited;
+        private readonly RunState? _parent;
+        private readonly int _maxChildren;
+        private int _children;
 
-        public RunState(AgentRunRequest request, AgentSettings settings, CancellationToken userToken, TimeProvider time)
+        public RunState(AgentRunRequest request, AgentSettings settings, CancellationToken userToken, TimeProvider time,
+            string? workspaceRoot, RunState? parent)
         {
             _time = time;
             _started = time.GetTimestamp();
+            _parent = parent;
+            _maxChildren = Math.Clamp(settings.MaxDelegatedTasks, 0, 3);
+            IsSubagent = request.IsSubagent;
+            SystemPromptOverride = request.SystemPromptOverride;
+            WorkspaceRoot = workspaceRoot;
             ConversationId = request.ConversationId;
             ProviderId = request.ProviderId;
             ModelId = request.ModelId;
@@ -989,7 +1330,7 @@ public sealed class AgentService : IAgentService
             UserToken = userToken;
             RunToken = userToken;
 
-            MaxSteps = Math.Max(1, settings.MaxSteps);
+            MaxSteps = request.IsSubagent ? Math.Clamp(settings.MaxSteps, 1, 12) : Math.Max(1, settings.MaxSteps);
 
             // Below two, the rule could only refuse a call the model has not made yet, which would
             // break every tool. Read as "no limit" rather than honoured literally.
@@ -1013,6 +1354,10 @@ public sealed class AgentService : IAgentService
         public string ProviderId { get; }
 
         public string ModelId { get; }
+        public bool IsSubagent { get; }
+        public string? WorkspaceRoot { get; }
+        public string? SystemPromptOverride { get; }
+        public bool ReserveChild() => !IsSubagent && _children++ < _maxChildren;
 
         /// <summary>
         /// Which kind of run this is, read at every step and every call.
@@ -1064,7 +1409,11 @@ public sealed class AgentService : IAgentService
         /// the run with no time limit at all, which is the failure this whole mechanism exists to
         /// prevent.
         /// </remarks>
-        public void HoldDeadline() => _deadlineTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        public void HoldDeadline()
+        {
+            _deadlineTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _parent?.HoldDeadline();
+        }
 
         /// <summary>
         /// Gives back the time an approval question was open, so that a person taking a minute to
@@ -1072,6 +1421,7 @@ public sealed class AgentService : IAgentService
         /// </summary>
         public void GiveBack(TimeSpan waited)
         {
+            _parent?.GiveBack(waited);
             if (waited > TimeSpan.Zero)
             {
                 _waited += waited;

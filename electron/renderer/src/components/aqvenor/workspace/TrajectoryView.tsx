@@ -152,6 +152,7 @@ function AgentStatusIcon({ status }: { status: SubAgent["status"] }) {
   if (status === "running") return <LoaderCircle size={12} className="shrink-0 animate-spin text-warning" />;
   if (status === "done") return <CircleCheck size={12} className="shrink-0 text-success" />;
   if (status === "failed") return <CircleX size={12} className="shrink-0 text-error" />;
+  if (status === "stopped") return <CircleX size={12} className="shrink-0 text-warning" />;
   return <Circle size={12} className="shrink-0 text-fg-3" />;
 }
 

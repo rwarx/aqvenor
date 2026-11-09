@@ -26,7 +26,7 @@ public sealed class CompositionTests
     [Fact]
     public void The_documented_tool_and_provider_counts_match_the_container()
     {
-        // ARCHITECTURE.md documents "24 tools" and the READMEs document eight built-in
+        // ARCHITECTURE.md documents "26 tools" and the READMEs document eight built-in
         // providers. If either registration list changes, this test fails and the docs
         // must change with it - silent drift was the finding (AQV-ARCH-01).
         var services = new ServiceCollection().AddInfrastructure(new ConfigurationBuilder().Build());
@@ -34,7 +34,7 @@ public sealed class CompositionTests
         var tools = services.Count(d => d.ServiceType == typeof(IAgentTool));
         var providers = services.Count(d => d.ServiceType == typeof(IAIProvider));
 
-        Assert.Equal(24, tools);
+        Assert.Equal(26, tools);
         Assert.Equal(8, providers);
     }
 

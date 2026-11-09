@@ -77,11 +77,18 @@ public sealed class ProcessRunner : IProcessRunner
     private const string OwnPrefix = "AICLIENT_";
 
     private readonly ILogger<ProcessRunner> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public ProcessRunner(ILogger<ProcessRunner> logger)
+        : this(logger, TimeProvider.System)
+    {
+    }
+
+    public ProcessRunner(ILogger<ProcessRunner> logger, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<ProcessRunResult> RunAsync(
@@ -89,6 +96,29 @@ public sealed class ProcessRunner : IProcessRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (request.CreateHiddenConsole && !OperatingSystem.IsWindows())
+        {
+            return ProcessRunResult.Failed("A hidden Windows console is supported only on Windows.");
+        }
+
+        if (request.WindowsCommandLine is { } commandLine)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return ProcessRunResult.Failed("A raw Windows command line is supported only on Windows.");
+            }
+
+            if (request.Arguments.Count > 0)
+            {
+                return ProcessRunResult.Failed("Structured arguments and a raw Windows command line cannot be combined.");
+            }
+
+            if (commandLine.Contains('\0') || commandLine.Length > 32_000 || string.IsNullOrWhiteSpace(commandLine))
+            {
+                return ProcessRunResult.Failed("The Windows command line is empty, too long, or contains a null character.");
+            }
+        }
 
         if (!Directory.Exists(request.WorkingDirectory))
         {
@@ -182,11 +212,10 @@ public sealed class ProcessRunner : IProcessRunner
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>UseShellExecute = false</c> is the load-bearing line: with it true, Windows hands the string to
-    /// the shell and every operator in an argument becomes syntax. False also makes redirection possible,
-    /// makes <see cref="ProcessStartInfo.ArgumentList"/> the way arguments are passed, and means the
-    /// program is looked up rather than a file association being consulted - so a call naming a
-    /// <c>.txt</c> cannot open an editor.
+    /// <c>UseShellExecute = false</c> avoids an implicit operating-system shell or file association and
+    /// enables redirection. Ordinary programs receive <see cref="ProcessStartInfo.ArgumentList"/>;
+    /// an explicitly approved CMD script receives the raw Windows command line because CMD has its
+    /// own quoting rules. In that case the named program is itself the shell, so operators are syntax.
     /// </para>
     /// <para>
     /// The output encoding is forced to UTF-8 rather than left to the console's code page. Every modern
@@ -203,7 +232,8 @@ public sealed class ProcessRunner : IProcessRunner
             FileName = request.FileName,
             WorkingDirectory = request.WorkingDirectory,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = !request.CreateHiddenConsole,
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
 
@@ -215,9 +245,16 @@ public sealed class ProcessRunner : IProcessRunner
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        foreach (var argument in request.Arguments)
+        if (request.WindowsCommandLine is { } commandLine)
         {
-            info.ArgumentList.Add(argument);
+            info.Arguments = commandLine;
+        }
+        else
+        {
+            foreach (var argument in request.Arguments)
+            {
+                info.ArgumentList.Add(argument);
+            }
         }
 
         Sanitise(info.Environment);
@@ -268,13 +305,13 @@ public sealed class ProcessRunner : IProcessRunner
     /// is told to nobody. A single linked token would have collapsed them into one indistinguishable
     /// <see cref="OperationCanceledException"/>.
     /// </remarks>
-    private static async Task<bool> WaitAsync(
+    private async Task<bool> WaitAsync(
         Process process,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
-        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(timeout);
+        using var timeoutSignal = new CancellationTokenSource(timeout, _timeProvider);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSignal.Token);
 
         try
         {
